@@ -495,9 +495,8 @@ export const formatAttachmentFileSize = (
   }).format(sizeInBytes / 1_048_576)} MB`;
 };
 
-export const formatAttachmentTypeLabel = (
-  fileType: RecordAttachmentFileType,
-) => recordAttachmentFileTypeLabels[fileType];
+export const formatAttachmentTypeLabel = (fileType: RecordAttachmentFileType) =>
+  recordAttachmentFileTypeLabels[fileType];
 
 export const getAttachmentDisplayName = (
   attachment: Pick<RecordAttachment, "file_name">,
@@ -789,3 +788,571 @@ export const foundationNavigation: NavigationSection[] = [
     description: "Privacy, sync, and export controls come in later phases.",
   },
 ];
+
+export type CsvCellValue = boolean | number | string | null | undefined;
+
+export type CsvColumn<T> = {
+  header: string;
+  value: (row: T) => CsvCellValue;
+};
+
+export const escapeCsvValue = (value: CsvCellValue) => {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  const text = String(value);
+  const mustQuote =
+    text.includes(",") ||
+    text.includes('"') ||
+    text.includes("\n") ||
+    text.includes("\r");
+
+  if (!mustQuote) {
+    return text;
+  }
+
+  return `"${text.replaceAll('"', '""')}"`;
+};
+
+export const buildCsv = <T>(columns: CsvColumn<T>[], rows: T[]) => {
+  const headerRow = columns.map((column) => escapeCsvValue(column.header));
+  const dataRows = rows.map((row) =>
+    columns.map((column) => escapeCsvValue(column.value(row))),
+  );
+
+  return [headerRow, ...dataRows].map((cells) => cells.join(",")).join("\n");
+};
+
+const getVehicleLookup = (vehicles: Vehicle[]) =>
+  new Map(vehicles.map((vehicle) => [vehicle.id, vehicle]));
+
+const getVehicleNickname = (
+  vehicleById: Map<string, Vehicle>,
+  vehicleId: string,
+) => vehicleById.get(vehicleId)?.nickname ?? "";
+
+export const exportVehiclesCsv = (vehicles: Vehicle[]) =>
+  buildCsv<Vehicle>(
+    [
+      { header: "vehicle_id", value: (vehicle) => vehicle.id },
+      { header: "nickname", value: (vehicle) => vehicle.nickname },
+      { header: "year", value: (vehicle) => vehicle.year },
+      { header: "make", value: (vehicle) => vehicle.make },
+      { header: "model", value: (vehicle) => vehicle.model },
+      { header: "trim", value: (vehicle) => vehicle.trim },
+      { header: "vin", value: (vehicle) => vehicle.vin },
+      { header: "license_plate", value: (vehicle) => vehicle.license_plate },
+      { header: "license_state", value: (vehicle) => vehicle.license_state },
+      { header: "color", value: (vehicle) => vehicle.color },
+      { header: "vehicle_type", value: (vehicle) => vehicle.vehicle_type },
+      {
+        header: "initial_odometer",
+        value: (vehicle) => vehicle.initial_odometer,
+      },
+      {
+        header: "current_odometer",
+        value: (vehicle) => vehicle.current_odometer,
+      },
+      { header: "odometer_unit", value: (vehicle) => vehicle.odometer_unit },
+      { header: "purchase_date", value: (vehicle) => vehicle.purchase_date },
+      {
+        header: "purchase_odometer",
+        value: (vehicle) => vehicle.purchase_odometer,
+      },
+      { header: "archived_at", value: (vehicle) => vehicle.archived_at },
+      { header: "notes", value: (vehicle) => vehicle.notes },
+      { header: "created_at", value: (vehicle) => vehicle.created_at },
+      { header: "updated_at", value: (vehicle) => vehicle.updated_at },
+    ],
+    vehicles,
+  );
+
+export const exportOdometerEntriesCsv = ({
+  odometerEntries,
+  vehicles,
+}: {
+  odometerEntries: OdometerEntry[];
+  vehicles: Vehicle[];
+}) => {
+  const vehicleById = getVehicleLookup(vehicles);
+
+  return buildCsv<OdometerEntry>(
+    [
+      { header: "entry_id", value: (entry) => entry.id },
+      { header: "vehicle_id", value: (entry) => entry.vehicle_id },
+      {
+        header: "vehicle_nickname",
+        value: (entry) => getVehicleNickname(vehicleById, entry.vehicle_id),
+      },
+      { header: "reading_date", value: (entry) => entry.reading_date },
+      { header: "reading", value: (entry) => entry.reading },
+      { header: "odometer_unit", value: (entry) => entry.odometer_unit },
+      { header: "source_type", value: (entry) => entry.source_type },
+      { header: "notes", value: (entry) => entry.notes },
+      { header: "created_at", value: (entry) => entry.created_at },
+      { header: "updated_at", value: (entry) => entry.updated_at },
+    ],
+    odometerEntries,
+  );
+};
+
+export const exportServiceRecordsCsv = ({
+  serviceRecords,
+  vehicles,
+}: {
+  serviceRecords: ServiceRecord[];
+  vehicles: Vehicle[];
+}) => {
+  const vehicleById = getVehicleLookup(vehicles);
+
+  return buildCsv<ServiceRecord>(
+    [
+      { header: "service_record_id", value: (record) => record.id },
+      { header: "vehicle_id", value: (record) => record.vehicle_id },
+      {
+        header: "vehicle_nickname",
+        value: (record) => getVehicleNickname(vehicleById, record.vehicle_id),
+      },
+      { header: "service_date", value: (record) => record.service_date },
+      {
+        header: "odometer_reading",
+        value: (record) => record.odometer_reading,
+      },
+      { header: "title", value: (record) => record.title },
+      { header: "category", value: (record) => record.category },
+      { header: "vendor_name", value: (record) => record.vendor_name },
+      { header: "cost_amount", value: (record) => record.cost_amount },
+      { header: "cost_currency", value: (record) => record.cost_currency },
+      { header: "description", value: (record) => record.description },
+      { header: "notes", value: (record) => record.notes },
+      { header: "created_at", value: (record) => record.created_at },
+      { header: "updated_at", value: (record) => record.updated_at },
+    ],
+    serviceRecords,
+  );
+};
+
+export const exportRepairRecordsCsv = ({
+  repairRecords,
+  vehicles,
+}: {
+  repairRecords: RepairRecord[];
+  vehicles: Vehicle[];
+}) => {
+  const vehicleById = getVehicleLookup(vehicles);
+
+  return buildCsv<RepairRecord>(
+    [
+      { header: "repair_record_id", value: (record) => record.id },
+      { header: "vehicle_id", value: (record) => record.vehicle_id },
+      {
+        header: "vehicle_nickname",
+        value: (record) => getVehicleNickname(vehicleById, record.vehicle_id),
+      },
+      { header: "repair_date", value: (record) => record.repair_date },
+      {
+        header: "odometer_reading",
+        value: (record) => record.odometer_reading,
+      },
+      { header: "title", value: (record) => record.title },
+      { header: "category", value: (record) => record.category },
+      { header: "vendor_name", value: (record) => record.vendor_name },
+      { header: "cost_amount", value: (record) => record.cost_amount },
+      { header: "cost_currency", value: (record) => record.cost_currency },
+      {
+        header: "warranty_until_date",
+        value: (record) => record.warranty_until_date,
+      },
+      {
+        header: "warranty_until_odometer",
+        value: (record) => record.warranty_until_odometer,
+      },
+      { header: "description", value: (record) => record.description },
+      { header: "notes", value: (record) => record.notes },
+      { header: "created_at", value: (record) => record.created_at },
+      { header: "updated_at", value: (record) => record.updated_at },
+    ],
+    repairRecords,
+  );
+};
+
+export const exportMaintenanceRemindersCsv = ({
+  maintenanceReminders,
+  vehicles,
+}: {
+  maintenanceReminders: MaintenanceReminder[];
+  vehicles: Vehicle[];
+}) => {
+  const vehicleById = getVehicleLookup(vehicles);
+
+  return buildCsv<MaintenanceReminder>(
+    [
+      { header: "reminder_id", value: (reminder) => reminder.id },
+      { header: "vehicle_id", value: (reminder) => reminder.vehicle_id },
+      {
+        header: "vehicle_nickname",
+        value: (reminder) =>
+          getVehicleNickname(vehicleById, reminder.vehicle_id),
+      },
+      { header: "title", value: (reminder) => reminder.title },
+      { header: "category", value: (reminder) => reminder.category },
+      { header: "reminder_type", value: (reminder) => reminder.reminder_type },
+      { header: "due_date", value: (reminder) => reminder.due_date },
+      { header: "due_odometer", value: (reminder) => reminder.due_odometer },
+      {
+        header: "status",
+        value: (reminder) =>
+          getMaintenanceReminderStatus({
+            currentOdometer:
+              vehicleById.get(reminder.vehicle_id)?.current_odometer ?? 0,
+            reminder,
+          }),
+      },
+      {
+        header: "is_completed",
+        value: (reminder) => reminder.is_completed,
+      },
+      { header: "completed_at", value: (reminder) => reminder.completed_at },
+      {
+        header: "repeat_interval_months",
+        value: (reminder) => reminder.repeat_interval_months,
+      },
+      {
+        header: "repeat_interval_miles",
+        value: (reminder) => reminder.repeat_interval_miles,
+      },
+      { header: "notes", value: (reminder) => reminder.notes },
+      { header: "created_at", value: (reminder) => reminder.created_at },
+      { header: "updated_at", value: (reminder) => reminder.updated_at },
+    ],
+    maintenanceReminders,
+  );
+};
+
+export const exportRecordAttachmentsCsv = ({
+  recordAttachments,
+  repairRecords,
+  serviceRecords,
+  vehicles,
+}: {
+  recordAttachments: RecordAttachment[];
+  repairRecords: RepairRecord[];
+  serviceRecords: ServiceRecord[];
+  vehicles: Vehicle[];
+}) => {
+  const vehicleById = getVehicleLookup(vehicles);
+  const serviceRecordById = new Map(
+    serviceRecords.map((record) => [record.id, record]),
+  );
+  const repairRecordById = new Map(
+    repairRecords.map((record) => [record.id, record]),
+  );
+
+  return buildCsv<RecordAttachment>(
+    [
+      { header: "attachment_id", value: (attachment) => attachment.id },
+      { header: "vehicle_id", value: (attachment) => attachment.vehicle_id },
+      {
+        header: "vehicle_nickname",
+        value: (attachment) =>
+          getVehicleNickname(vehicleById, attachment.vehicle_id),
+      },
+      {
+        header: "linked_record_type",
+        value: (attachment) =>
+          attachment.service_record_id ? "service" : "repair",
+      },
+      {
+        header: "linked_record_id",
+        value: (attachment) =>
+          attachment.service_record_id ?? attachment.repair_record_id,
+      },
+      {
+        header: "linked_record_title",
+        value: (attachment) =>
+          attachment.service_record_id
+            ? serviceRecordById.get(attachment.service_record_id)?.title
+            : attachment.repair_record_id
+              ? repairRecordById.get(attachment.repair_record_id)?.title
+              : "",
+      },
+      { header: "file_name", value: (attachment) => attachment.file_name },
+      { header: "file_type", value: (attachment) => attachment.file_type },
+      { header: "mime_type", value: (attachment) => attachment.mime_type },
+      {
+        header: "file_size_bytes",
+        value: (attachment) => attachment.file_size_bytes,
+      },
+      { header: "local_uri", value: (attachment) => attachment.local_uri },
+      { header: "created_at", value: (attachment) => attachment.created_at },
+      { header: "updated_at", value: (attachment) => attachment.updated_at },
+    ],
+    recordAttachments,
+  );
+};
+
+type CombinedCsvRow = Record<string, CsvCellValue>;
+
+const combinedCsvColumns: Array<CsvColumn<CombinedCsvRow>> = [
+  { header: "dataset", value: (row) => row.dataset },
+  { header: "id", value: (row) => row.id },
+  { header: "vehicle_id", value: (row) => row.vehicle_id },
+  { header: "vehicle_nickname", value: (row) => row.vehicle_nickname },
+  { header: "vehicle_archived", value: (row) => row.vehicle_archived },
+  { header: "vehicle_year", value: (row) => row.vehicle_year },
+  { header: "vehicle_make", value: (row) => row.vehicle_make },
+  { header: "vehicle_model", value: (row) => row.vehicle_model },
+  { header: "vehicle_trim", value: (row) => row.vehicle_trim },
+  { header: "vehicle_type", value: (row) => row.vehicle_type },
+  { header: "vin", value: (row) => row.vin },
+  { header: "license_plate", value: (row) => row.license_plate },
+  { header: "license_state", value: (row) => row.license_state },
+  { header: "color", value: (row) => row.color },
+  { header: "date", value: (row) => row.date },
+  { header: "title", value: (row) => row.title },
+  { header: "category", value: (row) => row.category },
+  { header: "type", value: (row) => row.type },
+  { header: "odometer", value: (row) => row.odometer },
+  { header: "odometer_unit", value: (row) => row.odometer_unit },
+  { header: "source_type", value: (row) => row.source_type },
+  { header: "vendor_name", value: (row) => row.vendor_name },
+  { header: "cost_amount", value: (row) => row.cost_amount },
+  { header: "cost_currency", value: (row) => row.cost_currency },
+  { header: "description", value: (row) => row.description },
+  { header: "warranty_until_date", value: (row) => row.warranty_until_date },
+  {
+    header: "warranty_until_odometer",
+    value: (row) => row.warranty_until_odometer,
+  },
+  { header: "due_date", value: (row) => row.due_date },
+  { header: "due_odometer", value: (row) => row.due_odometer },
+  { header: "status", value: (row) => row.status },
+  { header: "is_completed", value: (row) => row.is_completed },
+  { header: "completed_at", value: (row) => row.completed_at },
+  {
+    header: "repeat_interval_months",
+    value: (row) => row.repeat_interval_months,
+  },
+  {
+    header: "repeat_interval_miles",
+    value: (row) => row.repeat_interval_miles,
+  },
+  { header: "linked_record_type", value: (row) => row.linked_record_type },
+  { header: "linked_record_id", value: (row) => row.linked_record_id },
+  { header: "linked_record_title", value: (row) => row.linked_record_title },
+  { header: "file_name", value: (row) => row.file_name },
+  { header: "file_type", value: (row) => row.file_type },
+  { header: "mime_type", value: (row) => row.mime_type },
+  { header: "file_size_bytes", value: (row) => row.file_size_bytes },
+  { header: "local_uri", value: (row) => row.local_uri },
+  { header: "notes", value: (row) => row.notes },
+  { header: "created_at", value: (row) => row.created_at },
+  { header: "updated_at", value: (row) => row.updated_at },
+];
+
+export type LocalCsvExportData = {
+  maintenanceReminders: MaintenanceReminder[];
+  odometerEntries: OdometerEntry[];
+  recordAttachments: RecordAttachment[];
+  repairRecords: RepairRecord[];
+  serviceRecords: ServiceRecord[];
+  vehicles: Vehicle[];
+};
+
+export const hasLocalCsvExportData = ({
+  maintenanceReminders,
+  odometerEntries,
+  recordAttachments,
+  repairRecords,
+  serviceRecords,
+  vehicles,
+}: LocalCsvExportData) =>
+  vehicles.length > 0 ||
+  odometerEntries.length > 0 ||
+  serviceRecords.length > 0 ||
+  repairRecords.length > 0 ||
+  maintenanceReminders.length > 0 ||
+  recordAttachments.length > 0;
+
+export const exportCombinedLocalCsv = (data: LocalCsvExportData) => {
+  const vehicleById = getVehicleLookup(data.vehicles);
+  const serviceRecordById = new Map(
+    data.serviceRecords.map((record) => [record.id, record]),
+  );
+  const repairRecordById = new Map(
+    data.repairRecords.map((record) => [record.id, record]),
+  );
+  const vehicleColumns = (vehicleId: string) => {
+    const vehicle = vehicleById.get(vehicleId);
+
+    return {
+      vehicle_archived: Boolean(vehicle?.archived_at),
+      vehicle_id: vehicleId,
+      vehicle_make: vehicle?.make,
+      vehicle_model: vehicle?.model,
+      vehicle_nickname: vehicle?.nickname,
+      vehicle_trim: vehicle?.trim,
+      vehicle_type: vehicle?.vehicle_type,
+      vehicle_year: vehicle?.year,
+    };
+  };
+  const rows: CombinedCsvRow[] = [
+    ...data.vehicles.map(
+      (vehicle): CombinedCsvRow => ({
+        color: vehicle.color,
+        created_at: vehicle.created_at,
+        dataset: "vehicles",
+        date: vehicle.purchase_date,
+        id: vehicle.id,
+        license_plate: vehicle.license_plate,
+        license_state: vehicle.license_state,
+        notes: vehicle.notes,
+        odometer: vehicle.current_odometer,
+        odometer_unit: vehicle.odometer_unit,
+        title: vehicle.nickname,
+        updated_at: vehicle.updated_at,
+        vehicle_archived: Boolean(vehicle.archived_at),
+        vehicle_id: vehicle.id,
+        vehicle_make: vehicle.make,
+        vehicle_model: vehicle.model,
+        vehicle_nickname: vehicle.nickname,
+        vehicle_trim: vehicle.trim,
+        vehicle_type: vehicle.vehicle_type,
+        vehicle_year: vehicle.year,
+        vin: vehicle.vin,
+      }),
+    ),
+    ...data.odometerEntries.map(
+      (entry): CombinedCsvRow => ({
+        ...vehicleColumns(entry.vehicle_id),
+        created_at: entry.created_at,
+        dataset: "odometer_entries",
+        date: entry.reading_date,
+        id: entry.id,
+        notes: entry.notes,
+        odometer: entry.reading,
+        odometer_unit: entry.odometer_unit,
+        source_type: entry.source_type,
+        title: "Odometer reading",
+        updated_at: entry.updated_at,
+      }),
+    ),
+    ...data.serviceRecords.map(
+      (record): CombinedCsvRow => ({
+        ...vehicleColumns(record.vehicle_id),
+        category: record.category,
+        cost_amount: record.cost_amount,
+        cost_currency: record.cost_currency,
+        created_at: record.created_at,
+        dataset: "service_records",
+        date: record.service_date,
+        description: record.description,
+        id: record.id,
+        notes: record.notes,
+        odometer: record.odometer_reading,
+        title: record.title,
+        updated_at: record.updated_at,
+        vendor_name: record.vendor_name,
+      }),
+    ),
+    ...data.repairRecords.map(
+      (record): CombinedCsvRow => ({
+        ...vehicleColumns(record.vehicle_id),
+        category: record.category,
+        cost_amount: record.cost_amount,
+        cost_currency: record.cost_currency,
+        created_at: record.created_at,
+        dataset: "repair_records",
+        date: record.repair_date,
+        description: record.description,
+        id: record.id,
+        notes: record.notes,
+        odometer: record.odometer_reading,
+        title: record.title,
+        updated_at: record.updated_at,
+        vendor_name: record.vendor_name,
+        warranty_until_date: record.warranty_until_date,
+        warranty_until_odometer: record.warranty_until_odometer,
+      }),
+    ),
+    ...data.maintenanceReminders.map(
+      (reminder): CombinedCsvRow => ({
+        ...vehicleColumns(reminder.vehicle_id),
+        category: reminder.category,
+        completed_at: reminder.completed_at,
+        created_at: reminder.created_at,
+        dataset: "maintenance_reminders",
+        due_date: reminder.due_date,
+        due_odometer: reminder.due_odometer,
+        id: reminder.id,
+        is_completed: reminder.is_completed,
+        notes: reminder.notes,
+        repeat_interval_miles: reminder.repeat_interval_miles,
+        repeat_interval_months: reminder.repeat_interval_months,
+        status: getMaintenanceReminderStatus({
+          currentOdometer:
+            vehicleById.get(reminder.vehicle_id)?.current_odometer ?? 0,
+          reminder,
+        }),
+        title: reminder.title,
+        type: reminder.reminder_type,
+        updated_at: reminder.updated_at,
+      }),
+    ),
+    ...data.recordAttachments.map((attachment): CombinedCsvRow => {
+      const linkedRecordTitle = attachment.service_record_id
+        ? serviceRecordById.get(attachment.service_record_id)?.title
+        : attachment.repair_record_id
+          ? repairRecordById.get(attachment.repair_record_id)?.title
+          : "";
+
+      return {
+        ...vehicleColumns(attachment.vehicle_id),
+        created_at: attachment.created_at,
+        dataset: "record_attachments",
+        file_name: attachment.file_name,
+        file_size_bytes: attachment.file_size_bytes,
+        file_type: attachment.file_type,
+        id: attachment.id,
+        linked_record_id:
+          attachment.service_record_id ?? attachment.repair_record_id,
+        linked_record_title: linkedRecordTitle,
+        linked_record_type: attachment.service_record_id ? "service" : "repair",
+        local_uri: attachment.local_uri,
+        mime_type: attachment.mime_type,
+        title: attachment.file_name,
+        updated_at: attachment.updated_at,
+      };
+    }),
+  ];
+
+  return buildCsv(combinedCsvColumns, rows);
+};
+
+export const exportLocalCsvBundle = (data: LocalCsvExportData) => ({
+  "autoledger-attachments.csv": exportRecordAttachmentsCsv({
+    recordAttachments: data.recordAttachments,
+    repairRecords: data.repairRecords,
+    serviceRecords: data.serviceRecords,
+    vehicles: data.vehicles,
+  }),
+  "autoledger-combined.csv": exportCombinedLocalCsv(data),
+  "autoledger-odometer-entries.csv": exportOdometerEntriesCsv({
+    odometerEntries: data.odometerEntries,
+    vehicles: data.vehicles,
+  }),
+  "autoledger-reminders.csv": exportMaintenanceRemindersCsv({
+    maintenanceReminders: data.maintenanceReminders,
+    vehicles: data.vehicles,
+  }),
+  "autoledger-repair-records.csv": exportRepairRecordsCsv({
+    repairRecords: data.repairRecords,
+    vehicles: data.vehicles,
+  }),
+  "autoledger-service-records.csv": exportServiceRecordsCsv({
+    serviceRecords: data.serviceRecords,
+    vehicles: data.vehicles,
+  }),
+  "autoledger-vehicles.csv": exportVehiclesCsv(data.vehicles),
+});

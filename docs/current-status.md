@@ -16,6 +16,8 @@ Local attachment support has been added for service and repair records. Attachme
 
 Local photo attachments can be previewed inside AutoLedger from an attachment detail screen. PDF attachments show local metadata and can be shared/opened with the device's PDF viewer.
 
+Local CSV export support has been added for guest-mode data. Export creates one combined CSV file locally and opens the device share sheet when available.
+
 ## Working Mobile Features
 
 The mobile app currently supports local guest-mode:
@@ -50,6 +52,8 @@ The mobile app currently supports local guest-mode:
 - Optional local device notification settings for reminders
 - Local scheduled notifications for date-based reminders when permission is enabled
 - Local notification cancellation when reminders are completed, deleted, disabled, or rescheduled
+- Export local guest data to a combined CSV file from Settings
+- CSV export includes vehicles, odometer entries, service records, repair records, maintenance reminders, and attachment metadata
 
 ## Current Reminder Notification Limitations
 
@@ -70,6 +74,14 @@ The mobile app currently supports local guest-mode:
 - Supabase Storage, cloud attachment sync, signed/private cloud file access, and OCR are not implemented.
 - Vehicle-level documents are not implemented.
 
+## Current CSV Export Limitations
+
+- CSV export is local guest-mode only.
+- Export creates one combined CSV file with a dataset column instead of a zip archive of separate CSV files.
+- The export file is written locally and handed to the device share sheet when sharing is available.
+- Attachment export includes metadata and local file URIs only. It does not bundle attachment files.
+- PDF export, cloud backup/sync, and server-side export are not implemented.
+
 ## Not Implemented Yet
 
 Do not assume these exist yet:
@@ -79,7 +91,6 @@ Do not assume these exist yet:
 - Guest-to-account migration
 - Supabase Storage/cloud attachments
 - Cloud push notifications
-- CSV export
 - Households
 - Fuel tracking
 - VIN lookup
