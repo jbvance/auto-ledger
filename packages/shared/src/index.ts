@@ -38,6 +38,24 @@ export const odometerUnitLabels: Record<OdometerUnit, string> = {
   km: "Kilometers",
 };
 
+export const odometerSourceTypeValues = [
+  "manual",
+  "service_record",
+  "repair_record",
+  "reminder_completion",
+  "import",
+] as const;
+
+export type OdometerSourceType = (typeof odometerSourceTypeValues)[number];
+
+export const odometerSourceTypeLabels: Record<OdometerSourceType, string> = {
+  manual: "Manual",
+  service_record: "Service Record",
+  repair_record: "Repair Record",
+  reminder_completion: "Reminder Completion",
+  import: "Import",
+};
+
 export type LocalSyncStatus =
   | "local_only"
   | "pending_upload"
@@ -57,6 +75,7 @@ export type Vehicle = {
   license_state?: string | null;
   color?: string | null;
   vehicle_type: VehicleType;
+  initial_odometer: number;
   current_odometer: number;
   odometer_unit: OdometerUnit;
   purchase_date?: string | null;
@@ -92,6 +111,26 @@ export type VehicleInput = Pick<
     >
   >;
 
+export type OdometerEntry = {
+  id: string;
+  local_id: string;
+  vehicle_id: string;
+  reading: number;
+  reading_date: string;
+  odometer_unit: OdometerUnit;
+  source_type: OdometerSourceType;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+  sync_status: LocalSyncStatus;
+};
+
+export type OdometerEntryInput = Pick<
+  OdometerEntry,
+  "vehicle_id" | "reading" | "reading_date" | "odometer_unit" | "source_type"
+> &
+  Partial<Pick<OdometerEntry, "notes">>;
+
 export const formatVehicleTitle = (vehicle: Pick<Vehicle, "nickname">) =>
   vehicle.nickname;
 
@@ -107,6 +146,20 @@ export const formatOdometer = (
   unit: OdometerUnit,
   locale = "en-US",
 ) => `${new Intl.NumberFormat(locale).format(reading)} ${unit}`;
+
+export const formatDisplayDate = (date: string, locale = "en-US") => {
+  const parsed = new Date(`${date}T00:00:00`);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return date;
+  }
+
+  return new Intl.DateTimeFormat(locale, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(parsed);
+};
 
 export type NavigationSection = {
   label: string;

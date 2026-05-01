@@ -1,7 +1,27 @@
-import { odometerUnitValues, vehicleTypeValues } from "@autoledger/shared";
+import {
+  odometerSourceTypeValues,
+  odometerUnitValues,
+  vehicleTypeValues,
+} from "@autoledger/shared";
 import { z } from "zod";
 
 const currentYear = new Date().getFullYear();
+
+const isValidDateString = (value: string) => {
+  const [year, month, day] = value.split("-").map(Number);
+
+  if (!year || !month || !day) {
+    return false;
+  }
+
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+
+  return (
+    parsed.getUTCFullYear() === year &&
+    parsed.getUTCMonth() === month - 1 &&
+    parsed.getUTCDate() === day
+  );
+};
 
 const optionalTextSchema = (maxLength: number) =>
   z.preprocess(
@@ -14,8 +34,19 @@ const optionalDateSchema = z.preprocess(
   z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD format.")
+    .refine(isValidDateString, {
+      message: "Enter a valid date.",
+    })
     .optional(),
 );
+
+const requiredDateSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD format.")
+  .refine(isValidDateString, {
+    message: "Enter a valid date.",
+  });
 
 const optionalNonNegativeIntegerSchema = z.preprocess(
   (value) => (value === "" ? undefined : value),
@@ -56,6 +87,18 @@ export const vehicleSchema = z
 
 export type VehicleFormValues = z.input<typeof vehicleSchema>;
 export type VehicleValidatedInput = z.output<typeof vehicleSchema>;
+
+export const odometerEntrySchema = z.object({
+  vehicle_id: z.string().trim().min(1, "Vehicle is required."),
+  reading: z.coerce.number().int().min(0, "Reading must be non-negative."),
+  reading_date: requiredDateSchema,
+  odometer_unit: z.enum(odometerUnitValues),
+  source_type: z.enum(odometerSourceTypeValues),
+  notes: optionalTextSchema(1000),
+});
+
+export type OdometerEntryFormValues = z.input<typeof odometerEntrySchema>;
+export type OdometerEntryValidatedInput = z.output<typeof odometerEntrySchema>;
 
 export const optionalUrlSchema = z.preprocess(
   (value) => (value === "" ? undefined : value),
