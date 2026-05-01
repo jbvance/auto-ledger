@@ -12,6 +12,10 @@ The app is still local guest-mode first and now includes the core local maintena
 
 Local device notification support has been added for maintenance reminders that have a due date. Notifications are optional, requested from Settings, and scheduled locally on the device only.
 
+Local attachment support has been added for service and repair records. Attachment metadata is stored in the local guest SQLite database, and selected files are copied into app-controlled local document storage when possible.
+
+Local photo attachments can be previewed inside AutoLedger from an attachment detail screen. PDF attachments show local metadata and can be shared/opened with the device's PDF viewer.
+
 ## Working Mobile Features
 
 The mobile app currently supports local guest-mode:
@@ -26,9 +30,15 @@ The mobile app currently supports local guest-mode:
 - Update vehicle current odometer from odometer entries
 - Add/list/edit/delete service records
 - Optional vendor/shop name on local service records
+- Add/list/delete local photo and PDF attachments on service records
+- In-app local photo attachment preview for service records
+- Verified local PDF copies before saving service record attachment metadata
 - Update vehicle current odometer from service records
 - Add/list/edit/delete repair records
 - Optional vendor/shop name on local repair records
+- Add/list/delete local photo and PDF attachments on repair records
+- In-app local photo attachment preview for repair records
+- Verified local PDF copies before saving repair record attachment metadata
 - Update vehicle current odometer from repair records
 - Unified vehicle history/timeline combining odometer entries, service records, and repair records
 - Polished mobile dashboard with local summary counts, vehicle cards, and recent activity
@@ -51,6 +61,15 @@ The mobile app currently supports local guest-mode:
 - Local reminder notification code is guarded in Expo Go on Android so reminders keep working in-app if notification APIs are unavailable.
 - A development build may be needed later for full local notification testing on device.
 
+## Current Attachment Limitations
+
+- Attachments are local guest-mode only.
+- Attachment metadata is stored locally in SQLite.
+- Selected photos and PDFs are copied into app-controlled local document storage when possible. PDF attachments must copy successfully and verify as non-empty before metadata is saved. If copying fails for a photo in a runtime-specific case, the original local URI is preserved so the metadata still exists.
+- Photos preview inside AutoLedger. PDFs still rely on an installed platform PDF viewer and use the native sharing sheet for a more reliable handoff.
+- Supabase Storage, cloud attachment sync, signed/private cloud file access, and OCR are not implemented.
+- Vehicle-level documents are not implemented.
+
 ## Not Implemented Yet
 
 Do not assume these exist yet:
@@ -58,7 +77,7 @@ Do not assume these exist yet:
 - Supabase auth
 - Cloud sync
 - Guest-to-account migration
-- Attachments/photos/PDFs
+- Supabase Storage/cloud attachments
 - Cloud push notifications
 - CSV export
 - Households
@@ -72,12 +91,12 @@ Do not assume these exist yet:
 
 ## Recommended Next Feature
 
-The next recommended feature should continue guest-mode polish before moving to auth, sync, attachments, or export.
+The next recommended feature should continue guest-mode polish before moving to auth, sync, cloud attachments, or export.
 
 Good candidates:
 
 - Improve Vehicle Detail usability around the new history/timeline
-- Add focused tests for shared validation, odometer/history logic, and reminder status logic
+- Add focused tests for shared validation, odometer/history logic, attachment validation, and reminder status logic
 - Review any remaining Phase 2 empty/loading/error states
 
-Do not implement attachment handling, notification scheduling, auth, sync, or export before the local guest-mode record and reminder experience is stable.
+Do not implement cloud attachment handling, additional notification scheduling, auth, sync, or export before the local guest-mode record, attachment, and reminder experience is stable.

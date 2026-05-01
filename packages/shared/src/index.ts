@@ -117,6 +117,29 @@ export const repairRecordCategoryLabels: Record<RepairRecordCategory, string> =
     other: "Other",
   };
 
+export const recordAttachmentFileTypeValues = ["photo", "pdf"] as const;
+
+export type RecordAttachmentFileType =
+  (typeof recordAttachmentFileTypeValues)[number];
+
+export const recordAttachmentFileTypeLabels: Record<
+  RecordAttachmentFileType,
+  string
+> = {
+  pdf: "PDF",
+  photo: "Photo",
+};
+
+export const recordAttachmentOcrStatusValues = [
+  "not_started",
+  "pending",
+  "processed",
+  "failed",
+] as const;
+
+export type RecordAttachmentOcrStatus =
+  (typeof recordAttachmentOcrStatusValues)[number];
+
 export const maintenanceReminderTypeValues = [
   "date",
   "mileage",
@@ -331,6 +354,43 @@ export type RepairRecordInput = Pick<
     >
   >;
 
+export type RecordAttachment = {
+  id: string;
+  local_id: string;
+  vehicle_id: string;
+  service_record_id?: string | null;
+  repair_record_id?: string | null;
+  file_name: string;
+  file_type: RecordAttachmentFileType;
+  mime_type: string;
+  file_size_bytes?: number | null;
+  storage_bucket?: string | null;
+  storage_path?: string | null;
+  local_uri: string;
+  ocr_status: RecordAttachmentOcrStatus;
+  ocr_text?: string | null;
+  ocr_vendor?: string | null;
+  ocr_processed_at?: string | null;
+  created_at: string;
+  updated_at: string;
+  sync_status: LocalSyncStatus;
+};
+
+export type RecordAttachmentInput = Pick<
+  RecordAttachment,
+  "file_name" | "file_type" | "local_uri" | "mime_type" | "vehicle_id"
+> &
+  Partial<
+    Pick<
+      RecordAttachment,
+      | "file_size_bytes"
+      | "repair_record_id"
+      | "service_record_id"
+      | "storage_bucket"
+      | "storage_path"
+    >
+  >;
+
 export type MaintenanceReminder = {
   id: string;
   local_id: string;
@@ -411,6 +471,37 @@ export const formatCostAmount = (
     currency,
   }).format(amount);
 };
+
+export const formatAttachmentFileSize = (
+  sizeInBytes: number | null | undefined,
+  locale = "en-US",
+) => {
+  if (sizeInBytes === null || sizeInBytes === undefined) {
+    return "Size unknown";
+  }
+
+  if (sizeInBytes < 1024) {
+    return `${new Intl.NumberFormat(locale).format(sizeInBytes)} B`;
+  }
+
+  if (sizeInBytes < 1_048_576) {
+    return `${new Intl.NumberFormat(locale, {
+      maximumFractionDigits: 1,
+    }).format(sizeInBytes / 1024)} KB`;
+  }
+
+  return `${new Intl.NumberFormat(locale, {
+    maximumFractionDigits: 1,
+  }).format(sizeInBytes / 1_048_576)} MB`;
+};
+
+export const formatAttachmentTypeLabel = (
+  fileType: RecordAttachmentFileType,
+) => recordAttachmentFileTypeLabels[fileType];
+
+export const getAttachmentDisplayName = (
+  attachment: Pick<RecordAttachment, "file_name">,
+) => attachment.file_name.trim() || "Untitled attachment";
 
 export const formatMaintenanceReminderCategory = (
   category: MaintenanceReminderCategory,

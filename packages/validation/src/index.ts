@@ -3,6 +3,7 @@ import {
   maintenanceReminderTypeValues,
   odometerSourceTypeValues,
   odometerUnitValues,
+  recordAttachmentFileTypeValues,
   repairRecordCategoryValues,
   serviceRecordCategoryValues,
   vehicleTypeValues,
@@ -148,6 +149,76 @@ export const repairRecordSchema = z.object({
 
 export type RepairRecordFormValues = z.input<typeof repairRecordSchema>;
 export type RepairRecordValidatedInput = z.output<typeof repairRecordSchema>;
+
+const optionalRecordIdSchema = z.preprocess(
+  (value) => (value === "" || value === null ? undefined : value),
+  z.string().trim().min(1).optional(),
+);
+
+const localUriSchema = z.string().trim().min(1, "File URI is required.");
+
+const attachmentMimeTypeSchema = z
+  .string()
+  .trim()
+  .min(1, "File type is required.")
+  .refine(
+    (value) => value.startsWith("image/") || value === "application/pdf",
+    {
+      message: "Attach an image file or PDF.",
+    },
+  );
+
+export const recordAttachmentSchema = z
+  .object({
+    vehicle_id: z.string().trim().min(1, "Vehicle is required."),
+    service_record_id: optionalRecordIdSchema,
+    repair_record_id: optionalRecordIdSchema,
+    file_name: z.string().trim().min(1, "File name is required.").max(255),
+    file_type: z.enum(recordAttachmentFileTypeValues),
+    mime_type: attachmentMimeTypeSchema,
+    file_size_bytes: optionalNonNegativeIntegerSchema,
+    local_uri: localUriSchema,
+  })
+  .superRefine((value, context) => {
+    const hasServiceRecord = Boolean(value.service_record_id);
+    const hasRepairRecord = Boolean(value.repair_record_id);
+
+    if (hasServiceRecord === hasRepairRecord) {
+      context.addIssue({
+        code: "custom",
+        message: "Attach this file to one service or repair record.",
+        path: ["service_record_id"],
+      });
+      context.addIssue({
+        code: "custom",
+        message: "Attach this file to one service or repair record.",
+        path: ["repair_record_id"],
+      });
+    }
+
+    if (value.file_type === "photo" && !value.mime_type.startsWith("image/")) {
+      context.addIssue({
+        code: "custom",
+        message: "Photo attachments must use an image file.",
+        path: ["mime_type"],
+      });
+    }
+
+    if (value.file_type === "pdf" && value.mime_type !== "application/pdf") {
+      context.addIssue({
+        code: "custom",
+        message: "PDF attachments must use a PDF file.",
+        path: ["mime_type"],
+      });
+    }
+  });
+
+export type RecordAttachmentFormValues = z.input<
+  typeof recordAttachmentSchema
+>;
+export type RecordAttachmentValidatedInput = z.output<
+  typeof recordAttachmentSchema
+>;
 
 export const maintenanceReminderSchema = z
   .object({
