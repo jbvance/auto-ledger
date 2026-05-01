@@ -130,6 +130,22 @@ export const recordAttachmentFileTypeLabels: Record<
   photo: "Photo",
 };
 
+export const recordAttachmentFileSizeLimits: Record<
+  RecordAttachmentFileType,
+  number
+> = {
+  pdf: 25 * 1024 * 1024,
+  photo: 10 * 1024 * 1024,
+};
+
+export const recordAttachmentFileSizeLimitLabels: Record<
+  RecordAttachmentFileType,
+  string
+> = {
+  pdf: "25 MB",
+  photo: "10 MB",
+};
+
 export const recordAttachmentOcrStatusValues = [
   "not_started",
   "pending",

@@ -3,6 +3,8 @@ import {
   maintenanceReminderTypeValues,
   odometerSourceTypeValues,
   odometerUnitValues,
+  recordAttachmentFileSizeLimitLabels,
+  recordAttachmentFileSizeLimits,
   recordAttachmentFileTypeValues,
   repairRecordCategoryValues,
   serviceRecordCategoryValues,
@@ -211,11 +213,20 @@ export const recordAttachmentSchema = z
         path: ["mime_type"],
       });
     }
+
+    if (
+      value.file_size_bytes !== undefined &&
+      value.file_size_bytes > recordAttachmentFileSizeLimits[value.file_type]
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: `${value.file_type === "photo" ? "Photo" : "PDF"} attachments must be ${recordAttachmentFileSizeLimitLabels[value.file_type]} or smaller.`,
+        path: ["file_size_bytes"],
+      });
+    }
   });
 
-export type RecordAttachmentFormValues = z.input<
-  typeof recordAttachmentSchema
->;
+export type RecordAttachmentFormValues = z.input<typeof recordAttachmentSchema>;
 export type RecordAttachmentValidatedInput = z.output<
   typeof recordAttachmentSchema
 >;
