@@ -300,6 +300,111 @@ export const formatCostAmount = (
   }).format(amount);
 };
 
+type VehicleHistoryBaseItem = {
+  categoryLabel?: string;
+  cost_amount?: number | null;
+  cost_currency?: string;
+  created_at: string;
+  date: string;
+  id: string;
+  odometer_reading?: number | null;
+  summary?: string | null;
+  title: string;
+  typeLabel: string;
+  vehicle_id: string;
+};
+
+export type VehicleHistoryItem =
+  | (VehicleHistoryBaseItem & {
+      source: OdometerEntry;
+      type: "odometer";
+      typeLabel: "Odometer";
+    })
+  | (VehicleHistoryBaseItem & {
+      source: ServiceRecord;
+      type: "service";
+      typeLabel: "Service";
+    })
+  | (VehicleHistoryBaseItem & {
+      source: RepairRecord;
+      type: "repair";
+      typeLabel: "Repair";
+    });
+
+type BuildVehicleHistoryItemsInput = {
+  odometerEntries: OdometerEntry[];
+  repairRecords: RepairRecord[];
+  serviceRecords: ServiceRecord[];
+};
+
+export const buildVehicleHistoryItems = ({
+  odometerEntries,
+  repairRecords,
+  serviceRecords,
+}: BuildVehicleHistoryItemsInput): VehicleHistoryItem[] => {
+  const historyItems: VehicleHistoryItem[] = [
+    ...odometerEntries.map(
+      (entry): VehicleHistoryItem => ({
+        categoryLabel: odometerSourceTypeLabels[entry.source_type],
+        created_at: entry.created_at,
+        date: entry.reading_date,
+        id: entry.id,
+        odometer_reading: entry.reading,
+        source: entry,
+        summary: entry.notes,
+        title: "Odometer reading",
+        type: "odometer",
+        typeLabel: "Odometer",
+        vehicle_id: entry.vehicle_id,
+      }),
+    ),
+    ...serviceRecords.map(
+      (record): VehicleHistoryItem => ({
+        categoryLabel: serviceRecordCategoryLabels[record.category],
+        cost_amount: record.cost_amount,
+        cost_currency: record.cost_currency,
+        created_at: record.created_at,
+        date: record.service_date,
+        id: record.id,
+        odometer_reading: record.odometer_reading,
+        source: record,
+        summary: record.description || record.notes,
+        title: record.title,
+        type: "service",
+        typeLabel: "Service",
+        vehicle_id: record.vehicle_id,
+      }),
+    ),
+    ...repairRecords.map(
+      (record): VehicleHistoryItem => ({
+        categoryLabel: repairRecordCategoryLabels[record.category],
+        cost_amount: record.cost_amount,
+        cost_currency: record.cost_currency,
+        created_at: record.created_at,
+        date: record.repair_date,
+        id: record.id,
+        odometer_reading: record.odometer_reading,
+        source: record,
+        summary: record.description || record.notes,
+        title: record.title,
+        type: "repair",
+        typeLabel: "Repair",
+        vehicle_id: record.vehicle_id,
+      }),
+    ),
+  ];
+
+  return historyItems.sort((first, second) => {
+    const dateComparison = second.date.localeCompare(first.date);
+
+    if (dateComparison !== 0) {
+      return dateComparison;
+    }
+
+    return second.created_at.localeCompare(first.created_at);
+  });
+};
+
 export type NavigationSection = {
   label: string;
   description: string;
