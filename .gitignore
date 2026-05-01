@@ -1,0 +1,15 @@
+node_modules
+.expo
+.expo-android-export
+.next
+dist
+build
+coverage
+.turbo
+.DS_Store
+*.log
+*.tsbuildinfo
+apps/mobile/expo-env.d.ts
+.env
+.env.*
+!.env.example

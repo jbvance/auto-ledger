@@ -1,0 +1,11 @@
+node_modules
+.expo
+.expo-android-export
+.next
+dist
+build
+coverage
+pnpm-lock.yaml
+*.md
+*.tsbuildinfo
+apps/mobile/expo-env.d.ts
