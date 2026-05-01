@@ -27,6 +27,7 @@ The mobile app currently supports local guest-mode:
 - Add/list/edit/delete repair records
 - Update vehicle current odometer from repair records
 - Unified vehicle history/timeline combining odometer entries, service records, and repair records
+- Polished mobile dashboard with local summary counts, vehicle cards, and recent activity
 
 ## Not Implemented Yet
 
