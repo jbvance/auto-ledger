@@ -378,7 +378,7 @@ The web app should eventually include:
 - `/admin/users`
 - `/admin/support`
 
-Admin routes are future-facing and should not be overbuilt in the first phase.
+Admin routes are future-facing and should not be overbuilt during the local guest MVP.
 
 ---
 

@@ -94,19 +94,15 @@ The data model may anticipate some future features, but the UI and workflows sho
 
 ## Current Build Priority
 
-Build in phases. Do not attempt the whole product at once.
+Build in focused slices. Do not attempt the whole product at once.
 
-Start with Phase 1 from `docs/phases.md`:
+Current development track: Local guest MVP features complete; cloud account/sync foundation is next.
 
-1. pnpm monorepo
-2. Expo mobile app
-3. Next.js web app
-4. Shared packages
-5. Basic design tokens
-6. Basic navigation shells
-7. TypeScript, linting, formatting, and environment validation
+Working local guest features include vehicle management, odometer entries, service records, repair records, unified history/timeline, dashboard polish, core maintenance reminders, local reminder notification settings/code, local service/repair attachments, and local CSV export.
 
-Do not implement Supabase auth, attachments, reminders, or export until the foundational structure is working.
+Treat `docs/current-status.md` as the source of truth for current implementation status.
+
+Do not implement Supabase auth, cloud sync, guest-to-account migration, Supabase Storage/cloud attachments, or other future-facing features unless explicitly instructed.
 
 ---
 

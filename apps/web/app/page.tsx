@@ -1,4 +1,4 @@
-import { appName, foundationNavigation } from "@autoledger/shared";
+import { appName, statusNavigation } from "@autoledger/shared";
 
 export default function Home() {
   return (
@@ -7,7 +7,7 @@ export default function Home() {
         <aside className="md:w-56">
           <div className="text-xl font-bold">{appName}</div>
           <nav className="mt-6 flex gap-2 overflow-x-auto md:flex-col md:overflow-visible">
-            {foundationNavigation.map((item) => (
+            {statusNavigation.map((item) => (
               <a
                 key={item.label}
                 className="whitespace-nowrap rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm font-semibold text-[var(--foreground)]"
@@ -22,20 +22,19 @@ export default function Home() {
         <section className="flex-1">
           <div className="border-b border-[var(--line)] pb-6">
             <p className="text-sm font-bold uppercase text-[var(--primary)]">
-              Phase 1 foundation
+              Local guest MVP status
             </p>
             <h1 className="mt-2 max-w-2xl text-4xl font-bold leading-tight">
-              A quiet, mobile-first shell for private vehicle records.
+              A quiet, mobile-first home for private vehicle records.
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-7 text-[var(--muted)]">
-              The web app is ready for shared types, design tokens, and future
-              dashboard work. Product features are intentionally paused until
-              the foundation is stable.
+              Foundation, mobile guest records, local reminders, attachments,
+              and CSV export are working. Cloud account and sync work is next.
             </p>
           </div>
 
           <div className="mt-6 grid gap-4 md:grid-cols-2">
-            {foundationNavigation.map((item) => (
+            {statusNavigation.map((item) => (
               <article
                 id={item.label.toLowerCase()}
                 key={item.label}
@@ -52,9 +51,9 @@ export default function Home() {
           <div className="mt-6 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5">
             <h2 className="text-lg font-bold">Privacy Posture</h2>
             <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-              Guest mode stays first. Supabase auth, cloud tables, attachments,
-              reminders, CSV export, and account workflows are not implemented
-              in this phase.
+              Guest mode stays first. Supabase auth, cloud tables, cloud sync,
+              account workflows, and cloud attachment storage are not
+              implemented yet.
             </p>
           </div>
         </section>

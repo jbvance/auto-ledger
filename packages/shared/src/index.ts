@@ -1,8 +1,10 @@
 export const appName = "AutoLedger";
 
-export const currentPhase = {
-  id: 2,
-  name: "Guest Mode Core Records",
+export const currentDevelopmentTrack = {
+  id: "local_guest_mvp",
+  label: "Local guest MVP",
+  description:
+    "Local guest MVP features complete; cloud account/sync foundation is next.",
 } as const;
 
 export const vehicleTypeValues = [
@@ -786,22 +788,26 @@ export type NavigationSection = {
   description: string;
 };
 
-export const foundationNavigation: NavigationSection[] = [
+export const statusNavigation: NavigationSection[] = [
   {
     label: "Dashboard",
-    description: "The future home for vehicle summaries and reminders.",
+    description:
+      "Mobile dashboard supports local summaries, vehicle cards, reminders, and recent activity.",
   },
   {
     label: "Vehicles",
-    description: "Guest vehicle tracking starts locally on this device.",
+    description:
+      "Guest vehicle tracking works locally on this device without requiring an account.",
   },
   {
     label: "Records",
-    description: "Service and repair records are intentionally not active yet.",
+    description:
+      "Local odometer entries, service records, repair records, and unified history are working.",
   },
   {
     label: "Settings",
-    description: "Privacy, sync, and export controls come in later phases.",
+    description:
+      "Local reminders, notification settings, attachments, and CSV export are available; cloud sync is next.",
   },
 ];
 

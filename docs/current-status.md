@@ -8,7 +8,9 @@ The web app runs successfully on port 3000.
 
 The mobile app runs successfully through Expo and has been tested in Expo Go.
 
-The app is still local guest-mode first and now includes the core local maintenance-reminders slice.
+Current development track: Local guest MVP features complete; cloud account/sync foundation is next.
+
+The app is still local guest-mode first. Users can manage vehicles, odometer entries, service records, repair records, reminders, local attachments, and local CSV export without creating an account.
 
 Local device notification support has been added for maintenance reminders that have a due date. Notifications are optional, requested from Settings, and scheduled locally on the device only.
 
@@ -97,17 +99,17 @@ Do not assume these exist yet:
 - OCR
 - Payments/subscriptions
 - PDF export
-- Fleet tools
+- Fleet/business tools
 - Auto shop portal
 
 ## Recommended Next Feature
 
-The next recommended feature should continue guest-mode polish before moving to auth, sync, cloud attachments, or export.
+The next recommended feature track is cloud account/sync foundation, while preserving guest mode as the default local experience.
 
 Good candidates:
 
-- Improve Vehicle Detail usability around the new history/timeline
-- Add focused tests for shared validation, odometer/history logic, attachment validation, and reminder status logic
-- Review any remaining Phase 2 empty/loading/error states
+- Add focused tests for shared validation, odometer/history logic, attachment validation, reminder status logic, and CSV export logic
+- Plan Supabase auth, cloud tables, and RLS without exposing service-role keys to mobile or browser code
+- Prepare guest-to-account migration design before implementing sync
 
-Do not implement cloud attachment handling, additional notification scheduling, auth, sync, or export before the local guest-mode record, attachment, and reminder experience is stable.
+Do not implement households, fuel tracking, VIN lookup, OCR, payments/subscriptions, PDF export, fleet/business tooling, or an auto shop portal unless specifically requested.

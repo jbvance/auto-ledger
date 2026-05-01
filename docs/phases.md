@@ -4,6 +4,8 @@ Build AutoLedger in phases.
 
 Do not ask Codex to “build the whole app” in one request. Ask it to complete one phase or one slice of a phase at a time.
 
+Current status note: This roadmap remains useful as a planning reference, but development has not followed the original phase order exactly. Local reminders, local attachments for service/repair records, and local CSV export were completed before Supabase auth, cloud sync, and Supabase Storage. Treat `docs/current-status.md` as the source of truth for what is currently working.
+
 ---
 
 ## Phase 1: Monorepo and Foundation

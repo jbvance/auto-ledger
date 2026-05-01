@@ -4,12 +4,16 @@ export type SyncStatus =
   | "synced"
   | "sync_error";
 
-export type DbFoundationStatus = {
-  phase: "foundation";
+export type DbCloudDataStatus = {
+  developmentTrack: "local_guest_mvp";
+  authImplemented: false;
+  cloudSyncImplemented: false;
   cloudTablesImplemented: false;
 };
 
-export const dbFoundationStatus: DbFoundationStatus = {
-  phase: "foundation",
+export const dbCloudDataStatus: DbCloudDataStatus = {
+  developmentTrack: "local_guest_mvp",
+  authImplemented: false,
+  cloudSyncImplemented: false,
   cloudTablesImplemented: false,
 };
