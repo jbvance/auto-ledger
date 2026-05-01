@@ -38,6 +38,12 @@ importers:
       '@autoledger/ui-tokens':
         specifier: workspace:*
         version: link:../../packages/ui-tokens
+      '@autoledger/validation':
+        specifier: workspace:*
+        version: link:../../packages/validation
+      '@hookform/resolvers':
+        specifier: ^5.2.2
+        version: 5.2.2(react-hook-form@7.74.0(react@19.1.0))
       expo:
         specifier: ~54.0.33
         version: 54.0.34(@babel/core@7.29.0)(@expo/metro-runtime@6.1.2)(expo-router@6.0.23)(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.85.2(@babel/core@7.29.0))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)(typescript@5.9.3)
@@ -47,6 +53,9 @@ importers:
       expo-router:
         specifier: ~6.0.23
         version: 6.0.23(ed2d9a939c8349f4058faaf9511824b1)
+      expo-sqlite:
+        specifier: ~16.0.10
+        version: 16.0.10(expo@54.0.34)(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.85.2(@babel/core@7.29.0))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
       expo-status-bar:
         specifier: ~3.0.9
         version: 3.0.9(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.85.2(@babel/core@7.29.0))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
@@ -59,6 +68,9 @@ importers:
       react-dom:
         specifier: 19.1.0
         version: 19.1.0(react@19.1.0)
+      react-hook-form:
+        specifier: ^7.74.0
+        version: 7.74.0(react@19.1.0)
       react-native:
         specifier: 0.81.5
         version: 0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.85.2(@babel/core@7.29.0))(@types/react@19.1.17)(react@19.1.0)
@@ -167,6 +179,9 @@ importers:
 
   packages/validation:
     dependencies:
+      '@autoledger/shared':
+        specifier: workspace:*
+        version: link:../shared
       zod:
         specifier: 4.4.1
         version: 4.4.1
@@ -863,6 +878,11 @@ packages:
     resolution: {integrity: sha512-wC562eD3gS6vO2tWHToFhlFnmHKfKHgF1oyvojeSkLK/ZYop1bMU+7cOMiF9Sq70CzcsLy/EMRy/uRc76QmNRw==}
     hasBin: true
 
+  '@hookform/resolvers@5.2.2':
+    resolution: {integrity: sha512-A/IxlMLShx3KjV/HeTcTfaMxdwy690+L/ZADoeaTltLx+CVuzkeVIPuybK3jrRfw7YZnmdKsVVHAlEPIAEUNlA==}
+    peerDependencies:
+      react-hook-form: ^7.55.0
+
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
     engines: {node: '>=18.18.0'}
@@ -1551,6 +1571,9 @@ packages:
   '@sinonjs/fake-timers@10.3.0':
     resolution: {integrity: sha512-V4BG07kuYSUkTCSBHG8G8TNhM+F19jXFWnQtzj+we8DrkpSBCee9Z3Ms8yiGer/dlmhe35/Xdgyo3/0rQKg7YA==}
 
+  '@standard-schema/utils@0.3.0':
+    resolution: {integrity: sha512-e7Mew686owMaPJVNNLs55PUvgz371nKgwsc4vxE49zsODpJEnxgxRo2y/OKrqueavXgZNMDVj3DdHFlaSAeU8g==}
+
   '@swc/helpers@0.5.15':
     resolution: {integrity: sha512-JQ5TuMi45Owi4/BIMAJBoSQoOJu12oOk/gADqlcUL9JEdHB8vyjUSsxqeNXnmXHjYKMi2WcYtezGEEhqUI/E2g==}
 
@@ -2017,6 +2040,9 @@ packages:
   available-typed-arrays@1.0.7:
     resolution: {integrity: sha512-wvUjBtSGN7+7SjNpq/9M2Tg350UZD3q62IFZLbRAR1bSMlCo1ZaeW+BJ+D090e4hIIZLBcTDWe4Mh4jvUDajzQ==}
     engines: {node: '>= 0.4'}
+
+  await-lock@2.2.2:
+    resolution: {integrity: sha512-aDczADvlvTGajTDjcjpJMqRkOF6Qdz3YbPZm/PyW6tKPkx2hlYBzxMhEywM/tU72HrVZjgl5VCdRuMlA7pZ8Gw==}
 
   axe-core@4.11.4:
     resolution: {integrity: sha512-KunSNx+TVpkAw/6ULfhnx+HWRecjqZGTOyquAoWHYLRSdK1tB5Ihce1ZW+UY3fj33bYAFWPu7W/GRSmmrCGuxA==}
@@ -2734,6 +2760,13 @@ packages:
   expo-server@1.0.6:
     resolution: {integrity: sha512-vb5TBtskvEdzYuW79lATXutOEBfW5m6U4EFpNjCVZTnI7S//SAsLQkYEpn+EDfn84m6VQfzSGkIVR6YPaScKFA==}
     engines: {node: '>=20.16.0'}
+
+  expo-sqlite@16.0.10:
+    resolution: {integrity: sha512-tUOKxE9TpfneRG3eOfbNfhN9236SJ7IiUnP8gCqU7umd9DtgDGB/5PhYVVfl+U7KskgolgNoB9v9OZ9iwXN8Eg==}
+    peerDependencies:
+      expo: '*'
+      react: '*'
+      react-native: '*'
 
   expo-status-bar@3.0.9:
     resolution: {integrity: sha512-xyYyVg6V1/SSOZWh4Ni3U129XHCnFHBTcUo0dhWtFDrZbNp/duw5AGsQfb2sVeU0gxWHXSY1+5F0jnKYC7WuOw==}
@@ -4163,6 +4196,12 @@ packages:
     engines: {node: '>=10'}
     peerDependencies:
       react: '>=17.0.0'
+
+  react-hook-form@7.74.0:
+    resolution: {integrity: sha512-yR6wHr99p9wFv686jhRWVSFhUvDvNbdUf2dKlbno8/VKOCuoNobDGC6S+M2dua9A9Yo8vpcrp8assIYbsZCQ9g==}
+    engines: {node: '>=18.0.0'}
+    peerDependencies:
+      react: ^16.8.0 || ^17 || ^18 || ^19
 
   react-is@16.13.1:
     resolution: {integrity: sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==}
@@ -6017,6 +6056,11 @@ snapshots:
       chalk: 4.1.2
       js-yaml: 4.1.1
 
+  '@hookform/resolvers@5.2.2(react-hook-form@7.74.0(react@19.1.0))':
+    dependencies:
+      '@standard-schema/utils': 0.3.0
+      react-hook-form: 7.74.0(react@19.1.0)
+
   '@humanfs/core@0.19.2':
     dependencies:
       '@humanfs/types': 0.15.0
@@ -6752,6 +6796,8 @@ snapshots:
     dependencies:
       '@sinonjs/commons': 3.0.1
 
+  '@standard-schema/utils@0.3.0': {}
+
   '@swc/helpers@0.5.15':
     dependencies:
       tslib: 2.8.1
@@ -7217,6 +7263,8 @@ snapshots:
   available-typed-arrays@1.0.7:
     dependencies:
       possible-typed-array-names: 1.1.0
+
+  await-lock@2.2.2: {}
 
   axe-core@4.11.4: {}
 
@@ -8136,6 +8184,13 @@ snapshots:
       - supports-color
 
   expo-server@1.0.6: {}
+
+  expo-sqlite@16.0.10(expo@54.0.34)(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.85.2(@babel/core@7.29.0))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0):
+    dependencies:
+      await-lock: 2.2.2
+      expo: 54.0.34(@babel/core@7.29.0)(@expo/metro-runtime@6.1.2)(expo-router@6.0.23)(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.85.2(@babel/core@7.29.0))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)(typescript@5.9.3)
+      react: 19.1.0
+      react-native: 0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.85.2(@babel/core@7.29.0))(@types/react@19.1.17)(react@19.1.0)
 
   expo-status-bar@3.0.9(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.85.2(@babel/core@7.29.0))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0):
     dependencies:
@@ -9888,6 +9943,10 @@ snapshots:
   react-fast-compare@3.2.2: {}
 
   react-freeze@1.0.4(react@19.1.0):
+    dependencies:
+      react: 19.1.0
+
+  react-hook-form@7.74.0(react@19.1.0):
     dependencies:
       react: 19.1.0
 

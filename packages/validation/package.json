@@ -14,6 +14,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@autoledger/shared": "workspace:*",
     "zod": "4.4.1"
   },
   "devDependencies": {
