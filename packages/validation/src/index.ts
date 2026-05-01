@@ -1,4 +1,6 @@
 import {
+  maintenanceReminderCategoryValues,
+  maintenanceReminderTypeValues,
   odometerSourceTypeValues,
   odometerUnitValues,
   repairRecordCategoryValues,
@@ -144,6 +146,60 @@ export const repairRecordSchema = z.object({
 
 export type RepairRecordFormValues = z.input<typeof repairRecordSchema>;
 export type RepairRecordValidatedInput = z.output<typeof repairRecordSchema>;
+
+export const maintenanceReminderSchema = z
+  .object({
+    vehicle_id: z.string().trim().min(1, "Vehicle is required."),
+    title: z.string().trim().min(1, "Title is required.").max(120),
+    category: z.enum(maintenanceReminderCategoryValues),
+    reminder_type: z.enum(maintenanceReminderTypeValues),
+    due_date: optionalDateSchema,
+    due_odometer: optionalNonNegativeIntegerSchema,
+    repeat_interval_months: optionalNonNegativeIntegerSchema,
+    repeat_interval_miles: optionalNonNegativeIntegerSchema,
+    notes: optionalTextSchema(1000),
+  })
+  .superRefine((value, context) => {
+    if (value.reminder_type === "date" && !value.due_date) {
+      context.addIssue({
+        code: "custom",
+        message: "Due date is required for date reminders.",
+        path: ["due_date"],
+      });
+    }
+
+    if (value.reminder_type === "mileage" && value.due_odometer === undefined) {
+      context.addIssue({
+        code: "custom",
+        message: "Due odometer is required for mileage reminders.",
+        path: ["due_odometer"],
+      });
+    }
+
+    if (
+      value.reminder_type === "date_or_mileage" &&
+      !value.due_date &&
+      value.due_odometer === undefined
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Add a due date, due odometer, or both.",
+        path: ["due_date"],
+      });
+      context.addIssue({
+        code: "custom",
+        message: "Add a due date, due odometer, or both.",
+        path: ["due_odometer"],
+      });
+    }
+  });
+
+export type MaintenanceReminderFormValues = z.input<
+  typeof maintenanceReminderSchema
+>;
+export type MaintenanceReminderValidatedInput = z.output<
+  typeof maintenanceReminderSchema
+>;
 
 export const optionalUrlSchema = z.preprocess(
   (value) => (value === "" ? undefined : value),

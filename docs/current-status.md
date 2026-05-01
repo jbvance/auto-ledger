@@ -8,7 +8,7 @@ The web app runs successfully on port 3000.
 
 The mobile app runs successfully through Expo and has been tested in Expo Go.
 
-The app is still in Phase 2: local guest-mode core records.
+The app is still local guest-mode first and now includes the core local maintenance-reminders slice.
 
 ## Working Mobile Features
 
@@ -28,6 +28,11 @@ The mobile app currently supports local guest-mode:
 - Update vehicle current odometer from repair records
 - Unified vehicle history/timeline combining odometer entries, service records, and repair records
 - Polished mobile dashboard with local summary counts, vehicle cards, and recent activity
+- Add/list/view/edit/delete local maintenance reminders
+- Complete maintenance reminders while keeping them visible as completed
+- Date, mileage, and date-or-mileage reminder status logic
+- Upcoming reminders on the mobile dashboard
+- Vehicle detail reminder sections with active and completed reminders
 
 ## Not Implemented Yet
 
@@ -37,7 +42,7 @@ Do not assume these exist yet:
 - Cloud sync
 - Guest-to-account migration
 - Attachments/photos/PDFs
-- Reminders
+- Push/local notification scheduling for reminders
 - CSV export
 - Households
 - Fuel tracking
@@ -50,12 +55,12 @@ Do not assume these exist yet:
 
 ## Recommended Next Feature
 
-The next recommended feature should continue Phase 2 guest-mode polish before moving to later phases.
+The next recommended feature should continue guest-mode polish before moving to auth, sync, attachments, or export.
 
 Good candidates:
 
 - Improve Vehicle Detail usability around the new history/timeline
-- Add focused tests for shared validation and odometer/history logic
+- Add focused tests for shared validation, odometer/history logic, and reminder status logic
 - Review any remaining Phase 2 empty/loading/error states
 
-Do not implement reminders or attachments before the local guest-mode record experience is stable.
+Do not implement attachment handling, notification scheduling, auth, sync, or export before the local guest-mode record and reminder experience is stable.

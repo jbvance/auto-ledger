@@ -117,6 +117,75 @@ export const repairRecordCategoryLabels: Record<RepairRecordCategory, string> =
     other: "Other",
   };
 
+export const maintenanceReminderTypeValues = [
+  "date",
+  "mileage",
+  "date_or_mileage",
+] as const;
+
+export type MaintenanceReminderType =
+  (typeof maintenanceReminderTypeValues)[number];
+
+export const maintenanceReminderTypeLabels: Record<
+  MaintenanceReminderType,
+  string
+> = {
+  date: "Date",
+  mileage: "Mileage",
+  date_or_mileage: "Date or Mileage",
+};
+
+export const maintenanceReminderCategoryValues = [
+  "oil_change",
+  "tire_rotation",
+  "inspection",
+  "registration",
+  "insurance",
+  "warranty",
+  "battery",
+  "brakes",
+  "custom",
+] as const;
+
+export type MaintenanceReminderCategory =
+  (typeof maintenanceReminderCategoryValues)[number];
+
+export const maintenanceReminderCategoryLabels: Record<
+  MaintenanceReminderCategory,
+  string
+> = {
+  oil_change: "Oil Change",
+  tire_rotation: "Tire Rotation",
+  inspection: "Inspection",
+  registration: "Registration",
+  insurance: "Insurance",
+  warranty: "Warranty",
+  battery: "Battery",
+  brakes: "Brakes",
+  custom: "Custom",
+};
+
+export type MaintenanceReminderStatus =
+  | "upcoming"
+  | "due_soon"
+  | "overdue"
+  | "completed";
+
+export const maintenanceReminderStatusLabels: Record<
+  MaintenanceReminderStatus,
+  string
+> = {
+  upcoming: "Upcoming",
+  due_soon: "Due Soon",
+  overdue: "Overdue",
+  completed: "Completed",
+};
+
+export const reminderDueSoonThresholds = {
+  days: 14,
+  miles: 500,
+} as const;
+
 export type LocalSyncStatus =
   | "local_only"
   | "pending_upload"
@@ -255,6 +324,41 @@ export type RepairRecordInput = Pick<
     >
   >;
 
+export type MaintenanceReminder = {
+  id: string;
+  local_id: string;
+  vehicle_id: string;
+  title: string;
+  category: MaintenanceReminderCategory;
+  reminder_type: MaintenanceReminderType;
+  due_date?: string | null;
+  due_odometer?: number | null;
+  repeat_interval_months?: number | null;
+  repeat_interval_miles?: number | null;
+  is_completed: boolean;
+  completed_at?: string | null;
+  last_triggered_at?: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+  sync_status: LocalSyncStatus;
+};
+
+export type MaintenanceReminderInput = Pick<
+  MaintenanceReminder,
+  "vehicle_id" | "title" | "category" | "reminder_type"
+> &
+  Partial<
+    Pick<
+      MaintenanceReminder,
+      | "due_date"
+      | "due_odometer"
+      | "repeat_interval_months"
+      | "repeat_interval_miles"
+      | "notes"
+    >
+  >;
+
 export const formatVehicleTitle = (vehicle: Pick<Vehicle, "nickname">) =>
   vehicle.nickname;
 
@@ -298,6 +402,161 @@ export const formatCostAmount = (
     style: "currency",
     currency,
   }).format(amount);
+};
+
+export const formatMaintenanceReminderCategory = (
+  category: MaintenanceReminderCategory,
+) => maintenanceReminderCategoryLabels[category];
+
+const parseDateOnly = (date: string) => {
+  const [year, month, day] = date.split("-").map(Number);
+
+  if (!year || !month || !day) {
+    return null;
+  }
+
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const normalizeDateOnly = (date: Date | string) => {
+  if (typeof date === "string") {
+    return date.slice(0, 10);
+  }
+
+  return date.toISOString().slice(0, 10);
+};
+
+const daysUntilDate = (dueDate: string, today: Date | string) => {
+  const due = parseDateOnly(dueDate);
+  const current = parseDateOnly(normalizeDateOnly(today));
+
+  if (!due || !current) {
+    return null;
+  }
+
+  return Math.floor((due.getTime() - current.getTime()) / 86_400_000);
+};
+
+type ReminderStatusInput = {
+  currentOdometer: number;
+  reminder: Pick<
+    MaintenanceReminder,
+    "due_date" | "due_odometer" | "is_completed" | "reminder_type"
+  >;
+  thresholds?: {
+    days?: number;
+    miles?: number;
+  };
+  today?: Date | string;
+};
+
+export const getMaintenanceReminderStatus = ({
+  currentOdometer,
+  reminder,
+  thresholds = reminderDueSoonThresholds,
+  today = new Date(),
+}: ReminderStatusInput): MaintenanceReminderStatus => {
+  if (reminder.is_completed) {
+    return "completed";
+  }
+
+  const dateDistance =
+    reminder.due_date && reminder.reminder_type !== "mileage"
+      ? daysUntilDate(reminder.due_date, today)
+      : null;
+  const mileageDistance =
+    reminder.due_odometer !== null &&
+    reminder.due_odometer !== undefined &&
+    reminder.reminder_type !== "date"
+      ? reminder.due_odometer - currentOdometer
+      : null;
+  const isOverdueByDate = dateDistance !== null && dateDistance < 0;
+  const isOverdueByMileage = mileageDistance !== null && mileageDistance <= 0;
+
+  if (isOverdueByDate || isOverdueByMileage) {
+    return "overdue";
+  }
+
+  const isDueSoonByDate =
+    dateDistance !== null && dateDistance <= (thresholds.days ?? 14);
+  const isDueSoonByMileage =
+    mileageDistance !== null && mileageDistance <= (thresholds.miles ?? 500);
+
+  if (isDueSoonByDate || isDueSoonByMileage) {
+    return "due_soon";
+  }
+
+  return "upcoming";
+};
+
+export const isMaintenanceReminderUpcoming = (input: ReminderStatusInput) =>
+  getMaintenanceReminderStatus(input) === "upcoming";
+
+export const isMaintenanceReminderDueSoon = (input: ReminderStatusInput) =>
+  getMaintenanceReminderStatus(input) === "due_soon";
+
+export const isMaintenanceReminderOverdue = (input: ReminderStatusInput) =>
+  getMaintenanceReminderStatus(input) === "overdue";
+
+export const isMaintenanceReminderCompleted = (
+  reminder: Pick<MaintenanceReminder, "is_completed">,
+) => reminder.is_completed;
+
+export const getMaintenanceReminderUrgencyRank = (
+  status: MaintenanceReminderStatus,
+) => {
+  const ranks: Record<MaintenanceReminderStatus, number> = {
+    overdue: 0,
+    due_soon: 1,
+    upcoming: 2,
+    completed: 3,
+  };
+
+  return ranks[status];
+};
+
+export const compareMaintenanceRemindersByUrgency = (
+  first: MaintenanceReminder,
+  second: MaintenanceReminder,
+  vehicleOdometers: Record<string, number>,
+  today: Date | string = new Date(),
+) => {
+  const firstStatus = getMaintenanceReminderStatus({
+    currentOdometer: vehicleOdometers[first.vehicle_id] ?? 0,
+    reminder: first,
+    today,
+  });
+  const secondStatus = getMaintenanceReminderStatus({
+    currentOdometer: vehicleOdometers[second.vehicle_id] ?? 0,
+    reminder: second,
+    today,
+  });
+  const statusComparison =
+    getMaintenanceReminderUrgencyRank(firstStatus) -
+    getMaintenanceReminderUrgencyRank(secondStatus);
+
+  if (statusComparison !== 0) {
+    return statusComparison;
+  }
+
+  const firstDate = first.due_date ?? "9999-12-31";
+  const secondDate = second.due_date ?? "9999-12-31";
+  const dateComparison = firstDate.localeCompare(secondDate);
+
+  if (dateComparison !== 0) {
+    return dateComparison;
+  }
+
+  const firstOdometer = first.due_odometer ?? Number.MAX_SAFE_INTEGER;
+  const secondOdometer = second.due_odometer ?? Number.MAX_SAFE_INTEGER;
+
+  if (firstOdometer !== secondOdometer) {
+    return firstOdometer - secondOdometer;
+  }
+
+  return second.created_at.localeCompare(first.created_at);
 };
 
 type VehicleHistoryBaseItem = {
