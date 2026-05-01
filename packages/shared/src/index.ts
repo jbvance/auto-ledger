@@ -56,6 +56,67 @@ export const odometerSourceTypeLabels: Record<OdometerSourceType, string> = {
   import: "Import",
 };
 
+export const serviceRecordCategoryValues = [
+  "oil_change",
+  "tire_rotation",
+  "inspection",
+  "registration",
+  "brakes",
+  "battery",
+  "fluids",
+  "scheduled_maintenance",
+  "tires",
+  "other",
+] as const;
+
+export type ServiceRecordCategory =
+  (typeof serviceRecordCategoryValues)[number];
+
+export const serviceRecordCategoryLabels: Record<
+  ServiceRecordCategory,
+  string
+> = {
+  oil_change: "Oil Change",
+  tire_rotation: "Tire Rotation",
+  inspection: "Inspection",
+  registration: "Registration",
+  brakes: "Brakes",
+  battery: "Battery",
+  fluids: "Fluids",
+  scheduled_maintenance: "Scheduled Maintenance",
+  tires: "Tires",
+  other: "Other",
+};
+
+export const repairRecordCategoryValues = [
+  "engine",
+  "transmission",
+  "electrical",
+  "brakes",
+  "suspension",
+  "body",
+  "tires",
+  "hvac",
+  "diagnostic",
+  "other",
+] as const;
+
+export type RepairRecordCategory = (typeof repairRecordCategoryValues)[number];
+
+export const repairRecordCategoryLabels: Record<RepairRecordCategory, string> =
+  {
+    engine: "Engine",
+    transmission: "Transmission",
+    electrical: "Electrical",
+    brakes: "Brakes",
+    suspension: "Suspension",
+    body: "Body",
+    tires: "Tires",
+    hvac: "HVAC",
+    diagnostic: "Diagnostic",
+    other: "Other",
+  };
+
 export type LocalSyncStatus =
   | "local_only"
   | "pending_upload"
@@ -131,6 +192,69 @@ export type OdometerEntryInput = Pick<
 > &
   Partial<Pick<OdometerEntry, "notes">>;
 
+export type ServiceRecord = {
+  id: string;
+  local_id: string;
+  vehicle_id: string;
+  service_date: string;
+  odometer_reading?: number | null;
+  title: string;
+  category: ServiceRecordCategory;
+  description?: string | null;
+  cost_amount?: number | null;
+  cost_currency: string;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+  sync_status: LocalSyncStatus;
+};
+
+export type ServiceRecordInput = Pick<
+  ServiceRecord,
+  "vehicle_id" | "service_date" | "title" | "category" | "cost_currency"
+> &
+  Partial<
+    Pick<
+      ServiceRecord,
+      "odometer_reading" | "description" | "cost_amount" | "notes"
+    >
+  >;
+
+export type RepairRecord = {
+  id: string;
+  local_id: string;
+  vehicle_id: string;
+  repair_date: string;
+  odometer_reading?: number | null;
+  title: string;
+  category: RepairRecordCategory;
+  description?: string | null;
+  cost_amount?: number | null;
+  cost_currency: string;
+  warranty_until_date?: string | null;
+  warranty_until_odometer?: number | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+  sync_status: LocalSyncStatus;
+};
+
+export type RepairRecordInput = Pick<
+  RepairRecord,
+  "vehicle_id" | "repair_date" | "title" | "category" | "cost_currency"
+> &
+  Partial<
+    Pick<
+      RepairRecord,
+      | "odometer_reading"
+      | "description"
+      | "cost_amount"
+      | "warranty_until_date"
+      | "warranty_until_odometer"
+      | "notes"
+    >
+  >;
+
 export const formatVehicleTitle = (vehicle: Pick<Vehicle, "nickname">) =>
   vehicle.nickname;
 
@@ -159,6 +283,21 @@ export const formatDisplayDate = (date: string, locale = "en-US") => {
     day: "numeric",
     year: "numeric",
   }).format(parsed);
+};
+
+export const formatCostAmount = (
+  amount: number | null | undefined,
+  currency = "USD",
+  locale = "en-US",
+) => {
+  if (amount === null || amount === undefined) {
+    return "Not set";
+  }
+
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+  }).format(amount);
 };
 
 export type NavigationSection = {

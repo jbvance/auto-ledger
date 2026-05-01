@@ -1,6 +1,8 @@
 import {
   odometerSourceTypeValues,
   odometerUnitValues,
+  repairRecordCategoryValues,
+  serviceRecordCategoryValues,
   vehicleTypeValues,
 } from "@autoledger/shared";
 import { z } from "zod";
@@ -53,6 +55,11 @@ const optionalNonNegativeIntegerSchema = z.preprocess(
   z.coerce.number().int().min(0).optional(),
 );
 
+const optionalNonNegativeNumberSchema = z.preprocess(
+  (value) => (value === "" ? undefined : value),
+  z.coerce.number().min(0).optional(),
+);
+
 export const vehicleSchema = z
   .object({
     nickname: z.string().trim().min(1, "Nickname is required.").max(80),
@@ -99,6 +106,44 @@ export const odometerEntrySchema = z.object({
 
 export type OdometerEntryFormValues = z.input<typeof odometerEntrySchema>;
 export type OdometerEntryValidatedInput = z.output<typeof odometerEntrySchema>;
+
+export const serviceRecordSchema = z.object({
+  vehicle_id: z.string().trim().min(1, "Vehicle is required."),
+  service_date: requiredDateSchema,
+  odometer_reading: optionalNonNegativeIntegerSchema,
+  title: z.string().trim().min(1, "Title is required.").max(120),
+  category: z.enum(serviceRecordCategoryValues),
+  description: optionalTextSchema(2000),
+  cost_amount: optionalNonNegativeNumberSchema,
+  cost_currency: z.preprocess(
+    (value) => (value === "" || value === undefined ? "USD" : value),
+    z.string().trim().length(3).default("USD"),
+  ),
+  notes: optionalTextSchema(1000),
+});
+
+export type ServiceRecordFormValues = z.input<typeof serviceRecordSchema>;
+export type ServiceRecordValidatedInput = z.output<typeof serviceRecordSchema>;
+
+export const repairRecordSchema = z.object({
+  vehicle_id: z.string().trim().min(1, "Vehicle is required."),
+  repair_date: requiredDateSchema,
+  odometer_reading: optionalNonNegativeIntegerSchema,
+  title: z.string().trim().min(1, "Title is required.").max(120),
+  category: z.enum(repairRecordCategoryValues),
+  description: optionalTextSchema(2000),
+  cost_amount: optionalNonNegativeNumberSchema,
+  cost_currency: z.preprocess(
+    (value) => (value === "" || value === undefined ? "USD" : value),
+    z.string().trim().length(3).default("USD"),
+  ),
+  warranty_until_date: optionalDateSchema,
+  warranty_until_odometer: optionalNonNegativeIntegerSchema,
+  notes: optionalTextSchema(1000),
+});
+
+export type RepairRecordFormValues = z.input<typeof repairRecordSchema>;
+export type RepairRecordValidatedInput = z.output<typeof repairRecordSchema>;
 
 export const optionalUrlSchema = z.preprocess(
   (value) => (value === "" ? undefined : value),
