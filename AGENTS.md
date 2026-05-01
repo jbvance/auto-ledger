@@ -96,13 +96,13 @@ The data model may anticipate some future features, but the UI and workflows sho
 
 Build in focused slices. Do not attempt the whole product at once.
 
-Current development track: Local guest MVP features complete; cloud account/sync foundation is next.
+Current development track: Local guest MVP features and optional Supabase Auth foundation are complete; cloud sync foundation is next.
 
-Working local guest features include vehicle management, odometer entries, service records, repair records, unified history/timeline, dashboard polish, core maintenance reminders, local reminder notification settings/code, local service/repair attachments, and local CSV export.
+Working local guest features include vehicle management, odometer entries, service records, repair records, unified history/timeline, dashboard polish, core maintenance reminders, local reminder notification settings/code, local service/repair attachments, and local CSV export. Optional Supabase account sign-up/sign-in/sign-out exists without cloud record sync.
 
 Treat `docs/current-status.md` as the source of truth for current implementation status.
 
-Do not implement Supabase auth, cloud sync, guest-to-account migration, Supabase Storage/cloud attachments, or other future-facing features unless explicitly instructed.
+Do not implement cloud sync, guest-to-account migration, Supabase Storage/cloud attachments, or other future-facing features unless explicitly instructed.
 
 ---
 

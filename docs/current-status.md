@@ -8,9 +8,11 @@ The web app runs successfully on port 3000.
 
 The mobile app runs successfully through Expo and has been tested in Expo Go.
 
-Current development track: Local guest MVP features complete; cloud account/sync foundation is next.
+Current development track: Local guest MVP features and optional Supabase Auth foundation are complete; cloud sync foundation is next.
 
 The app is still local guest-mode first. Users can manage vehicles, odometer entries, service records, repair records, reminders, local attachments, and local CSV export without creating an account.
+
+Optional Supabase Auth foundation has been added for mobile and web. Users can create an account, sign in, and sign out without forcing account creation or uploading local guest data.
 
 Local device notification support has been added for maintenance reminders that have a due date. Notifications are optional, requested from Settings, and scheduled locally on the device only.
 
@@ -54,8 +56,36 @@ The mobile app currently supports local guest-mode:
 - Optional local device notification settings for reminders
 - Local scheduled notifications for date-based reminders when permission is enabled
 - Local notification cancellation when reminders are completed, deleted, disabled, or rescheduled
+- Optional Supabase account sign-up/sign-in/sign-out from mobile Settings
+- Mobile account state persists through Supabase Auth storage
+- Signed-in mobile users see that cloud sync is coming soon and local records remain on-device
 - Export local guest data to a combined CSV file from Settings
 - CSV export includes vehicles, odometer entries, service records, repair records, maintenance reminders, and attachment metadata
+
+## Working Web Auth Foundation
+
+- Web login route at `/login`
+- Web signup route at `/signup`
+- Web account/dashboard placeholder at `/dashboard`
+- Supabase session refresh proxy for Next.js App Router
+- Web account screens explain that cloud record sync is not active yet
+
+## Supabase Setup Required
+
+- Set `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` for the mobile app.
+- Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` for the web app.
+- Use `apps/mobile/.env.example` and `apps/web/.env.example` as app-local templates when running app-specific dev commands.
+- Do not expose `SUPABASE_SERVICE_ROLE_KEY` to mobile or browser code.
+- Run `packages/db/sql/001_profiles_auth_foundation.sql` in the Supabase SQL editor to create the `public.profiles` table, profile trigger, and RLS policies.
+
+## Current Auth Limitations
+
+- Supabase Auth is foundation-only.
+- Account creation is optional and does not unlock cloud record sync yet.
+- Local guest records are not uploaded after sign-in or sign-up.
+- Guest-to-account migration is not implemented.
+- Cloud vehicle, odometer, service, repair, reminder, and attachment tables are not implemented.
+- Supabase Storage/cloud attachments are not implemented.
 
 ## Current Reminder Notification Limitations
 
@@ -88,8 +118,7 @@ The mobile app currently supports local guest-mode:
 
 Do not assume these exist yet:
 
-- Supabase auth
-- Cloud sync
+- Cloud record sync
 - Guest-to-account migration
 - Supabase Storage/cloud attachments
 - Cloud push notifications
@@ -104,7 +133,7 @@ Do not assume these exist yet:
 
 ## Recommended Next Feature
 
-The next recommended feature track is cloud account/sync foundation, while preserving guest mode as the default local experience.
+The next recommended feature track is cloud sync foundation and guest-to-account migration design, while preserving guest mode as the default local experience.
 
 Good candidates:
 

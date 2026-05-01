@@ -1,10 +1,10 @@
 export const appName = "AutoLedger";
 
 export const currentDevelopmentTrack = {
-  id: "local_guest_mvp",
-  label: "Local guest MVP",
+  id: "local_guest_auth_foundation",
+  label: "Local guest MVP plus auth foundation",
   description:
-    "Local guest MVP features complete; cloud account/sync foundation is next.",
+    "Local guest MVP features and optional account auth foundation are complete; cloud sync foundation is next.",
 } as const;
 
 export const vehicleTypeValues = [
@@ -807,7 +807,7 @@ export const statusNavigation: NavigationSection[] = [
   {
     label: "Settings",
     description:
-      "Local reminders, notification settings, attachments, and CSV export are available; cloud sync is next.",
+      "Local reminders, notification settings, optional accounts, attachments, and CSV export are available; cloud sync is next.",
   },
 ];
 

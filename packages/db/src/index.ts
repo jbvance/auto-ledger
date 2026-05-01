@@ -6,14 +6,16 @@ export type SyncStatus =
 
 export type DbCloudDataStatus = {
   developmentTrack: "local_guest_mvp";
-  authImplemented: false;
+  authFoundationImplemented: true;
   cloudSyncImplemented: false;
   cloudTablesImplemented: false;
+  profilesSqlDocumented: true;
 };
 
 export const dbCloudDataStatus: DbCloudDataStatus = {
   developmentTrack: "local_guest_mvp",
-  authImplemented: false,
+  authFoundationImplemented: true,
   cloudSyncImplemented: false,
   cloudTablesImplemented: false,
+  profilesSqlDocumented: true,
 };
