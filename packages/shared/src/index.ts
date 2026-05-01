@@ -339,6 +339,7 @@ export type MaintenanceReminder = {
   completed_at?: string | null;
   last_triggered_at?: string | null;
   notes?: string | null;
+  scheduled_notification_id?: string | null;
   created_at: string;
   updated_at: string;
   sync_status: LocalSyncStatus;

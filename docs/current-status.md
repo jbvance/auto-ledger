@@ -10,6 +10,8 @@ The mobile app runs successfully through Expo and has been tested in Expo Go.
 
 The app is still local guest-mode first and now includes the core local maintenance-reminders slice.
 
+Local device notification support has been added for maintenance reminders that have a due date. Notifications are optional, requested from Settings, and scheduled locally on the device only.
+
 ## Working Mobile Features
 
 The mobile app currently supports local guest-mode:
@@ -33,6 +35,19 @@ The mobile app currently supports local guest-mode:
 - Date, mileage, and date-or-mileage reminder status logic
 - Upcoming reminders on the mobile dashboard
 - Vehicle detail reminder sections with active and completed reminders
+- Optional local device notification settings for reminders
+- Local scheduled notifications for date-based reminders when permission is enabled
+- Local notification cancellation when reminders are completed, deleted, disabled, or rescheduled
+
+## Current Reminder Notification Limitations
+
+- Reminder notifications are local device notifications only.
+- Cloud push notifications, Expo push tokens, and server-side notification delivery are not implemented.
+- Pure mileage reminders do not schedule notifications because AutoLedger does not track mileage in the background. Mileage reminder status remains in-app.
+- Date-or-mileage reminders can schedule a local notification only when they include a due date.
+- Expo Go on Android with SDK 53+ does not support remote push notifications. AutoLedger does not request push tokens or register devices for push.
+- Local reminder notification code is guarded in Expo Go on Android so reminders keep working in-app if notification APIs are unavailable.
+- A development build may be needed later for full local notification testing on device.
 
 ## Not Implemented Yet
 
@@ -42,7 +57,7 @@ Do not assume these exist yet:
 - Cloud sync
 - Guest-to-account migration
 - Attachments/photos/PDFs
-- Push/local notification scheduling for reminders
+- Cloud push notifications
 - CSV export
 - Households
 - Fuel tracking
