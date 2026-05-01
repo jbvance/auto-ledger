@@ -270,6 +270,7 @@ export type ServiceRecord = {
   title: string;
   category: ServiceRecordCategory;
   description?: string | null;
+  vendor_name?: string | null;
   cost_amount?: number | null;
   cost_currency: string;
   notes?: string | null;
@@ -285,7 +286,11 @@ export type ServiceRecordInput = Pick<
   Partial<
     Pick<
       ServiceRecord,
-      "odometer_reading" | "description" | "cost_amount" | "notes"
+      | "odometer_reading"
+      | "description"
+      | "vendor_name"
+      | "cost_amount"
+      | "notes"
     >
   >;
 
@@ -298,6 +303,7 @@ export type RepairRecord = {
   title: string;
   category: RepairRecordCategory;
   description?: string | null;
+  vendor_name?: string | null;
   cost_amount?: number | null;
   cost_currency: string;
   warranty_until_date?: string | null;
@@ -317,6 +323,7 @@ export type RepairRecordInput = Pick<
       RepairRecord,
       | "odometer_reading"
       | "description"
+      | "vendor_name"
       | "cost_amount"
       | "warranty_until_date"
       | "warranty_until_odometer"
@@ -572,6 +579,7 @@ type VehicleHistoryBaseItem = {
   title: string;
   typeLabel: string;
   vehicle_id: string;
+  vendor_name?: string | null;
 };
 
 export type VehicleHistoryItem =
@@ -633,6 +641,7 @@ export const buildVehicleHistoryItems = ({
         type: "service",
         typeLabel: "Service",
         vehicle_id: record.vehicle_id,
+        vendor_name: record.vendor_name,
       }),
     ),
     ...repairRecords.map(
@@ -650,6 +659,7 @@ export const buildVehicleHistoryItems = ({
         type: "repair",
         typeLabel: "Repair",
         vehicle_id: record.vehicle_id,
+        vendor_name: record.vendor_name,
       }),
     ),
   ];

@@ -116,6 +116,7 @@ export const serviceRecordSchema = z.object({
   title: z.string().trim().min(1, "Title is required.").max(120),
   category: z.enum(serviceRecordCategoryValues),
   description: optionalTextSchema(2000),
+  vendor_name: optionalTextSchema(120),
   cost_amount: optionalNonNegativeNumberSchema,
   cost_currency: z.preprocess(
     (value) => (value === "" || value === undefined ? "USD" : value),
@@ -134,6 +135,7 @@ export const repairRecordSchema = z.object({
   title: z.string().trim().min(1, "Title is required.").max(120),
   category: z.enum(repairRecordCategoryValues),
   description: optionalTextSchema(2000),
+  vendor_name: optionalTextSchema(120),
   cost_amount: optionalNonNegativeNumberSchema,
   cost_currency: z.preprocess(
     (value) => (value === "" || value === undefined ? "USD" : value),
