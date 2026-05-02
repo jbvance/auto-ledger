@@ -18,14 +18,22 @@ import { createAttachment, deleteAttachment } from "../lib/recordAttachments";
 type RecordAttachmentsSectionProps =
   | {
       attachments: RecordAttachment[];
+      mode?: "cloud" | "local";
       onAttachmentsChanged: () => Promise<void>;
+      onCreateAttachment?: (input: RecordAttachmentInput) => Promise<void>;
+      onDeleteAttachment?: (attachment: RecordAttachment) => Promise<void>;
+      onOpenAttachment?: (attachment: RecordAttachment) => Promise<void>;
       recordId: string;
       recordType: "service";
       vehicle: Vehicle;
     }
   | {
       attachments: RecordAttachment[];
+      mode?: "cloud" | "local";
       onAttachmentsChanged: () => Promise<void>;
+      onCreateAttachment?: (input: RecordAttachmentInput) => Promise<void>;
+      onDeleteAttachment?: (attachment: RecordAttachment) => Promise<void>;
+      onOpenAttachment?: (attachment: RecordAttachment) => Promise<void>;
       recordId: string;
       recordType: "repair";
       vehicle: Vehicle;
@@ -61,7 +69,11 @@ const getPdfFileName = (fileName: string) =>
 
 export function RecordAttachmentsSection({
   attachments,
+  mode = "local",
   onAttachmentsChanged,
+  onCreateAttachment,
+  onDeleteAttachment,
+  onOpenAttachment,
   recordId,
   recordType,
   vehicle,
@@ -69,6 +81,7 @@ export function RecordAttachmentsSection({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
+  const modeLabel = mode === "cloud" ? "cloud" : "local";
 
   const buildAttachmentInput = (
     input: Omit<
@@ -83,7 +96,12 @@ export function RecordAttachmentsSection({
   });
 
   const saveAttachment = async (input: RecordAttachmentInput) => {
-    await createAttachment(input);
+    if (onCreateAttachment) {
+      await onCreateAttachment(input);
+    } else {
+      await createAttachment(input);
+    }
+
     await onAttachmentsChanged();
     setFeedback("Attachment added.");
   };
@@ -188,15 +206,30 @@ export function RecordAttachmentsSection({
     }
   };
 
-  const openAttachment = (attachment: RecordAttachment) => {
+  const openAttachment = async (attachment: RecordAttachment) => {
     setFeedback(null);
-    router.push(`/attachments/${attachment.id}` as Href);
+
+    try {
+      if (onOpenAttachment) {
+        await onOpenAttachment(attachment);
+        return;
+      }
+
+      router.push(`/attachments/${attachment.id}` as Href);
+    } catch (error: unknown) {
+      console.warn("Unable to open attachment.", error);
+      setFeedback(
+        error instanceof Error
+          ? error.message
+          : "Unable to open this attachment. Please try again.",
+      );
+    }
   };
 
   const confirmDeleteAttachment = (attachment: RecordAttachment) => {
     Alert.alert(
       "Delete attachment?",
-      `${getAttachmentDisplayName(attachment)} will be removed from this local record.`,
+      `${getAttachmentDisplayName(attachment)} will be removed from this ${modeLabel} record.`,
       [
         {
           text: "Cancel",
@@ -218,7 +251,12 @@ export function RecordAttachmentsSection({
     setFeedback(null);
 
     try {
-      await deleteAttachment(attachment.id);
+      if (onDeleteAttachment) {
+        await onDeleteAttachment(attachment);
+      } else {
+        await deleteAttachment(attachment.id);
+      }
+
       await onAttachmentsChanged();
       setFeedback("Attachment deleted.");
     } catch (error: unknown) {
@@ -234,7 +272,7 @@ export function RecordAttachmentsSection({
       <View className="gap-1">
         <Text className="text-base font-bold text-ledger-ink">Attachments</Text>
         <Text className="text-sm leading-5 text-ledger-muted">
-          Add receipt photos or PDFs to this local record.
+          Add receipt photos or PDFs to this {modeLabel} record.
         </Text>
       </View>
 
@@ -279,7 +317,9 @@ export function RecordAttachmentsSection({
             No receipts or documents yet.
           </Text>
           <Text className="text-sm leading-5 text-ledger-muted">
-            Photos and PDFs are saved locally on this device.
+            {mode === "cloud"
+              ? "Photos and PDFs are stored privately in Supabase."
+              : "Photos and PDFs are saved locally on this device."}
           </Text>
         </View>
       ) : (
@@ -290,7 +330,9 @@ export function RecordAttachmentsSection({
               isDeleting={isDeletingId === attachment.id}
               key={attachment.id}
               onDelete={() => confirmDeleteAttachment(attachment)}
-              onOpen={() => openAttachment(attachment)}
+              onOpen={() => {
+                void openAttachment(attachment);
+              }}
             />
           ))}
         </View>
@@ -336,7 +378,7 @@ function AttachmentRow({
           </View>
           <View className="rounded-card bg-ledger-surface px-2 py-1">
             <Text className="text-xs font-bold uppercase text-ledger-muted">
-              Tap to preview
+              Tap to open
             </Text>
           </View>
         </View>

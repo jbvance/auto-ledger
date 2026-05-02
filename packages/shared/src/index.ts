@@ -1,11 +1,11 @@
 export const appName = "AutoLedger";
 
 export const currentDevelopmentTrack = {
-  id: "local_guest_cloud_vehicle_odometer_service_repair_reminder_foundation",
+  id: "local_guest_cloud_vehicle_record_attachment_foundation",
   label:
-    "Local guest MVP plus cloud vehicle, odometer, service, repair, and reminder foundation",
+    "Local guest MVP plus cloud vehicle, records, reminders, and service/repair attachments",
   description:
-    "Local guest MVP features, optional account auth foundation, cloud schema/RLS foundation, mobile cloud vehicle CRUD, mobile cloud odometer CRUD, mobile cloud service record CRUD, mobile cloud repair record CRUD, and mobile cloud maintenance reminder CRUD are complete; the next focused cloud slice is pending.",
+    "Local guest MVP features, optional account auth foundation, cloud schema/RLS foundation, mobile cloud vehicle/record/reminder CRUD, and cloud service/repair attachments are complete; guest-to-account migration remains pending.",
 } as const;
 
 export const vehicleTypeValues = [
@@ -147,6 +147,49 @@ export const recordAttachmentFileSizeLimitLabels: Record<
 > = {
   pdf: "25 MB",
   photo: "10 MB",
+};
+
+export const recordAttachmentStorageBucket = "record-attachments";
+
+export type RecordAttachmentRecordType = "repair" | "service";
+
+const sanitizeStoragePathSegment = (value: string, fallback: string) => {
+  const sanitized = value
+    .trim()
+    .replace(/[/\\]+/g, "_")
+    .replace(/[^\w.-]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 120);
+
+  return sanitized || fallback;
+};
+
+export const getRecordAttachmentStoragePath = ({
+  attachmentId,
+  fileName,
+  recordId,
+  recordType,
+  userId,
+  vehicleId,
+}: {
+  attachmentId: string;
+  fileName: string;
+  recordId: string;
+  recordType: RecordAttachmentRecordType;
+  userId: string;
+  vehicleId: string;
+}) => {
+  const recordFolder =
+    recordType === "service" ? "service-records" : "repair-records";
+
+  return [
+    sanitizeStoragePathSegment(userId, "user"),
+    "vehicles",
+    sanitizeStoragePathSegment(vehicleId, "vehicle"),
+    recordFolder,
+    sanitizeStoragePathSegment(recordId, "record"),
+    `${sanitizeStoragePathSegment(attachmentId, "attachment")}-${sanitizeStoragePathSegment(fileName, "file")}`,
+  ].join("/");
 };
 
 export const recordAttachmentOcrStatusValues = [
@@ -385,7 +428,7 @@ export type RecordAttachment = {
   file_size_bytes?: number | null;
   storage_bucket?: string | null;
   storage_path?: string | null;
-  local_uri: string;
+  local_uri?: string | null;
   ocr_status: RecordAttachmentOcrStatus;
   ocr_text?: string | null;
   ocr_vendor?: string | null;
@@ -397,8 +440,9 @@ export type RecordAttachment = {
 
 export type RecordAttachmentInput = Pick<
   RecordAttachment,
-  "file_name" | "file_type" | "local_uri" | "mime_type" | "vehicle_id"
+  "file_name" | "file_type" | "mime_type" | "vehicle_id"
 > &
+  { local_uri: string } &
   Partial<
     Pick<
       RecordAttachment,

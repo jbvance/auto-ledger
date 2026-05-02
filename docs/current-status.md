@@ -13,21 +13,23 @@ Vitest package tests for shared domain and validation logic plus Jest Expo
 mobile tests for focused user-visible behavior. A lightweight Maestro mobile
 E2E smoke scaffold and `docs/testing.md` are also present.
 
-Current development track: Local guest MVP features, optional Supabase Auth foundation, Supabase cloud data schema/RLS foundation, mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD, mobile cloud service record CRUD, mobile cloud repair record CRUD, and mobile cloud maintenance reminder CRUD are complete; broader app-side cloud sync is next.
+Current development track: Local guest MVP features, optional Supabase Auth foundation, Supabase cloud data schema/RLS foundation, mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD, mobile cloud service record CRUD, mobile cloud repair record CRUD, mobile cloud maintenance reminder CRUD, and cloud service/repair record attachments are complete; broader app-side cloud sync is next.
 
 The app is still local guest-mode first. Users can manage vehicles, odometer entries, service records, repair records, reminders, local attachments, and local CSV export without creating an account.
 
 Optional Supabase Auth foundation has been added for mobile and web. Users can create an account, sign in, and sign out without forcing account creation or uploading local guest data.
 
-Supabase cloud data schema and Row Level Security foundation has been added as SQL. The schema covers vehicles, optional vendors, odometer entries, service records, repair records, maintenance reminders, and record attachment metadata.
+Supabase cloud data schema and Row Level Security foundation has been added as SQL. The schema covers vehicles, optional vendors, odometer entries, service records, repair records, maintenance reminders, and record attachment metadata. Private Supabase Storage setup SQL exists for service/repair record attachments.
 
-Mobile authenticated users can create, list, view, edit, archive, and restore cloud vehicle rows in Supabase. Authenticated users can also create, list, view, edit, and delete cloud odometer entries, cloud service records, cloud repair records, and cloud maintenance reminders for cloud vehicles. The app does not read from or write to the other cloud record tables yet.
+Mobile authenticated users can create, list, view, edit, archive, and restore cloud vehicle rows in Supabase. Authenticated users can also create, list, view, edit, and delete cloud odometer entries, cloud service records, cloud repair records, and cloud maintenance reminders for cloud vehicles. Authenticated users can add, list, open through signed URLs, and delete cloud photo/PDF attachments for cloud service and repair records.
 
 Local device notification support has been added for maintenance reminders that have a due date. Notifications are optional, requested from Settings, and scheduled locally on the device only.
 
 Local attachment support has been added for service and repair records. Attachment metadata is stored in the local guest SQLite database, and selected files are copied into app-controlled local document storage when possible.
 
 Local photo attachments can be previewed inside AutoLedger from an attachment detail screen. PDF attachments show local metadata and can be shared/opened with the device's PDF viewer.
+
+Cloud attachment support has been added for authenticated service and repair records. Files are uploaded to a private `record-attachments` Supabase Storage bucket in user-scoped paths, and metadata is stored in `public.record_attachments`.
 
 Local CSV export support has been added for guest-mode data. Export creates one combined CSV file locally and opens the device share sheet when available.
 
@@ -72,6 +74,9 @@ The mobile app currently supports local guest-mode:
 - Signed-in mobile users can add/list/view/edit/delete cloud service records for cloud vehicles saved to Supabase
 - Signed-in mobile users can add/list/view/edit/delete cloud repair records for cloud vehicles saved to Supabase
 - Signed-in mobile users can add/list/view/edit/complete/delete cloud maintenance reminders for cloud vehicles saved to Supabase
+- Signed-in mobile users can add/list/open/delete cloud photo and PDF attachments on cloud service records
+- Signed-in mobile users can add/list/open/delete cloud photo and PDF attachments on cloud repair records
+- Cloud attachments are stored in a private Supabase Storage bucket and opened with short-lived signed URLs
 - Cloud vehicle current odometer is updated from cloud odometer entries, cloud service records, and cloud repair records without using local guest data
 - Signed-in mobile vehicle history and dashboard recent activity include cloud odometer entries, cloud service records, and cloud repair records
 - Signed-in mobile dashboard upcoming reminders include active cloud maintenance reminders for active cloud vehicles
@@ -95,20 +100,22 @@ The mobile app currently supports local guest-mode:
 - Do not expose `SUPABASE_SERVICE_ROLE_KEY` to mobile or browser code.
 - Run `packages/db/sql/001_profiles_auth_foundation.sql` in the Supabase SQL editor to create the `public.profiles` table, profile trigger, authenticated table grants, and RLS policies.
 - Run `packages/db/sql/002_cloud_data_schema_rls.sql` in the Supabase SQL editor after the profiles SQL to create cloud data tables, indexes, triggers, relationships, authenticated table grants, and RLS policies.
+- Run `packages/db/sql/003_record_attachments_storage_rls.sql` in the Supabase SQL editor after the cloud data schema to create the private `record-attachments` Storage bucket and user-scoped Storage RLS policies.
 - If the mobile app shows a Supabase "permission denied" warning for vehicles, rerun `packages/db/sql/002_cloud_data_schema_rls.sql` so the authenticated table grants are applied.
+- If cloud attachment upload/open/delete shows a bucket or permission warning, rerun `packages/db/sql/003_record_attachments_storage_rls.sql` so the private bucket and Storage RLS policies are installed.
 - See `docs/supabase-cloud-schema.md` for setup notes and simple SQL sanity checks.
 
 ## Current Cloud Limitations
 
-- Account creation is optional and currently unlocks cloud vehicle CRUD, cloud odometer entry CRUD, cloud service record CRUD, cloud repair record CRUD, and cloud maintenance reminder CRUD only.
+- Account creation is optional and currently unlocks cloud vehicle CRUD, cloud odometer entry CRUD, cloud service record CRUD, cloud repair record CRUD, cloud maintenance reminder CRUD, and cloud service/repair attachment support.
 - Local guest records are not uploaded after sign-in or sign-up.
 - Guest-to-account migration is not implemented.
-- Cloud vendor and attachment metadata tables exist as SQL setup, but app-side cloud save/load is not implemented for those record types.
+- Cloud vendor tables exist as SQL setup, but app-side cloud vendor CRUD is not implemented.
 - Cloud service records use simple `vendor_name` text for now; structured `vendor_id` support is still deferred.
 - Cloud repair records use simple `vendor_name` text for now; structured `vendor_id` support is still deferred.
 - Cloud vehicle `current_odometer` is saved on the vehicle row and is recalculated from cloud odometer entries, cloud service records, and cloud repair records after cloud odometer/service/repair edits/deletes. Local guest odometer, service, and repair records are not included in cloud odometer calculations.
 - Cloud maintenance reminder status is calculated in-app from the cloud reminder due fields and the cloud vehicle `current_odometer`.
-- Supabase Storage/cloud attachments are not implemented.
+- Cloud attachments are implemented only for cloud service and repair records. Vehicle-level cloud documents are not implemented.
 - Web cloud vehicle CRUD is deferred; the web app remains an auth/dashboard placeholder.
 
 ## Cloud Vehicle RLS Manual Verification
@@ -123,6 +130,7 @@ After running `packages/db/sql/001_profiles_auth_foundation.sql` and `packages/d
 - Signed-in mobile user can create, reload, view, edit, and delete their own service records in `public.service_records`.
 - Signed-in mobile user can create, reload, view, edit, and delete their own repair records in `public.repair_records`.
 - Signed-in mobile user can create, reload, view, edit, complete, and delete their own maintenance reminders in `public.maintenance_reminders`.
+- Signed-in mobile user can add, reload, open, and delete their own service/repair record attachments, with metadata in `public.record_attachments` and files under their own first-level Storage folder in `record-attachments`.
 - Signed-in mobile user's cloud vehicle `current_odometer` updates from their own cloud odometer entries, cloud service records, and cloud repair records and does not use local guest odometer/service/repair records.
 - Signed-in mobile user's cloud reminder status uses their own cloud vehicle `current_odometer` and does not use local guest vehicle data.
 - Signed-out mobile user continues to use local guest vehicle storage and cannot access cloud vehicles through the app.
@@ -141,12 +149,15 @@ After running `packages/db/sql/001_profiles_auth_foundation.sql` and `packages/d
 
 ## Current Attachment Limitations
 
-- Attachments are local guest-mode only.
-- Attachment metadata is stored locally in SQLite.
-- Cloud attachment metadata schema exists in SQL, but the app does not sync local attachment metadata to Supabase yet.
+- Attachments work in local guest mode and authenticated cloud mode for service and repair records only.
+- Local attachment metadata is stored locally in SQLite.
+- Cloud attachment metadata is stored in `public.record_attachments`, and cloud files are stored in the private `record-attachments` Supabase Storage bucket.
+- Cloud attachment Storage paths are user-scoped, such as `{userId}/vehicles/{vehicleId}/service-records/{serviceRecordId}/{attachmentLocalId}-{fileName}` and `{userId}/vehicles/{vehicleId}/repair-records/{repairRecordId}/{attachmentLocalId}-{fileName}`.
 - Selected photos and PDFs are copied into app-controlled local document storage when possible. PDF attachments must copy successfully and verify as non-empty before metadata is saved. If copying fails for a photo in a runtime-specific case, the original local URI is preserved so the metadata still exists.
-- Photos preview inside AutoLedger. PDFs still rely on an installed platform PDF viewer and use the native sharing sheet for a more reliable handoff.
-- Supabase Storage, cloud attachment sync, signed/private cloud file access, and OCR are not implemented.
+- Local photos preview inside AutoLedger. Local PDFs still rely on an installed platform PDF viewer and use the native sharing sheet for a more reliable handoff.
+- Cloud attachments are opened with short-lived signed URLs. Platform behavior depends on the installed browser/viewer and file type.
+- Existing local guest attachments are not uploaded after sign-in or sign-up.
+- OCR is not implemented.
 - Vehicle-level documents are not implemented.
 
 ## Current CSV Export Limitations
@@ -154,17 +165,17 @@ After running `packages/db/sql/001_profiles_auth_foundation.sql` and `packages/d
 - CSV export is local guest-mode only.
 - Export creates one combined CSV file with a dataset column instead of a zip archive of separate CSV files.
 - The export file is written locally and handed to the device share sheet when sharing is available.
-- Attachment export includes metadata and local file URIs only. It does not bundle attachment files.
-- PDF export, cloud backup/sync, and server-side export are not implemented.
+- Attachment export includes local guest metadata and local file URIs only. It does not bundle attachment files and does not export cloud attachments yet.
+- PDF export, cloud CSV export, and server-side export are not implemented.
 
 ## Not Implemented Yet
 
 Do not assume these exist yet:
 
-- Broader cloud record sync beyond vehicles, odometer entries, service records, repair records, and maintenance reminders
-- Cloud attachment sync
+- Broader cloud record sync beyond vehicles, odometer entries, service records, repair records, maintenance reminders, and service/repair attachments
 - Guest-to-account migration
-- Supabase Storage/cloud file attachments
+- Guest-to-account attachment migration
+- Vehicle-level cloud file attachments
 - Cloud push notifications
 - Households
 - Fuel tracking
@@ -177,7 +188,7 @@ Do not assume these exist yet:
 
 ## Recommended Next Feature
 
-The next recommended feature track is guest-to-account migration design and the next focused cloud sync slice, while preserving guest mode as the default local experience.
+The next recommended feature track is guest-to-account migration design and the next focused cloud sync/export slice, while preserving guest mode as the default local experience.
 
 Good candidates:
 

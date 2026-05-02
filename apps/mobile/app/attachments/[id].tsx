@@ -49,9 +49,11 @@ export default function AttachmentDetailScreen() {
   );
 
   const openExternally = async () => {
-    if (!attachment) {
+    if (!attachment?.local_uri) {
       return;
     }
+
+    const localUri = attachment.local_uri;
 
     try {
       setOpenError(null);
@@ -64,7 +66,7 @@ export default function AttachmentDetailScreen() {
           return;
         }
 
-        await Sharing.shareAsync(attachment.local_uri, {
+        await Sharing.shareAsync(localUri, {
           dialogTitle: getAttachmentDisplayName(attachment),
           mimeType: "application/pdf",
           UTI: "com.adobe.pdf",
@@ -73,9 +75,9 @@ export default function AttachmentDetailScreen() {
       }
 
       const uri =
-        Platform.OS === "android" && attachment.local_uri.startsWith("file://")
-          ? await FileSystem.getContentUriAsync(attachment.local_uri)
-          : attachment.local_uri;
+        Platform.OS === "android" && localUri.startsWith("file://")
+          ? await FileSystem.getContentUriAsync(localUri)
+          : localUri;
 
       await Linking.openURL(uri);
     } catch (error: unknown) {
@@ -119,6 +121,31 @@ export default function AttachmentDetailScreen() {
   }
 
   const displayName = getAttachmentDisplayName(attachment);
+  const localUri = attachment.local_uri;
+
+  if (!localUri) {
+    return (
+      <SafeAreaView className="flex-1 bg-ledger-background">
+        <View className="flex-1 justify-center gap-4 px-6">
+          <Text className="text-2xl font-bold text-ledger-ink">
+            Attachment file unavailable
+          </Text>
+          <Text className="text-base leading-6 text-ledger-muted">
+            This attachment does not have a local file on this device.
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            className="rounded-card bg-ledger-primary px-4 py-3"
+            onPress={() => router.back()}
+          >
+            <Text className="text-center text-base font-bold text-white">
+              Go Back
+            </Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-ledger-background">
@@ -147,7 +174,7 @@ export default function AttachmentDetailScreen() {
                   );
                 }}
                 resizeMode="contain"
-                source={{ uri: attachment.local_uri }}
+                source={{ uri: localUri }}
               />
             </View>
             {imageLoadError ? (

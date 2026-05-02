@@ -337,7 +337,7 @@ export const createAttachment = async (
       bindOptional(attachment.file_size_bytes),
       bindOptional(attachment.storage_bucket),
       bindOptional(attachment.storage_path),
-      attachment.local_uri,
+      attachment.local_uri ?? "",
       attachment.ocr_status,
       bindOptional(attachment.ocr_text),
       bindOptional(attachment.ocr_vendor),
@@ -361,7 +361,9 @@ export const deleteAttachment = async (id: string): Promise<void> => {
   const db = await getGuestDatabase();
 
   await db.runAsync(`DELETE FROM record_attachments WHERE id = ?`, id);
-  await removeLocalFileIfOwned(existing.local_uri);
+  if (existing.local_uri) {
+    await removeLocalFileIfOwned(existing.local_uri);
+  }
 };
 
 export const deleteAttachmentsForServiceRecord = async (

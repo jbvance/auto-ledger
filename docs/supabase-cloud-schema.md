@@ -2,12 +2,13 @@
 
 This document covers the current cloud data schema foundation for AutoLedger.
 
-The SQL in this slice creates authenticated cloud tables and Row Level Security
-policies. Mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD,
-mobile cloud service record CRUD, mobile cloud repair record CRUD, and mobile
-cloud maintenance reminder CRUD are implemented against these tables. The app
-does not yet implement cloud attachment or vendor CRUD, guest-to-account
-migration, Supabase Storage uploads, cloud attachment access, OCR, or cloud push
+The SQL in this slice creates authenticated cloud tables, Row Level Security
+policies, and a private Storage bucket for service/repair record attachments.
+Mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD, mobile cloud
+service record CRUD, mobile cloud repair record CRUD, mobile cloud maintenance
+reminder CRUD, and mobile cloud service/repair attachment upload/list/open/delete
+are implemented. The app does not yet implement cloud vendor CRUD,
+guest-to-account migration, vehicle-level cloud documents, OCR, or cloud push
 notifications.
 
 ## SQL Files
@@ -16,6 +17,7 @@ Run these files in order in the Supabase dashboard SQL editor:
 
 1. `packages/db/sql/001_profiles_auth_foundation.sql`
 2. `packages/db/sql/002_cloud_data_schema_rls.sql`
+3. `packages/db/sql/003_record_attachments_storage_rls.sql`
 
 The second file creates:
 
@@ -32,6 +34,16 @@ model anticipates structured vendors. The current app UI still uses simple
 `vendor_name` text on service and repair records, so `vendor_id` remains
 optional.
 
+The third file creates or updates a private Supabase Storage bucket:
+
+- `record-attachments`
+
+The bucket is not public. Files are stored under the authenticated user's UUID
+as the first folder segment, for example:
+
+- `{userId}/vehicles/{vehicleId}/service-records/{serviceRecordId}/{attachmentLocalId}-{fileName}`
+- `{userId}/vehicles/{vehicleId}/repair-records/{repairRecordId}/{attachmentLocalId}-{fileName}`
+
 ## RLS Behavior
 
 Every cloud data table has Row Level Security enabled.
@@ -47,6 +59,12 @@ There is no public read access.
 
 Child tables store both `user_id` and parent IDs. Composite foreign keys keep
 child records tied to parent rows owned by the same user.
+
+Storage policies on `storage.objects` allow authenticated users to select,
+insert, update, and delete files only when `bucket_id = 'record-attachments'`
+and the first folder segment equals `auth.uid()`. There is no public Storage
+policy. The mobile app opens cloud attachments with short-lived signed URLs
+instead of permanent public URLs.
 
 ## Manual Sanity Checks
 
@@ -66,6 +84,26 @@ where schemaname = 'public'
     'record_attachments'
   )
 order by tablename;
+```
+
+After running `003_record_attachments_storage_rls.sql`, this query should show
+the bucket as private:
+
+```sql
+select id, name, public, file_size_limit, allowed_mime_types
+from storage.buckets
+where id = 'record-attachments';
+```
+
+This query should show the four owner-scoped Storage policies:
+
+```sql
+select policyname, cmd
+from pg_policies
+where schemaname = 'storage'
+  and tablename = 'objects'
+  and policyname like 'Record attachment files are %'
+order by policyname;
 ```
 
 This should show select, insert, update, and delete policies for each table:
@@ -109,18 +147,19 @@ order by table_name;
 
 This repo does not currently hand-maintain full generated Supabase database
 types. Before broadening cloud sync beyond the current mobile vehicle,
-odometer, service record, repair record, and maintenance reminder slices,
-generate types from the live Supabase project with the Supabase CLI and commit
-them in the database package or another agreed location.
+odometer, service record, repair record, maintenance reminder, and service/repair
+attachment slices, generate types from the live Supabase project with the
+Supabase CLI and commit them in the database package or another agreed location.
 
 ## Still Deferred
 
-- app-side cloud save/load beyond mobile vehicles, odometer entries, service records, repair records, and maintenance reminders
+- app-side cloud save/load beyond mobile vehicles, odometer entries, service records, repair records, maintenance reminders, and service/repair attachments
 - guest-to-account migration
 - upload of existing local guest data
-- cloud vendor and attachment metadata CRUD
-- Supabase Storage buckets and private attachment paths
-- cloud attachment sync
+- upload of existing local guest attachments
+- cloud vendor CRUD
+- vehicle-level cloud documents
+- cloud CSV export
 - cloud push notifications
 - households, fuel tracking, VIN lookup, OCR, payments, PDF export, fleet tools,
   and shop/provider portals

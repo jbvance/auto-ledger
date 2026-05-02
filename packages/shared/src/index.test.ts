@@ -9,6 +9,7 @@ import {
   formatDisplayDate,
   formatOdometer,
   getMaintenanceReminderStatus,
+  getRecordAttachmentStoragePath,
   getRecalculatedVehicleOdometer,
   type LocalCsvExportData,
   type MaintenanceReminder,
@@ -99,6 +100,34 @@ describe("CSV helpers", () => {
     expect(csv).toContain("dataset,id,vehicle_id");
     expect(csv).toContain("vehicles,veh_1,veh_1");
     expect(csv).toContain("maintenance_reminders,rem_1,veh_1");
+  });
+});
+
+describe("attachment storage helpers", () => {
+  it("builds user-scoped service and repair attachment storage paths", () => {
+    expect(
+      getRecordAttachmentStoragePath({
+        attachmentId: "att/1",
+        fileName: "receipt May 2026.pdf",
+        recordId: "svc_1",
+        recordType: "service",
+        userId: "user_1",
+        vehicleId: "veh_1",
+      }),
+    ).toBe(
+      "user_1/vehicles/veh_1/service-records/svc_1/att_1-receipt_May_2026.pdf",
+    );
+
+    expect(
+      getRecordAttachmentStoragePath({
+        attachmentId: "att_2",
+        fileName: "photo.jpg",
+        recordId: "rep_1",
+        recordType: "repair",
+        userId: "user_1",
+        vehicleId: "veh_1",
+      }),
+    ).toBe("user_1/vehicles/veh_1/repair-records/rep_1/att_2-photo.jpg");
   });
 });
 

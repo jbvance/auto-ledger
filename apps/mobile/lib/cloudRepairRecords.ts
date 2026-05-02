@@ -4,6 +4,7 @@ import {
   getCloudVehicleForOdometer,
   recalculateCloudVehicleOdometer,
 } from "./cloudVehicleOdometer";
+import { deleteCloudAttachmentsForRepairRecord } from "./cloudRecordAttachments";
 import { supabase } from "./supabase";
 
 type CloudRepairRecordError = {
@@ -287,6 +288,8 @@ export const deleteCloudRepairRecord = async (id: string): Promise<void> => {
   if (!existing) {
     return;
   }
+
+  await deleteCloudAttachmentsForRepairRecord(id);
 
   const { error } = await client
     .from("repair_records")

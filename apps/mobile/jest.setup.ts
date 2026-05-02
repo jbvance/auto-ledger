@@ -14,6 +14,7 @@ jest.mock("@react-native-async-storage/async-storage", () => ({
 
 jest.mock("expo-file-system/legacy", () => ({
   EncodingType: {
+    Base64: "base64",
     UTF8: "utf8",
   },
   cacheDirectory: "file:///cache/",
@@ -23,6 +24,7 @@ jest.mock("expo-file-system/legacy", () => ({
   getContentUriAsync: jest.fn(async (uri: string) => uri),
   getInfoAsync: jest.fn(async () => ({ exists: true, size: 100 })),
   makeDirectoryAsync: jest.fn(),
+  readAsStringAsync: jest.fn(async () => "AQID"),
   writeAsStringAsync: jest.fn(),
 }));
 

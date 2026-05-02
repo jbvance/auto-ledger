@@ -17,7 +17,8 @@ export type DbCloudDataStatus = {
   cloudSchemaRlsImplemented: true;
   guestToAccountMigrationImplemented: false;
   profilesSqlDocumented: true;
-  storageImplemented: false;
+  storageImplemented: true;
+  storageSqlDocumented: true;
 };
 
 export const dbCloudDataStatus: DbCloudDataStatus = {
@@ -33,10 +34,12 @@ export const dbCloudDataStatus: DbCloudDataStatus = {
   cloudSchemaRlsImplemented: true,
   guestToAccountMigrationImplemented: false,
   profilesSqlDocumented: true,
-  storageImplemented: false,
+  storageImplemented: true,
+  storageSqlDocumented: true,
 };
 
 export const dbSqlFiles = [
   "packages/db/sql/001_profiles_auth_foundation.sql",
   "packages/db/sql/002_cloud_data_schema_rls.sql",
+  "packages/db/sql/003_record_attachments_storage_rls.sql",
 ] as const;

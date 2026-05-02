@@ -16,6 +16,7 @@ import {
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  Linking,
   Pressable,
   ScrollView,
   Text,
@@ -24,6 +25,12 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { RecordAttachmentsSection } from "../../../../components/RecordAttachmentsSection";
+import {
+  createCloudAttachmentForServiceRecord,
+  deleteCloudAttachment,
+  getCloudAttachmentSignedUrl,
+  listCloudAttachmentsForServiceRecord,
+} from "../../../../lib/cloudRecordAttachments";
 import { getCloudServiceRecord } from "../../../../lib/cloudServiceRecords";
 import { getCloudVehicle } from "../../../../lib/cloudVehicles";
 import { useAuth } from "../../../../lib/auth";
@@ -48,18 +55,26 @@ export default function ServiceRecordDetailScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadAttachments = useCallback(async () => {
-    if (!recordId || isCloudMode) {
+    if (!recordId) {
       return;
     }
 
     try {
       setAttachmentLoadError(null);
-      setAttachments(await listAttachmentsForServiceRecord(recordId));
+      setAttachments(
+        isCloudMode
+          ? await listCloudAttachmentsForServiceRecord(recordId)
+          : await listAttachmentsForServiceRecord(recordId),
+      );
     } catch (error: unknown) {
       console.warn("Unable to load service record attachments.", error);
       setAttachments([]);
       setAttachmentLoadError(
-        "Unable to load attachments right now. The record details are still available.",
+        isCloudMode
+          ? error instanceof Error
+            ? error.message
+            : "Unable to load cloud attachments right now. The record details are still available."
+          : "Unable to load attachments right now. The record details are still available.",
       );
     }
   }, [isCloudMode, recordId]);
@@ -83,11 +98,7 @@ export default function ServiceRecordDetailScreen() {
       setVehicle(nextVehicle);
       setRecord(nextRecord);
 
-      if (isCloudMode) {
-        setAttachments([]);
-      } else {
-        await loadAttachments();
-      }
+      await loadAttachments();
     } catch (error: unknown) {
       setLoadError(
         isCloudMode
@@ -108,6 +119,12 @@ export default function ServiceRecordDetailScreen() {
       void loadRecord();
     }, [loadRecord]),
   );
+
+  const openCloudAttachment = async (attachment: RecordAttachment) => {
+    const signedUrl = await getCloudAttachmentSignedUrl(attachment.id);
+
+    await Linking.openURL(signedUrl);
+  };
 
   if (isLoading || isAuthLoading) {
     return (
@@ -203,25 +220,27 @@ export default function ServiceRecordDetailScreen() {
           </View>
         ) : null}
 
-        {isCloudMode ? (
-          <View className="gap-2 rounded-card border border-ledger-line bg-ledger-surface p-4">
-            <Text className="text-base font-bold text-ledger-ink">
-              Attachments
-            </Text>
-            <Text className="text-sm leading-5 text-ledger-muted">
-              Cloud attachments and Supabase Storage are not implemented yet for
-              account service records.
-            </Text>
-          </View>
-        ) : (
-          <RecordAttachmentsSection
-            attachments={attachments}
-            onAttachmentsChanged={loadAttachments}
-            recordId={record.id}
-            recordType="service"
-            vehicle={vehicle}
-          />
-        )}
+        <RecordAttachmentsSection
+          attachments={attachments}
+          mode={isCloudMode ? "cloud" : "local"}
+          onAttachmentsChanged={loadAttachments}
+          onCreateAttachment={
+            isCloudMode
+              ? async (input) => {
+                  await createCloudAttachmentForServiceRecord(input);
+                }
+              : undefined
+          }
+          onDeleteAttachment={
+            isCloudMode
+              ? async (attachment) => deleteCloudAttachment(attachment.id)
+              : undefined
+          }
+          onOpenAttachment={isCloudMode ? openCloudAttachment : undefined}
+          recordId={record.id}
+          recordType="service"
+          vehicle={vehicle}
+        />
       </ScrollView>
     </SafeAreaView>
   );
