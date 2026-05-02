@@ -33,6 +33,8 @@ Cloud attachment support has been added for authenticated service and repair rec
 
 Guest-to-account migration readiness planning has been completed. Migration is not implemented yet, and the plan lives at `docs/guest-to-account-migration-plan.md`.
 
+Guest-to-account migration Slice 1 has been added for local readiness only. The mobile app now has local-only migration run and entity mapping tables, a read-only guest migration summary helper, a signed-in Settings readiness section, and non-destructive sign-in/sign-up notices when local guest data exists. No guest records are uploaded, migrated, deleted, or marked as synced yet.
+
 Local CSV export support has been added for guest-mode data. Export creates one combined CSV file locally and opens the device share sheet when available.
 
 ## Working Mobile Features
@@ -90,6 +92,7 @@ The mobile app currently supports local guest-mode:
 - Signed-in mobile vehicle history and dashboard recent activity include cloud odometer entries, cloud service records, and cloud repair records
 - Signed-in mobile dashboard upcoming reminders include active cloud maintenance reminders for active cloud vehicles
 - Signed-in mobile users with existing local guest records see that cloud sync for those records is coming soon
+- Signed-in mobile users with existing local guest records can view a read-only Local Data / Migration Readiness summary in Settings
 - Export local guest data to a combined CSV file from Settings
 - CSV export includes vehicles, odometer entries, service records, repair records, maintenance reminders, and attachment metadata
 
@@ -110,6 +113,7 @@ The mobile app currently supports local guest-mode:
 - Run `packages/db/sql/001_profiles_auth_foundation.sql` in the Supabase SQL editor to create the `public.profiles` table, profile trigger, authenticated table grants, and RLS policies.
 - Run `packages/db/sql/002_cloud_data_schema_rls.sql` in the Supabase SQL editor after the profiles SQL to create cloud data tables, indexes, triggers, relationships, authenticated table grants, and RLS policies.
 - Run `packages/db/sql/003_record_attachments_storage_rls.sql` in the Supabase SQL editor after the cloud data schema to create the private `record-attachments` Storage bucket and user-scoped Storage RLS policies.
+- Review/run `packages/db/sql/004_verify_local_id_unique_constraints.sql` before enabling actual guest-to-account upload migration. It is a read-only prerequisite check for the `user_id + local_id` unique constraints used to prevent duplicate migrated rows.
 - If the mobile app shows a Supabase "permission denied" warning for vehicles, rerun `packages/db/sql/002_cloud_data_schema_rls.sql` so the authenticated table grants are applied.
 - If cloud attachment upload/open/delete shows a bucket or permission warning, rerun `packages/db/sql/003_record_attachments_storage_rls.sql` so the private bucket and Storage RLS policies are installed.
 - See `docs/supabase-cloud-schema.md` for setup notes and simple SQL sanity checks.
@@ -119,7 +123,8 @@ The mobile app currently supports local guest-mode:
 - Account creation is optional and currently unlocks cloud vehicle CRUD, cloud odometer entry CRUD, cloud service record CRUD, cloud repair record CRUD, cloud maintenance reminder CRUD, and cloud service/repair attachment support.
 - Local guest records are not uploaded after sign-in or sign-up.
 - Guest-to-account migration is not implemented.
-- Guest-to-account migration planning is complete in `docs/guest-to-account-migration-plan.md`.
+- Guest-to-account migration planning is complete in `docs/guest-to-account-migration-plan.md`, and Slice 1 readiness/status detection is implemented locally.
+- The current readiness slice creates local migration status/mapping storage and local guest data summaries only; it does not upload data to Supabase or mark guest records as migrated.
 - Cloud vendor tables exist as SQL setup, but app-side cloud vendor CRUD is not implemented.
 - Cloud service records use simple `vendor_name` text for now; structured `vendor_id` support is still deferred.
 - Cloud repair records use simple `vendor_name` text for now; structured `vendor_id` support is still deferred.

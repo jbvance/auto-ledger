@@ -73,6 +73,8 @@ development build app id when a dev build exists.
 - Cloud-compatible maintenance reminder row mapping.
 - Cloud-compatible record attachment row mapping.
 - Cloud record attachment Storage path generation.
+- Guest migration readiness summary counts and local not-started migration run
+  storage helpers.
 - Shared odometer recalculation logic used by local and cloud record updates.
 - Formatting and unified history ordering helpers.
 - Zod validation for vehicles, odometer entries, service records, repair
@@ -88,8 +90,8 @@ development build app id when a dev build exists.
 - Supabase RLS behavior.
 - Notification delivery behavior on real iOS/Android devices.
 - Attachment picker/file-copy behavior on real devices.
-- Guest-to-account migration and cloud CSV export because those features are not
-  implemented yet.
+- Actual guest-to-account upload migration and cloud CSV export because those
+  features are not implemented yet.
 - Live Supabase Storage upload/open/delete integration for cloud attachments.
 - Supabase cloud maintenance reminder CRUD integration against a live Supabase
   project.

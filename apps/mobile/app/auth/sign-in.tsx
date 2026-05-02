@@ -11,10 +11,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "../../lib/auth";
-import { hasAnyLocalGuestData } from "../../lib/localGuestData";
+import { getGuestMigrationSummary } from "../../lib/guestMigration";
 
 const localDataMessage =
-  "Cloud sync for existing local records is coming soon. New cloud vehicles, odometer readings, service records, and repair records will be saved to your account.";
+  "Signed in. Local records are still on this device. Migration is not active yet; a future tool will let you review and upload them. New cloud records you add while signed in will save to your account.";
 
 export default function SignInScreen() {
   const { isConfigured, isLoading, signIn, user } = useAuth();
@@ -35,8 +35,10 @@ export default function SignInScreen() {
       return;
     }
 
+    const migrationSummary = await getGuestMigrationSummary();
+
     setFeedback(
-      (await hasAnyLocalGuestData())
+      migrationSummary.hasGuestData
         ? localDataMessage
         : "Signed in. New vehicles, odometer readings, service records, and repair records will be saved to your account.",
     );

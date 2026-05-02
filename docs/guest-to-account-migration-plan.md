@@ -1,9 +1,9 @@
 # Guest-to-Account Migration Readiness Plan
 
 This document audits the current repo readiness for migrating local guest data
-to an authenticated Supabase account. It is a planning document only. Migration
-is not implemented yet, and this audit does not change app behavior, upload
-local data, delete local records, or migrate any records.
+to an authenticated Supabase account. Slice 1 readiness/status detection is now
+implemented locally, but actual migration is not implemented yet. The current
+slice does not upload local data, delete local records, or migrate any records.
 
 ## 1. Current Readiness Summary
 
@@ -24,6 +24,12 @@ Ready:
   metadata.
 - `apps/mobile/lib/localGuestData.ts` can detect whether any local guest data
   exists after sign-in or sign-up.
+- `apps/mobile/lib/guestMigration.ts` can summarize local guest data for a
+  future migration review without mutating guest records.
+- Local-only `migration_runs` and `migration_entity_mappings` SQLite tables now
+  exist for future migration status and ID mapping.
+- Signed-in users with local guest data now see non-destructive sign-in/sign-up
+  notices and a read-only Settings readiness section.
 - Supabase cloud tables exist in `packages/db/sql/002_cloud_data_schema_rls.sql`
   for all target entities, including `local_id`, `sync_status`, owner-scoped
   foreign keys, and `unique (user_id, local_id)` constraints.
@@ -45,9 +51,9 @@ Not ready:
   `getCloudVehicleForOdometer`, which filters out archived vehicles. Migration
   may need to migrate child records for archived local vehicles, so migration
   should not rely on those helpers as-is.
-- There is no durable local mapping table from local IDs to cloud UUIDs.
-- There is no migration run/status table, no partial-failure retry state, and no
-  user-facing migration prompt/progress UI.
+- The durable local status/mapping tables exist, but actual migration code does
+  not write completed cloud UUID mappings yet.
+- There is no active migration prompt/progress UI and no upload/retry workflow.
 - Cloud attachment upload currently uses a generated attachment local ID and
   `upsert: false`, so it is not idempotent for retrying migrated local
   attachments.
@@ -268,13 +274,13 @@ Recommended UX details:
 
 ## 10. Suggested Implementation Slices
 
-Slice 1: migration audit/status detection only
+Slice 1: migration audit/status detection only - complete
 
 - Add local migration status/mapping schema.
 - Add a read-only local data summary helper with counts and dependency checks.
 - Add tests for detection and summary shape.
-- Show no migration prompt yet, or show only a non-actionable status in
-  Settings.
+- Show only non-actionable sign-in/sign-up notices and a read-only Settings
+  readiness section. No upload action is enabled.
 
 Slice 2: migrate vehicles only
 
@@ -316,29 +322,28 @@ Cloud schema:
 - RLS already scopes every cloud data table to `auth.uid() = user_id`.
 - Storage RLS already scopes attachment files to the authenticated user's first
   path segment.
-- Before implementation, add a SQL verification or patch file that confirms the
-  unique constraints exist on already-created Supabase projects. This is safer
-  than assuming `create table if not exists` applied constraints to an existing
-  live schema.
+- `packages/db/sql/004_verify_local_id_unique_constraints.sql` is now available
+  as a read-only verification query for the cloud `user_id + local_id` unique
+  constraints. Review/run it before enabling actual upload migration. If any
+  row reports `missing`, add the missing unique constraint before Slice 2.
 
 Local schema:
 
-- Add durable local migration state. A separate mapping table is recommended
-  over adding many per-record columns.
-- Include `user_id` in local migration state so one device can distinguish
-  migrations to different accounts.
-- Store cloud UUID mappings for vehicles, service records, repair records, and
-  attachments at minimum. Storing mappings for all entity types improves retry
-  and diagnostics.
-- Optional but useful: store a migration run table with start/end timestamps,
-  current phase, counts, and top-level status.
+- Durable local migration state now exists as separate tables instead of
+  per-record columns.
+- Local migration state stores `account_id` so one device can distinguish
+  readiness state for different signed-in accounts.
+- The mapping table can store cloud UUID mappings for all future migrated entity
+  types, but Slice 1 only creates/readies the structure.
+- A migration run table exists with start/end timestamps, status, and optional
+  error message.
 
 Suggested local-only tables:
 
 ```text
-guest_migration_runs
+migration_runs
 - id
-- user_id
+- account_id
 - status
 - started_at
 - completed_at
@@ -346,10 +351,10 @@ guest_migration_runs
 - created_at
 - updated_at
 
-guest_migration_mappings
+migration_entity_mappings
 - id
 - run_id
-- user_id
+- account_id
 - entity_type
 - local_id
 - cloud_id

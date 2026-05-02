@@ -2,6 +2,7 @@ import * as SQLite from "expo-sqlite";
 
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 let initialized = false;
+let initializationPromise: Promise<void> | null = null;
 
 const columnExists = async (
   db: SQLite.SQLiteDatabase,
@@ -20,7 +21,18 @@ export const getGuestDatabase = async () => {
   const db = await dbPromise;
 
   if (!initialized) {
-    await db.execAsync(`
+    initializationPromise ??= initializeGuestDatabase(db).catch((error) => {
+      initializationPromise = null;
+      throw error;
+    });
+    await initializationPromise;
+  }
+
+  return db;
+};
+
+const initializeGuestDatabase = async (db: SQLite.SQLiteDatabase) => {
+  await db.execAsync(`
       PRAGMA journal_mode = WAL;
 
       CREATE TABLE IF NOT EXISTS vehicles (
@@ -186,10 +198,45 @@ export const getGuestDatabase = async () => {
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
-    `);
 
-    if (!(await columnExists(db, "vehicles", "initial_odometer"))) {
-      await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS migration_runs (
+        id TEXT PRIMARY KEY NOT NULL,
+        account_id TEXT NOT NULL,
+        started_at TEXT NOT NULL,
+        completed_at TEXT,
+        status TEXT NOT NULL,
+        error_message TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS migration_runs_account_updated_idx
+      ON migration_runs (account_id, updated_at DESC);
+
+      CREATE TABLE IF NOT EXISTS migration_entity_mappings (
+        id TEXT PRIMARY KEY NOT NULL,
+        run_id TEXT,
+        account_id TEXT NOT NULL,
+        entity_type TEXT NOT NULL,
+        local_id TEXT NOT NULL,
+        cloud_id TEXT,
+        status TEXT NOT NULL,
+        error_message TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        UNIQUE (account_id, entity_type, local_id),
+        FOREIGN KEY (run_id) REFERENCES migration_runs(id)
+      );
+
+      CREATE INDEX IF NOT EXISTS migration_entity_mappings_run_idx
+      ON migration_entity_mappings (run_id, entity_type);
+
+      CREATE INDEX IF NOT EXISTS migration_entity_mappings_account_status_idx
+      ON migration_entity_mappings (account_id, status);
+  `);
+
+  if (!(await columnExists(db, "vehicles", "initial_odometer"))) {
+    await db.execAsync(`
         ALTER TABLE vehicles
         ADD COLUMN initial_odometer INTEGER NOT NULL DEFAULT 0;
 
@@ -197,39 +244,39 @@ export const getGuestDatabase = async () => {
         SET initial_odometer = current_odometer
         WHERE initial_odometer = 0;
       `);
-    }
+  }
 
-    if (
-      !(await columnExists(
-        db,
-        "maintenance_reminders",
-        "scheduled_notification_id",
-      ))
-    ) {
-      await db.execAsync(`
+  if (
+    !(await columnExists(
+      db,
+      "maintenance_reminders",
+      "scheduled_notification_id",
+    ))
+  ) {
+    await db.execAsync(`
         ALTER TABLE maintenance_reminders
         ADD COLUMN scheduled_notification_id TEXT;
       `);
-    }
+  }
 
-    if (!(await columnExists(db, "service_records", "vendor_name"))) {
-      await db.execAsync(`
+  if (!(await columnExists(db, "service_records", "vendor_name"))) {
+    await db.execAsync(`
         ALTER TABLE service_records
         ADD COLUMN vendor_name TEXT;
       `);
-    }
+  }
 
-    if (!(await columnExists(db, "repair_records", "vendor_name"))) {
-      await db.execAsync(`
+  if (!(await columnExists(db, "repair_records", "vendor_name"))) {
+    await db.execAsync(`
         ALTER TABLE repair_records
         ADD COLUMN vendor_name TEXT;
       `);
-    }
+  }
 
-    const now = new Date().toISOString();
+  const now = new Date().toISOString();
 
-    await db.runAsync(
-      `INSERT OR IGNORE INTO notification_settings (
+  await db.runAsync(
+    `INSERT OR IGNORE INTO notification_settings (
         id,
         reminder_notifications_enabled,
         days_before_due_date,
@@ -243,12 +290,9 @@ export const getGuestDatabase = async () => {
       500,
       now,
       now,
-    );
+  );
 
-    initialized = true;
-  }
-
-  return db;
+  initialized = true;
 };
 
 export const createLocalId = (prefix: string) =>

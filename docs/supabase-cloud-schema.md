@@ -19,6 +19,15 @@ Run these files in order in the Supabase dashboard SQL editor:
 2. `packages/db/sql/002_cloud_data_schema_rls.sql`
 3. `packages/db/sql/003_record_attachments_storage_rls.sql`
 
+Before enabling actual guest-to-account upload migration, review/run this
+read-only verification query:
+
+4. `packages/db/sql/004_verify_local_id_unique_constraints.sql`
+
+It confirms the cloud tables have the `user_id + local_id` unique constraints
+that future migration relies on to avoid duplicate rows. It does not change
+schema, does not weaken RLS, and does not migrate data.
+
 The second file creates:
 
 - `public.vehicles`

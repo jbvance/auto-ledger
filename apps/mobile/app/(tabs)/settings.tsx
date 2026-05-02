@@ -15,7 +15,12 @@ import {
   rescheduleActiveReminderNotifications,
 } from "../../lib/maintenanceReminders";
 import { useAuth } from "../../lib/auth";
-import { hasAnyLocalGuestData } from "../../lib/localGuestData";
+import {
+  getGuestMigrationSummary,
+  getOrCreateInitialMigrationRun,
+  type GuestMigrationSummary,
+  type MigrationRun,
+} from "../../lib/guestMigration";
 import {
   getReminderNotificationSettings,
   updateReminderNotificationSettings,
@@ -57,9 +62,11 @@ export default function SettingsScreen() {
   } = useAuth();
   const [accountFeedback, setAccountFeedback] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
-  const [hasLocalGuestRecords, setHasLocalGuestRecords] = useState(false);
+  const [guestMigrationSummary, setGuestMigrationSummary] =
+    useState<GuestMigrationSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [migrationRun, setMigrationRun] = useState<MigrationRun | null>(null);
   const [permissionState, setPermissionState] =
     useState<LocalNotificationPermissionState>(emptyPermissionState);
   const [settings, setSettings] = useState<ReminderNotificationSettings | null>(
@@ -70,18 +77,25 @@ export default function SettingsScreen() {
 
   const loadSettings = useCallback(async () => {
     setIsLoading(true);
-    const [nextSettings, nextPermissionState, nextHasLocalGuestRecords] =
+    const accountId = user?.id ?? null;
+    const [nextSettings, nextPermissionState, nextMigrationSummary] =
       await Promise.all([
         getReminderNotificationSettings(),
         getLocalNotificationPermissionState(),
-        hasAnyLocalGuestData(),
+        getGuestMigrationSummary(accountId),
       ]);
 
+    const nextMigrationRun =
+      accountId && nextMigrationSummary.hasGuestData
+        ? await getOrCreateInitialMigrationRun(accountId)
+        : null;
+
     setSettings(nextSettings);
-    setHasLocalGuestRecords(nextHasLocalGuestRecords);
+    setGuestMigrationSummary(nextMigrationSummary);
+    setMigrationRun(nextMigrationRun);
     setPermissionState(nextPermissionState);
     setIsLoading(false);
-  }, []);
+  }, [user?.id]);
 
   useFocusEffect(
     useCallback(() => {
@@ -245,12 +259,12 @@ export default function SettingsScreen() {
                   are coming soon.
                 </Text>
               </View>
-              {hasLocalGuestRecords ? (
+              {guestMigrationSummary?.hasGuestData ? (
                 <View className="rounded-card border border-ledger-line bg-ledger-background p-3">
                   <Text className="text-sm leading-5 text-ledger-muted">
-                    Cloud sync for existing local records is coming soon. New
-                    cloud vehicles, odometer readings, service records, and
-                    repair records, and reminders will be saved to your account.
+                    Local records are still on this device. Migration is not
+                    active yet; a future migration tool will let you review and
+                    upload them without deleting local data.
                   </Text>
                 </View>
               ) : null}
@@ -310,6 +324,71 @@ export default function SettingsScreen() {
             </View>
           ) : null}
         </View>
+
+        {user && guestMigrationSummary?.hasGuestData ? (
+          <View className="gap-4 rounded-card border border-ledger-line bg-ledger-surface p-4">
+            <View className="gap-1">
+              <Text className="text-lg font-bold text-ledger-ink">
+                Local Data / Migration Readiness
+              </Text>
+              <Text className="text-sm leading-5 text-ledger-muted">
+                Local records found on this device. Migration is not enabled
+                yet, and no guest data has been uploaded to your account.
+              </Text>
+            </View>
+
+            <SettingsRow label="Status" value="Migration not enabled yet" />
+            <SettingsRow
+              label="Readiness"
+              value={migrationRun ? "Not started" : "Ready to review later"}
+            />
+            <SettingsRow
+              label="Vehicles"
+              value={`${guestMigrationSummary.counts.activeVehicles} active, ${guestMigrationSummary.counts.archivedVehicles} archived`}
+            />
+            <SettingsRow
+              label="Odometer entries"
+              value={`${guestMigrationSummary.counts.odometerEntries}`}
+            />
+            <SettingsRow
+              label="Service records"
+              value={`${guestMigrationSummary.counts.serviceRecords}`}
+            />
+            <SettingsRow
+              label="Repair records"
+              value={`${guestMigrationSummary.counts.repairRecords}`}
+            />
+            <SettingsRow
+              label="Reminders"
+              value={`${guestMigrationSummary.counts.maintenanceReminders} total, ${guestMigrationSummary.counts.completedReminders} completed`}
+            />
+            <SettingsRow
+              label="Attachments"
+              value={`${guestMigrationSummary.counts.attachments}`}
+            />
+
+            {guestMigrationSummary.warnings.map((warning) => (
+              <View
+                className="rounded-card border border-ledger-line bg-ledger-background p-3"
+                key={warning.code}
+              >
+                <Text className="text-sm leading-5 text-ledger-muted">
+                  {warning.message}
+                </Text>
+              </View>
+            ))}
+
+            <Pressable
+              accessibilityRole="button"
+              className="rounded-card border border-ledger-line bg-ledger-background px-4 py-3 opacity-60"
+              disabled
+            >
+              <Text className="text-center text-base font-bold text-ledger-muted">
+                Migration coming soon
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         <View className="gap-4 rounded-card border border-ledger-line bg-ledger-surface p-4">
           <View className="flex-row items-start justify-between gap-4">
