@@ -13,24 +13,47 @@ import {
   defaultOdometerEntryFormValues,
   OdometerEntryForm,
 } from "../../../../components/OdometerEntryForm";
+import { createCloudOdometerEntry } from "../../../../lib/cloudOdometerEntries";
+import { getCloudVehicle } from "../../../../lib/cloudVehicles";
+import { useAuth } from "../../../../lib/auth";
 import { createOdometerEntry } from "../../../../lib/odometerEntries";
 import { getVehicle } from "../../../../lib/vehicles";
 
 export default function AddOdometerEntryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { isLoading: isAuthLoading, user } = useAuth();
+  const isCloudMode = Boolean(user);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const loadVehicle = useCallback(async () => {
-    if (!id) {
+    if (!id || isAuthLoading) {
       return;
     }
 
     setIsLoading(true);
-    const nextVehicle = await getVehicle(id);
-    setVehicle(nextVehicle);
-    setIsLoading(false);
-  }, [id]);
+    setLoadError(null);
+
+    try {
+      const nextVehicle = isCloudMode
+        ? await getCloudVehicle(id)
+        : await getVehicle(id);
+
+      setVehicle(nextVehicle);
+    } catch (error: unknown) {
+      setLoadError(
+        isCloudMode
+          ? error instanceof Error
+            ? error.message
+            : "Unable to load this cloud vehicle. Please try again."
+          : "Unable to load this local vehicle. Please try again.",
+      );
+      setVehicle(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [id, isAuthLoading, isCloudMode]);
 
   useFocusEffect(
     useCallback(() => {
@@ -43,11 +66,16 @@ export default function AddOdometerEntryScreen() {
       return;
     }
 
-    await createOdometerEntry(input);
+    if (isCloudMode) {
+      await createCloudOdometerEntry(input);
+    } else {
+      await createOdometerEntry(input);
+    }
+
     router.replace(`/vehicles/${vehicle.id}` as Href);
   };
 
-  if (isLoading) {
+  if (isLoading || isAuthLoading) {
     return (
       <SafeAreaView className="flex-1 bg-ledger-background">
         <View className="flex-1 items-center justify-center">
@@ -65,7 +93,10 @@ export default function AddOdometerEntryScreen() {
             Vehicle not found
           </Text>
           <Text className="text-base leading-6 text-ledger-muted">
-            This vehicle may have been archived or removed from local storage.
+            {loadError ??
+              (isCloudMode
+                ? "This cloud vehicle may have been archived or is not available for this account."
+                : "This vehicle may have been archived or removed from local storage.")}
           </Text>
         </View>
       </SafeAreaView>
@@ -76,7 +107,11 @@ export default function AddOdometerEntryScreen() {
     <SafeAreaView className="flex-1 bg-ledger-background">
       <OdometerEntryForm
         defaultValues={defaultOdometerEntryFormValues(vehicle)}
-        description="Log a local mileage reading for this vehicle. Higher readings update the vehicle's current odometer."
+        description={
+          isCloudMode
+            ? "Log a cloud mileage reading for this account-saved vehicle. Higher readings update the cloud vehicle's current odometer."
+            : "Log a local mileage reading for this vehicle. Higher readings update the vehicle's current odometer."
+        }
         onSubmit={saveEntry}
         submitLabel="Save Reading"
         title="Add reading"

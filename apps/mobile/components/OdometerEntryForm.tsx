@@ -183,9 +183,11 @@ export function OdometerEntryForm({
           className="rounded-card bg-ledger-primary px-4 py-4"
           disabled={isSubmitting}
           onPress={() => {
-            void submitForm().catch(() => {
+            void submitForm().catch((error: unknown) => {
               setSubmitError(
-                "Unable to save this odometer entry. Please try again.",
+                error instanceof Error
+                  ? error.message
+                  : "Unable to save this odometer entry. Please try again.",
               );
             });
           }}

@@ -14,7 +14,7 @@ import { useAuth } from "../../lib/auth";
 import { hasAnyLocalGuestData } from "../../lib/localGuestData";
 
 const localDataMessage =
-  "Cloud sync for existing local records is coming soon. New cloud records will be saved to your account.";
+  "Cloud sync for existing local records is coming soon. New cloud vehicles and odometer readings will be saved to your account.";
 
 export default function SignInScreen() {
   const { isConfigured, isLoading, signIn, user } = useAuth();
@@ -38,7 +38,7 @@ export default function SignInScreen() {
     setFeedback(
       (await hasAnyLocalGuestData())
         ? localDataMessage
-        : "Signed in. New vehicles will be saved to your account.",
+        : "Signed in. New vehicles and odometer readings will be saved to your account.",
     );
     setIsSubmitting(false);
   };
@@ -65,7 +65,7 @@ export default function SignInScreen() {
           </Text>
           <Text className="text-base leading-6 text-ledger-muted">
             Keep using AutoLedger in guest mode, or sign in to save new vehicle
-            records to your account.
+            and odometer records to your account.
           </Text>
         </View>
 
@@ -78,7 +78,7 @@ export default function SignInScreen() {
             </Text>
             <Text className="text-sm leading-5 text-ledger-muted">
               {user.email ?? "This account"} is signed in on this device. New
-              vehicle records save to your account.
+              vehicle and odometer records save to your account.
             </Text>
             <Pressable
               accessibilityRole="button"

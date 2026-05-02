@@ -10,19 +10,20 @@ import {
   type Href,
 } from "expo-router";
 import { useCallback, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   odometerEntryToFormValues,
   OdometerEntryForm,
 } from "../../../../../components/OdometerEntryForm";
+import {
+  deleteCloudOdometerEntry,
+  getCloudOdometerEntry,
+  updateCloudOdometerEntry,
+} from "../../../../../lib/cloudOdometerEntries";
+import { getCloudVehicle } from "../../../../../lib/cloudVehicles";
+import { useAuth } from "../../../../../lib/auth";
 import {
   deleteOdometerEntry,
   getOdometerEntry,
@@ -35,25 +36,47 @@ export default function EditOdometerEntryScreen() {
     entryId: string;
     id: string;
   }>();
+  const { isLoading: isAuthLoading, user } = useAuth();
+  const isCloudMode = Boolean(user);
   const [entry, setEntry] = useState<OdometerEntry | null>(null);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadEntry = useCallback(async () => {
-    if (!entryId || !id) {
+    if (!entryId || !id || isAuthLoading) {
       return;
     }
 
     setIsLoading(true);
-    const [nextVehicle, nextEntry] = await Promise.all([
-      getVehicle(id),
-      getOdometerEntry(entryId),
-    ]);
-    setVehicle(nextVehicle);
-    setEntry(nextEntry);
-    setIsLoading(false);
-  }, [entryId, id]);
+    setLoadError(null);
+
+    try {
+      const [nextVehicle, nextEntry] = await Promise.all([
+        isCloudMode ? getCloudVehicle(id) : getVehicle(id),
+        isCloudMode
+          ? getCloudOdometerEntry(entryId)
+          : getOdometerEntry(entryId),
+      ]);
+
+      setVehicle(nextVehicle);
+      setEntry(nextEntry);
+    } catch (error: unknown) {
+      setLoadError(
+        isCloudMode
+          ? error instanceof Error
+            ? error.message
+            : "Unable to load this cloud odometer entry. Please try again."
+          : "Unable to load this local odometer entry. Please try again.",
+      );
+      setVehicle(null);
+      setEntry(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [entryId, id, isAuthLoading, isCloudMode]);
 
   useFocusEffect(
     useCallback(() => {
@@ -66,7 +89,12 @@ export default function EditOdometerEntryScreen() {
       return;
     }
 
-    await updateOdometerEntry(entry.id, input);
+    if (isCloudMode) {
+      await updateCloudOdometerEntry(entry.id, input);
+    } else {
+      await updateOdometerEntry(entry.id, input);
+    }
+
     router.replace(`/vehicles/${vehicle.id}` as Href);
   };
 
@@ -77,7 +105,9 @@ export default function EditOdometerEntryScreen() {
 
     Alert.alert(
       "Delete odometer entry?",
-      "This local reading will be removed and the vehicle odometer will be recalculated.",
+      isCloudMode
+        ? "This cloud reading will be removed and the vehicle odometer will be recalculated."
+        : "This local reading will be removed and the vehicle odometer will be recalculated.",
       [
         {
           text: "Cancel",
@@ -100,12 +130,30 @@ export default function EditOdometerEntryScreen() {
     }
 
     setIsDeleting(true);
-    await deleteOdometerEntry(entry.id);
-    setIsDeleting(false);
-    router.replace(`/vehicles/${vehicle.id}` as Href);
+    setActionError(null);
+
+    try {
+      if (isCloudMode) {
+        await deleteCloudOdometerEntry(entry.id);
+      } else {
+        await deleteOdometerEntry(entry.id);
+      }
+
+      router.replace(`/vehicles/${vehicle.id}` as Href);
+    } catch (error: unknown) {
+      setActionError(
+        isCloudMode
+          ? error instanceof Error
+            ? error.message
+            : "Unable to delete this cloud odometer entry. Please try again."
+          : "Unable to delete this local odometer entry. Please try again.",
+      );
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
-  if (isLoading) {
+  if (isLoading || isAuthLoading) {
     return (
       <SafeAreaView className="flex-1 bg-ledger-background">
         <View className="flex-1 items-center justify-center">
@@ -123,7 +171,10 @@ export default function EditOdometerEntryScreen() {
             Reading not found
           </Text>
           <Text className="text-base leading-6 text-ledger-muted">
-            This odometer entry may have been deleted.
+            {loadError ??
+              (isCloudMode
+                ? "This cloud odometer entry may have been deleted or is not available for this account."
+                : "This odometer entry may have been deleted.")}
           </Text>
         </View>
       </SafeAreaView>
@@ -134,13 +185,24 @@ export default function EditOdometerEntryScreen() {
     <SafeAreaView className="flex-1 bg-ledger-background">
       <OdometerEntryForm
         defaultValues={odometerEntryToFormValues(entry)}
-        description="Update this local odometer reading. The vehicle's current odometer will be recalculated after saving."
+        description={
+          isCloudMode
+            ? "Update this cloud odometer reading. The cloud vehicle's current odometer will be recalculated after saving."
+            : "Update this local odometer reading. The vehicle's current odometer will be recalculated after saving."
+        }
         onSubmit={saveEntry}
         submitLabel="Save Changes"
         title="Edit reading"
         vehicle={vehicle}
       />
       <View className="px-6 pb-6">
+        {actionError ? (
+          <View className="mb-3 rounded-card border border-red-200 bg-ledger-surface p-3">
+            <Text className="text-sm leading-5 text-ledger-muted">
+              {actionError}
+            </Text>
+          </View>
+        ) : null}
         <Pressable
           accessibilityRole="button"
           className="rounded-card border border-red-200 bg-ledger-surface px-4 py-3"

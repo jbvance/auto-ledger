@@ -36,6 +36,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { archiveCloudVehicle, getCloudVehicle } from "../../lib/cloudVehicles";
+import { listCloudOdometerEntries } from "../../lib/cloudOdometerEntries";
 import { useAuth } from "../../lib/auth";
 import { listOdometerEntries } from "../../lib/odometerEntries";
 import { listMaintenanceReminders } from "../../lib/maintenanceReminders";
@@ -69,8 +70,13 @@ export default function VehicleDetailScreen() {
 
     try {
       if (isCloudMode) {
-        setVehicle(await getCloudVehicle(id));
-        setOdometerEntries([]);
+        const [nextVehicle, nextOdometerEntries] = await Promise.all([
+          getCloudVehicle(id),
+          listCloudOdometerEntries(id),
+        ]);
+
+        setVehicle(nextVehicle);
+        setOdometerEntries(nextOdometerEntries);
         setServiceRecords([]);
         setRepairRecords([]);
         setMaintenanceReminders([]);
@@ -95,10 +101,12 @@ export default function VehicleDetailScreen() {
       setServiceRecords(nextServiceRecords);
       setRepairRecords(nextRepairRecords);
       setMaintenanceReminders(nextMaintenanceReminders);
-    } catch {
+    } catch (error: unknown) {
       setLoadError(
         isCloudMode
-          ? "Unable to load this cloud vehicle. Please check your connection and try again."
+          ? error instanceof Error
+            ? error.message
+            : "Unable to load this cloud vehicle. Please check your connection and try again."
           : "Unable to load this local vehicle. Please try again.",
       );
     } finally {
@@ -302,25 +310,22 @@ export default function VehicleDetailScreen() {
           <DetailRow label="Notes" value={vehicle.notes} />
         </View>
 
-        {isCloudMode ? (
-          <CloudVehicleRecordsNotice />
-        ) : (
-          <>
-            <View className="gap-3 rounded-card border border-ledger-line bg-ledger-surface p-4">
-              <Text className="text-lg font-bold text-ledger-ink">
-                Log records
-              </Text>
-              <Text className="text-sm leading-5 text-ledger-muted">
-                Add local readings, routine service, or non-routine repairs for
-                this vehicle.
-              </Text>
-              <View className="flex-row flex-wrap gap-2">
-                <RecordActionButton
-                  label="Odometer"
-                  onPress={() =>
-                    router.push(`/vehicles/${vehicle.id}/odometer/new` as Href)
-                  }
-                />
+        <View className="gap-3 rounded-card border border-ledger-line bg-ledger-surface p-4">
+          <Text className="text-lg font-bold text-ledger-ink">Log records</Text>
+          <Text className="text-sm leading-5 text-ledger-muted">
+            {isCloudMode
+              ? "Add cloud odometer readings for this account-saved vehicle. Service, repair, reminder, and attachment cloud sync are coming soon."
+              : "Add local readings, routine service, or non-routine repairs for this vehicle."}
+          </Text>
+          <View className="flex-row flex-wrap gap-2">
+            <RecordActionButton
+              label="Odometer"
+              onPress={() =>
+                router.push(`/vehicles/${vehicle.id}/odometer/new` as Href)
+              }
+            />
+            {isCloudMode ? null : (
+              <>
                 <RecordActionButton
                   label="Service"
                   onPress={() =>
@@ -333,42 +338,48 @@ export default function VehicleDetailScreen() {
                     router.push(`/vehicles/${vehicle.id}/repair/new` as Href)
                   }
                 />
-              </View>
-            </View>
+              </>
+            )}
+          </View>
+        </View>
 
-            <View className="gap-3 rounded-card border border-ledger-line bg-ledger-surface p-4">
-              <View className="gap-1">
-                <Text className="text-lg font-bold text-ledger-ink">
-                  History
-                </Text>
-                <Text className="text-sm leading-5 text-ledger-muted">
-                  Odometer entries, service records, and repair records appear
-                  here newest first.
-                </Text>
-              </View>
-              {historyItems.length === 0 ? (
-                <View className="gap-2 rounded-card border border-ledger-line bg-ledger-background p-4">
-                  <Text className="text-base font-bold text-ledger-ink">
-                    No history yet
-                  </Text>
-                  <Text className="text-sm leading-5 text-ledger-muted">
-                    Add an odometer reading, service record, or repair record to
-                    build this vehicle's local timeline.
-                  </Text>
-                </View>
-              ) : (
-                <View className="gap-3">
-                  {historyItems.map((item) => (
-                    <HistoryItemCard
-                      item={item}
-                      key={`${item.type}-${item.id}`}
-                      vehicle={vehicle}
-                    />
-                  ))}
-                </View>
-              )}
+        <View className="gap-3 rounded-card border border-ledger-line bg-ledger-surface p-4">
+          <View className="gap-1">
+            <Text className="text-lg font-bold text-ledger-ink">History</Text>
+            <Text className="text-sm leading-5 text-ledger-muted">
+              {isCloudMode
+                ? "Cloud odometer readings appear here newest first."
+                : "Odometer entries, service records, and repair records appear here newest first."}
+            </Text>
+          </View>
+          {historyItems.length === 0 ? (
+            <View className="gap-2 rounded-card border border-ledger-line bg-ledger-background p-4">
+              <Text className="text-base font-bold text-ledger-ink">
+                No history yet
+              </Text>
+              <Text className="text-sm leading-5 text-ledger-muted">
+                {isCloudMode
+                  ? "Add an odometer reading to build this vehicle's cloud mileage history."
+                  : "Add an odometer reading, service record, or repair record to build this vehicle's local timeline."}
+              </Text>
             </View>
+          ) : (
+            <View className="gap-3">
+              {historyItems.map((item) => (
+                <HistoryItemCard
+                  item={item}
+                  key={`${item.type}-${item.id}`}
+                  vehicle={vehicle}
+                />
+              ))}
+            </View>
+          )}
+        </View>
 
+        {isCloudMode ? (
+          <CloudVehicleRecordsNotice />
+        ) : (
+          <>
             <View className="gap-3 rounded-card border border-ledger-line bg-ledger-surface p-4">
               <View className="flex-row items-start justify-between gap-3">
                 <View className="flex-1 gap-1">
@@ -442,7 +453,7 @@ export default function VehicleDetailScreen() {
           </Text>
           <Text className="text-sm leading-5 text-ledger-muted">
             {isCloudMode
-              ? "This vehicle is saved to your account through Supabase RLS. Other cloud record types are not implemented yet."
+              ? "This vehicle and its odometer readings are saved to your account through Supabase RLS. Other cloud record types are not implemented yet."
               : "This vehicle is saved locally on this device. Cloud backup and sync are not implemented yet."}
           </Text>
         </View>
@@ -455,11 +466,11 @@ function CloudVehicleRecordsNotice() {
   return (
     <View className="gap-3 rounded-card border border-ledger-line bg-ledger-surface p-4">
       <Text className="text-lg font-bold text-ledger-ink">
-        Records coming soon
+        Cloud record status
       </Text>
       <Text className="text-sm leading-5 text-ledger-muted">
-        This slice saves cloud vehicle details only. Cloud odometer entries,
-        service records, repair records, reminders, attachments, CSV export, and
+        Cloud odometer entries are available for this vehicle. Cloud service
+        records, repair records, reminders, attachments, CSV export, and
         guest-to-account migration are intentionally deferred.
       </Text>
     </View>

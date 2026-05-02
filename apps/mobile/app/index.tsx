@@ -29,6 +29,7 @@ import {
   listArchivedCloudVehicles,
   listCloudVehicles,
 } from "../lib/cloudVehicles";
+import { listCloudOdometerEntries } from "../lib/cloudOdometerEntries";
 import { useAuth } from "../lib/auth";
 import { hasAnyLocalGuestData } from "../lib/localGuestData";
 import { listAllActiveMaintenanceReminders } from "../lib/maintenanceReminders";
@@ -116,13 +117,23 @@ export default function HomeScreen() {
           console.warn("Unable to load archived cloud vehicle count.", error);
         }
 
-        const nextDashboardItems = nextVehicles.map((vehicle) => ({
-          historyItems: [],
-          odometerEntries: [],
-          repairRecords: [],
-          serviceRecords: [],
-          vehicle,
-        }));
+        const nextDashboardItems = await Promise.all(
+          nextVehicles.map(async (vehicle) => {
+            const odometerEntries = await listCloudOdometerEntries(vehicle.id);
+
+            return {
+              historyItems: buildVehicleHistoryItems({
+                odometerEntries,
+                repairRecords: [],
+                serviceRecords: [],
+              }),
+              odometerEntries,
+              repairRecords: [],
+              serviceRecords: [],
+              vehicle,
+            };
+          }),
+        );
 
         setDashboardItems(nextDashboardItems);
         setHasLocalGuestRecords(nextHasLocalGuestRecords);
@@ -131,7 +142,10 @@ export default function HomeScreen() {
         setCounts({
           archivedVehicles: archivedVehicleCount,
           reminders: 0,
-          odometerEntries: 0,
+          odometerEntries: nextDashboardItems.reduce(
+            (total, item) => total + item.odometerEntries.length,
+            0,
+          ),
           repairRecords: 0,
           serviceRecords: 0,
           vehicles: nextVehicles.length,
@@ -251,14 +265,14 @@ export default function HomeScreen() {
           </Text>
           <Text className="text-lg leading-7 text-ledger-muted">
             {storageMode === "cloud"
-              ? "New vehicle records are saved to your account. Full record sync is still coming soon."
+              ? "Vehicles and odometer readings are saved to your account. Full record sync is still coming soon."
               : "Your vehicle records stay local on this device. Cloud backup and sync remain optional later."}
           </Text>
           {storageMode === "cloud" && hasLocalGuestRecords ? (
             <View className="rounded-card border border-ledger-line bg-ledger-surface p-3">
               <Text className="text-sm leading-5 text-ledger-muted">
                 Cloud sync for existing local records is coming soon. New cloud
-                records will be saved to your account.
+                vehicles and odometer readings will be saved to your account.
               </Text>
             </View>
           ) : null}
@@ -515,7 +529,7 @@ function DashboardVehicleCard({
             ) : (
               <Text className="text-sm leading-5 text-ledger-muted">
                 {storageMode === "cloud"
-                  ? "Cloud odometer, service, repair, reminder, and attachment sync is coming soon."
+                  ? "No cloud odometer history yet. Add a reading from the vehicle detail screen."
                   : "No local history yet. Add a reading, service record, or repair record from the vehicle detail screen."}
               </Text>
             )}
@@ -540,11 +554,11 @@ function CloudRecordsNotice() {
   return (
     <View className="gap-2 rounded-card border border-ledger-line bg-ledger-surface p-4">
       <Text className="text-base font-bold text-ledger-ink">
-        Vehicle sync first
+        Cloud record status
       </Text>
       <Text className="text-sm leading-5 text-ledger-muted">
-        Account mode currently saves vehicle details only. Cloud odometer
-        entries, service records, repair records, reminders, attachments, CSV
+        Account mode currently saves vehicle details and cloud odometer entries.
+        Cloud service records, repair records, reminders, attachments, CSV
         export, and guest-to-account migration are intentionally deferred.
       </Text>
     </View>

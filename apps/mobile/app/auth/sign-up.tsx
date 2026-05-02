@@ -14,7 +14,7 @@ import { useAuth } from "../../lib/auth";
 import { hasAnyLocalGuestData } from "../../lib/localGuestData";
 
 const localDataMessage =
-  "Cloud sync for existing local records is coming soon. New cloud records will be saved to your account.";
+  "Cloud sync for existing local records is coming soon. New cloud vehicles and odometer readings will be saved to your account.";
 
 export default function SignUpScreen() {
   const { isConfigured, isLoading, signUp, user } = useAuth();
@@ -37,7 +37,7 @@ export default function SignUpScreen() {
 
     if (result.needsEmailConfirmation) {
       setFeedback(
-        "Check your email to confirm your account. New cloud vehicles will be available after sign-in.",
+        "Check your email to confirm your account. New cloud vehicles and odometer readings will be available after sign-in.",
       );
       setIsSubmitting(false);
       return;
@@ -46,7 +46,7 @@ export default function SignUpScreen() {
     setFeedback(
       (await hasAnyLocalGuestData())
         ? localDataMessage
-        : "Account created. New vehicles will be saved to your account.",
+        : "Account created. New vehicles and odometer readings will be saved to your account.",
     );
     setIsSubmitting(false);
   };
@@ -73,7 +73,8 @@ export default function SignUpScreen() {
           </Text>
           <Text className="text-base leading-6 text-ledger-muted">
             Accounts are optional. Your existing guest records stay local on
-            this device, and new vehicles can be saved to your account.
+            this device, and new vehicles and odometer readings can be saved to
+            your account.
           </Text>
         </View>
 
@@ -86,7 +87,7 @@ export default function SignUpScreen() {
             </Text>
             <Text className="text-sm leading-5 text-ledger-muted">
               {user.email ?? "This account"} is signed in on this device. New
-              vehicle records save to your account.
+              vehicle and odometer records save to your account.
             </Text>
             <Pressable
               accessibilityRole="button"
