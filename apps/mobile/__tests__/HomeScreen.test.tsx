@@ -1,6 +1,6 @@
 import { act, render, screen } from "@testing-library/react-native";
 
-import HomeScreen from "./index";
+import HomeScreen from "../app/index";
 
 jest.mock("expo-router", () => ({
   router: {
@@ -50,6 +50,10 @@ jest.mock("../lib/localGuestData", () => ({
 jest.mock("../lib/cloudVehicles", () => ({
   listArchivedCloudVehicles: jest.fn(async () => []),
   listCloudVehicles: jest.fn(async () => []),
+}));
+
+jest.mock("../lib/cloudMaintenanceReminders", () => ({
+  listAllActiveCloudMaintenanceReminders: jest.fn(async () => []),
 }));
 
 jest.mock("../lib/cloudOdometerEntries", () => ({

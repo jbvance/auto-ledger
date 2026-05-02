@@ -8,7 +8,6 @@ import {
   formatVehicleSubtitle,
   formatVehicleTitle,
   getMaintenanceReminderStatus,
-  maintenanceReminderStatusLabels,
   type MaintenanceReminder,
   odometerUnitLabels,
   type OdometerEntry,
@@ -35,7 +34,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { ReminderStatusPill } from "../../components/ReminderStatusPill";
 import { archiveCloudVehicle, getCloudVehicle } from "../../lib/cloudVehicles";
+import { listCloudMaintenanceReminders } from "../../lib/cloudMaintenanceReminders";
 import { listCloudOdometerEntries } from "../../lib/cloudOdometerEntries";
 import { listCloudRepairRecords } from "../../lib/cloudRepairRecords";
 import { listCloudServiceRecords } from "../../lib/cloudServiceRecords";
@@ -77,18 +78,20 @@ export default function VehicleDetailScreen() {
           nextOdometerEntries,
           nextServiceRecords,
           nextRepairRecords,
+          nextMaintenanceReminders,
         ] = await Promise.all([
           getCloudVehicle(id),
           listCloudOdometerEntries(id),
           listCloudServiceRecords(id),
           listCloudRepairRecords(id),
+          listCloudMaintenanceReminders(id),
         ]);
 
         setVehicle(nextVehicle);
         setOdometerEntries(nextOdometerEntries);
         setServiceRecords(nextServiceRecords);
         setRepairRecords(nextRepairRecords);
-        setMaintenanceReminders([]);
+        setMaintenanceReminders(nextMaintenanceReminders);
         return;
       }
 
@@ -323,7 +326,7 @@ export default function VehicleDetailScreen() {
           <Text className="text-lg font-bold text-ledger-ink">Log records</Text>
           <Text className="text-sm leading-5 text-ledger-muted">
             {isCloudMode
-              ? "Add cloud odometer readings, service records, or repair records for this account-saved vehicle. Reminder and attachment cloud sync are coming soon."
+              ? "Add cloud odometer readings, service records, repair records, or reminders for this account-saved vehicle. Attachment cloud sync is coming soon."
               : "Add local readings, routine service, or non-routine repairs for this vehicle."}
           </Text>
           <View className="flex-row flex-wrap gap-2">
@@ -381,76 +384,73 @@ export default function VehicleDetailScreen() {
           )}
         </View>
 
-        {isCloudMode ? (
-          <CloudVehicleRecordsNotice />
-        ) : (
-          <>
-            <View className="gap-3 rounded-card border border-ledger-line bg-ledger-surface p-4">
-              <View className="flex-row items-start justify-between gap-3">
-                <View className="flex-1 gap-1">
-                  <Text className="text-lg font-bold text-ledger-ink">
-                    Reminders
-                  </Text>
-                  <Text className="text-sm leading-5 text-ledger-muted">
-                    Date and mileage reminders stay local on this device.
-                  </Text>
-                </View>
-                <Pressable
-                  accessibilityRole="button"
-                  className="rounded-card bg-ledger-primary px-3 py-2"
-                  onPress={() =>
-                    router.push(`/vehicles/${vehicle.id}/reminders/new` as Href)
-                  }
-                >
-                  <Text className="text-sm font-bold text-white">Add</Text>
-                </Pressable>
-              </View>
-              {activeReminders.length === 0 &&
-              completedReminders.length === 0 ? (
-                <View className="gap-2 rounded-card border border-ledger-line bg-ledger-background p-4">
-                  <Text className="text-base font-bold text-ledger-ink">
-                    No reminders yet
-                  </Text>
-                  <Text className="text-sm leading-5 text-ledger-muted">
-                    Add a date, mileage, or date-or-mileage reminder for
-                    upcoming maintenance.
-                  </Text>
-                </View>
-              ) : (
-                <View className="gap-4">
-                  {activeReminders.length > 0 ? (
-                    <View className="gap-3">
-                      <Text className="text-xs font-bold uppercase text-ledger-muted">
-                        Active
-                      </Text>
-                      {activeReminders.map((reminder) => (
-                        <ReminderCard
-                          key={reminder.id}
-                          reminder={reminder}
-                          vehicle={vehicle}
-                        />
-                      ))}
-                    </View>
-                  ) : null}
-                  {completedReminders.length > 0 ? (
-                    <View className="gap-3">
-                      <Text className="text-xs font-bold uppercase text-ledger-muted">
-                        Completed
-                      </Text>
-                      {completedReminders.map((reminder) => (
-                        <ReminderCard
-                          key={reminder.id}
-                          reminder={reminder}
-                          vehicle={vehicle}
-                        />
-                      ))}
-                    </View>
-                  ) : null}
-                </View>
-              )}
+        <View className="gap-3 rounded-card border border-ledger-line bg-ledger-surface p-4">
+          <View className="flex-row items-start justify-between gap-3">
+            <View className="flex-1 gap-1">
+              <Text className="text-lg font-bold text-ledger-ink">
+                Reminders
+              </Text>
+              <Text className="text-sm leading-5 text-ledger-muted">
+                {isCloudMode
+                  ? "Date and mileage reminders are saved to your account for this cloud vehicle. Cloud push notifications are not implemented yet."
+                  : "Date and mileage reminders stay local on this device."}
+              </Text>
             </View>
-          </>
-        )}
+            <Pressable
+              accessibilityRole="button"
+              className="rounded-card bg-ledger-primary px-3 py-2"
+              onPress={() =>
+                router.push(`/vehicles/${vehicle.id}/reminders/new` as Href)
+              }
+            >
+              <Text className="text-sm font-bold text-white">Add</Text>
+            </Pressable>
+          </View>
+          {activeReminders.length === 0 && completedReminders.length === 0 ? (
+            <View className="gap-2 rounded-card border border-ledger-line bg-ledger-background p-4">
+              <Text className="text-base font-bold text-ledger-ink">
+                No reminders yet
+              </Text>
+              <Text className="text-sm leading-5 text-ledger-muted">
+                Add a date, mileage, or date-or-mileage reminder for upcoming
+                maintenance.
+              </Text>
+            </View>
+          ) : (
+            <View className="gap-4">
+              {activeReminders.length > 0 ? (
+                <View className="gap-3">
+                  <Text className="text-xs font-bold uppercase text-ledger-muted">
+                    Active
+                  </Text>
+                  {activeReminders.map((reminder) => (
+                    <ReminderCard
+                      key={reminder.id}
+                      reminder={reminder}
+                      vehicle={vehicle}
+                    />
+                  ))}
+                </View>
+              ) : null}
+              {completedReminders.length > 0 ? (
+                <View className="gap-3">
+                  <Text className="text-xs font-bold uppercase text-ledger-muted">
+                    Completed
+                  </Text>
+                  {completedReminders.map((reminder) => (
+                    <ReminderCard
+                      key={reminder.id}
+                      reminder={reminder}
+                      vehicle={vehicle}
+                    />
+                  ))}
+                </View>
+              ) : null}
+            </View>
+          )}
+        </View>
+
+        {isCloudMode ? <CloudVehicleRecordsNotice /> : null}
 
         <View className="gap-3 rounded-card border border-ledger-line bg-ledger-surface p-4">
           <Text className="text-base font-bold text-ledger-ink">
@@ -458,7 +458,7 @@ export default function VehicleDetailScreen() {
           </Text>
           <Text className="text-sm leading-5 text-ledger-muted">
             {isCloudMode
-              ? "This vehicle, its odometer readings, service records, and repair records are saved to your account through Supabase RLS. Other cloud record types are not implemented yet."
+              ? "This vehicle, its odometer readings, service records, repair records, and reminders are saved to your account through Supabase RLS. Cloud attachments and CSV export are not implemented yet."
               : "This vehicle is saved locally on this device. Cloud backup and sync are not implemented yet."}
           </Text>
         </View>
@@ -474,9 +474,10 @@ function CloudVehicleRecordsNotice() {
         Cloud record status
       </Text>
       <Text className="text-sm leading-5 text-ledger-muted">
-        Cloud odometer entries, service records, and repair records are
-        available for this vehicle. Cloud reminders, attachments, CSV export, and
-        guest-to-account migration are intentionally deferred.
+        Cloud odometer entries, service records, repair records, and reminders
+        are available for this vehicle. Cloud attachments, CSV export, push
+        notifications, and guest-to-account migration are intentionally
+        deferred.
       </Text>
     </View>
   );
@@ -511,11 +512,7 @@ function ReminderCard({
             {reminder.title}
           </Text>
         </View>
-        <View className="rounded-card bg-ledger-surface px-2 py-1">
-          <Text className="text-xs font-bold uppercase text-ledger-muted">
-            {maintenanceReminderStatusLabels[status]}
-          </Text>
-        </View>
+        <ReminderStatusPill status={status} />
       </View>
       <View className="flex-row flex-wrap gap-2">
         {reminder.due_date ? (

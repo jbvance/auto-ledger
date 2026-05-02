@@ -28,7 +28,7 @@ export default function AddVehicleScreen() {
         defaultValues={emptyVehicleFormValues}
         description={
           isCloudMode
-            ? "This vehicle will be saved to your account. Cloud odometer readings, service records, and repair records are available; reminder and attachment cloud sync are coming soon."
+            ? "This vehicle will be saved to your account. Cloud odometer readings, service records, repair records, and reminders are available; attachment cloud sync is coming soon."
             : "These details stay on this device for now. You can add cloud sync later by creating an account."
         }
         eyebrow={isCloudMode ? "Cloud vehicle" : "Local guest record"}

@@ -3,7 +3,6 @@ import {
   formatOdometer,
   getMaintenanceReminderStatus,
   maintenanceReminderCategoryLabels,
-  maintenanceReminderStatusLabels,
   maintenanceReminderTypeLabels,
   type MaintenanceReminder,
   type Vehicle,
@@ -25,10 +24,17 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { ReminderStatusPill } from "../../../../components/ReminderStatusPill";
 import {
   completeMaintenanceReminder,
   getMaintenanceReminder,
 } from "../../../../lib/maintenanceReminders";
+import {
+  completeCloudMaintenanceReminder,
+  getCloudMaintenanceReminder,
+} from "../../../../lib/cloudMaintenanceReminders";
+import { getCloudVehicle } from "../../../../lib/cloudVehicles";
+import { useAuth } from "../../../../lib/auth";
 import { getVehicle } from "../../../../lib/vehicles";
 
 export default function MaintenanceReminderDetailScreen() {
@@ -36,25 +42,47 @@ export default function MaintenanceReminderDetailScreen() {
     id: string;
     reminderId: string;
   }>();
+  const { isLoading: isAuthLoading, user } = useAuth();
+  const isCloudMode = Boolean(user);
   const [reminder, setReminder] = useState<MaintenanceReminder | null>(null);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [isCompleting, setIsCompleting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadReminder = useCallback(async () => {
-    if (!id || !reminderId) {
+    if (!id || !reminderId || isAuthLoading) {
       return;
     }
 
     setIsLoading(true);
-    const [nextVehicle, nextReminder] = await Promise.all([
-      getVehicle(id),
-      getMaintenanceReminder(reminderId),
-    ]);
-    setVehicle(nextVehicle);
-    setReminder(nextReminder);
-    setIsLoading(false);
-  }, [id, reminderId]);
+    setLoadError(null);
+
+    try {
+      const [nextVehicle, nextReminder] = await Promise.all([
+        isCloudMode ? getCloudVehicle(id) : getVehicle(id),
+        isCloudMode
+          ? getCloudMaintenanceReminder(reminderId)
+          : getMaintenanceReminder(reminderId),
+      ]);
+
+      setVehicle(nextVehicle);
+      setReminder(nextReminder);
+    } catch (error: unknown) {
+      setLoadError(
+        isCloudMode
+          ? error instanceof Error
+            ? error.message
+            : "Unable to load this cloud reminder. Please try again."
+          : "Unable to load this local reminder. Please try again.",
+      );
+      setVehicle(null);
+      setReminder(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [id, isAuthLoading, isCloudMode, reminderId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -69,7 +97,9 @@ export default function MaintenanceReminderDetailScreen() {
 
     Alert.alert(
       "Complete reminder?",
-      "This reminder will be marked completed and kept in local history.",
+      isCloudMode
+        ? "This cloud reminder will be marked completed and kept in account history."
+        : "This reminder will be marked completed and kept in local history.",
       [
         {
           text: "Cancel",
@@ -91,12 +121,30 @@ export default function MaintenanceReminderDetailScreen() {
     }
 
     setIsCompleting(true);
-    await completeMaintenanceReminder(reminder.id);
-    setIsCompleting(false);
-    await loadReminder();
+    setActionError(null);
+
+    try {
+      if (isCloudMode) {
+        await completeCloudMaintenanceReminder(reminder.id);
+      } else {
+        await completeMaintenanceReminder(reminder.id);
+      }
+
+      await loadReminder();
+    } catch (error: unknown) {
+      setActionError(
+        isCloudMode
+          ? error instanceof Error
+            ? error.message
+            : "Unable to complete this cloud reminder. Please try again."
+          : "Unable to complete this local reminder. Please try again.",
+      );
+    } finally {
+      setIsCompleting(false);
+    }
   };
 
-  if (isLoading) {
+  if (isLoading || isAuthLoading) {
     return (
       <SafeAreaView className="flex-1 bg-ledger-background">
         <View className="flex-1 items-center justify-center">
@@ -114,7 +162,10 @@ export default function MaintenanceReminderDetailScreen() {
             Reminder not found
           </Text>
           <Text className="text-base leading-6 text-ledger-muted">
-            This local reminder may have been deleted.
+            {loadError ??
+              (isCloudMode
+                ? "This cloud reminder may have been deleted or is not available for this account."
+                : "This local reminder may have been deleted.")}
           </Text>
         </View>
       </SafeAreaView>
@@ -166,13 +217,17 @@ export default function MaintenanceReminderDetailScreen() {
               </Pressable>
             )}
           </View>
+          {actionError ? (
+            <View className="rounded-card border border-red-200 bg-ledger-surface p-3">
+              <Text className="text-sm leading-5 text-ledger-muted">
+                {actionError}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         <View className="gap-3 rounded-card border border-ledger-line bg-ledger-surface p-4">
-          <DetailRow
-            label="Status"
-            value={maintenanceReminderStatusLabels[status]}
-          />
+          <StatusDetailRow status={status} />
           <DetailRow
             label="Category"
             value={maintenanceReminderCategoryLabels[reminder.category]}
@@ -206,9 +261,11 @@ export default function MaintenanceReminderDetailScreen() {
           <DetailRow
             label="Notification"
             value={
-              reminder.scheduled_notification_id
-                ? "Scheduled locally"
-                : "Not scheduled"
+              isCloudMode
+                ? "Cloud notifications not implemented"
+                : reminder.scheduled_notification_id
+                  ? "Scheduled locally"
+                  : "Not scheduled"
             }
           />
         </View>
@@ -228,6 +285,23 @@ export default function MaintenanceReminderDetailScreen() {
         </View>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function StatusDetailRow({
+  status,
+}: {
+  status: ReturnType<typeof getMaintenanceReminderStatus>;
+}) {
+  return (
+    <View className="gap-2 border-b border-ledger-line pb-3">
+      <Text className="text-xs font-bold uppercase text-ledger-muted">
+        Status
+      </Text>
+      <View className="items-start">
+        <ReminderStatusPill status={status} />
+      </View>
+    </View>
   );
 }
 

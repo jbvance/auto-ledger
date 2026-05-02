@@ -186,6 +186,24 @@ describe("maintenanceReminderSchema", () => {
       }).due_odometer,
     ).toBe(30000);
   });
+
+  it("accepts cloud UUID vehicle ids and trims optional notes", () => {
+    const parsed = maintenanceReminderSchema.parse({
+      category: "registration",
+      due_date: "2026-06-01",
+      due_odometer: "",
+      notes: " Renew online ",
+      reminder_type: "date",
+      repeat_interval_miles: "",
+      repeat_interval_months: "12",
+      title: "Registration renewal",
+      vehicle_id: "65a2848e-6017-4a53-820d-88f46902785c",
+    });
+
+    expect(parsed.notes).toBe("Renew online");
+    expect(parsed.repeat_interval_months).toBe(12);
+    expect(parsed.vehicle_id).toBe("65a2848e-6017-4a53-820d-88f46902785c");
+  });
 });
 
 describe("recordAttachmentSchema", () => {

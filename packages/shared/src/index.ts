@@ -1,11 +1,11 @@
 export const appName = "AutoLedger";
 
 export const currentDevelopmentTrack = {
-  id: "local_guest_cloud_vehicle_odometer_service_repair_foundation",
+  id: "local_guest_cloud_vehicle_odometer_service_repair_reminder_foundation",
   label:
-    "Local guest MVP plus cloud vehicle, odometer, service, and repair foundation",
+    "Local guest MVP plus cloud vehicle, odometer, service, repair, and reminder foundation",
   description:
-    "Local guest MVP features, optional account auth foundation, cloud schema/RLS foundation, mobile cloud vehicle CRUD, mobile cloud odometer CRUD, mobile cloud service record CRUD, and mobile cloud repair record CRUD are complete; the next focused cloud slice is pending.",
+    "Local guest MVP features, optional account auth foundation, cloud schema/RLS foundation, mobile cloud vehicle CRUD, mobile cloud odometer CRUD, mobile cloud service record CRUD, mobile cloud repair record CRUD, and mobile cloud maintenance reminder CRUD are complete; the next focused cloud slice is pending.",
 } as const;
 
 export const vehicleTypeValues = [

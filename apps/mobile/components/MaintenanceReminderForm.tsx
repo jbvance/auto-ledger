@@ -82,6 +82,7 @@ export const maintenanceReminderToFormValues = (
 type MaintenanceReminderFormProps = {
   defaultValues: MaintenanceReminderFormValues;
   description: string;
+  notificationDescription?: string;
   onSubmit: (input: MaintenanceReminderInput) => Promise<void>;
   submitLabel: string;
   title: string;
@@ -91,6 +92,7 @@ type MaintenanceReminderFormProps = {
 export function MaintenanceReminderForm({
   defaultValues,
   description,
+  notificationDescription = "Local device notifications are optional. Date-based reminders can notify before the due date when reminder notifications are enabled in Settings.",
   onSubmit,
   submitLabel,
   title,
@@ -229,9 +231,7 @@ export function MaintenanceReminderForm({
             Notifications
           </Text>
           <Text className="text-sm leading-5 text-ledger-muted">
-            Local device notifications are optional. Date-based reminders can
-            notify before the due date when reminder notifications are enabled
-            in Settings.
+            {notificationDescription}
           </Text>
         </View>
 
@@ -246,8 +246,12 @@ export function MaintenanceReminderForm({
           className="rounded-card bg-ledger-primary px-4 py-4"
           disabled={isSubmitting}
           onPress={() => {
-            void submitForm().catch(() => {
-              setSubmitError("Unable to save this reminder. Please try again.");
+            void submitForm().catch((error: unknown) => {
+              setSubmitError(
+                error instanceof Error
+                  ? error.message
+                  : "Unable to save this reminder. Please try again.",
+              );
             });
           }}
         >

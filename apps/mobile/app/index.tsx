@@ -5,7 +5,6 @@ import {
   formatMaintenanceReminderCategory,
   formatOdometer,
   getMaintenanceReminderStatus,
-  maintenanceReminderStatusLabels,
   type MaintenanceReminder,
   type OdometerEntry,
   type RepairRecord,
@@ -24,11 +23,13 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { ReminderStatusPill } from "../components/ReminderStatusPill";
 import { VehicleSummaryCard } from "../components/VehicleSummaryCard";
 import {
   listArchivedCloudVehicles,
   listCloudVehicles,
 } from "../lib/cloudVehicles";
+import { listAllActiveCloudMaintenanceReminders } from "../lib/cloudMaintenanceReminders";
 import { listCloudOdometerEntries } from "../lib/cloudOdometerEntries";
 import { listCloudRepairRecords } from "../lib/cloudRepairRecords";
 import { listCloudServiceRecords } from "../lib/cloudServiceRecords";
@@ -107,8 +108,13 @@ export default function HomeScreen() {
 
     try {
       if (storageMode === "cloud") {
-        const [nextVehicles, nextHasLocalGuestRecords] = await Promise.all([
+        const [
+          nextVehicles,
+          nextActiveReminders,
+          nextHasLocalGuestRecords,
+        ] = await Promise.all([
           listCloudVehicles(),
+          listAllActiveCloudMaintenanceReminders(),
           hasAnyLocalGuestData(),
         ]);
         let archivedVehicleCount = 0;
@@ -160,14 +166,25 @@ export default function HomeScreen() {
             return second.created_at.localeCompare(first.created_at);
           })
           .slice(0, 5);
+        const vehicleById = Object.fromEntries(
+          nextVehicles.map((vehicle) => [vehicle.id, vehicle]),
+        );
+        const nextUpcomingReminders = nextActiveReminders
+          .map((reminder) => {
+            const vehicle = vehicleById[reminder.vehicle_id];
+
+            return vehicle ? { reminder, vehicle } : null;
+          })
+          .filter((item): item is DashboardReminderItem => item !== null)
+          .slice(0, 5);
 
         setDashboardItems(nextDashboardItems);
         setHasLocalGuestRecords(nextHasLocalGuestRecords);
         setRecentActivity(allRecentActivity);
-        setUpcomingReminders([]);
+        setUpcomingReminders(nextUpcomingReminders);
         setCounts({
           archivedVehicles: archivedVehicleCount,
-          reminders: 0,
+          reminders: nextActiveReminders.length,
           odometerEntries: nextDashboardItems.reduce(
             (total, item) => total + item.odometerEntries.length,
             0,
@@ -297,7 +314,7 @@ export default function HomeScreen() {
           </Text>
           <Text className="text-lg leading-7 text-ledger-muted">
             {storageMode === "cloud"
-              ? "Vehicles, odometer readings, service records, and repair records are saved to your account. Full record sync is still coming soon."
+              ? "Vehicles, odometer readings, service records, repair records, and reminders are saved to your account. Full record sync is still coming soon."
               : "Your vehicle records stay local on this device. Cloud backup and sync remain optional later."}
           </Text>
           {storageMode === "cloud" && hasLocalGuestRecords ? (
@@ -305,7 +322,7 @@ export default function HomeScreen() {
               <Text className="text-sm leading-5 text-ledger-muted">
                 Cloud sync for existing local records is coming soon. New cloud
                 vehicles, odometer readings, service records, and repair
-                records will be saved to your account.
+                records and reminders will be saved to your account.
               </Text>
             </View>
           ) : null}
@@ -378,7 +395,10 @@ export default function HomeScreen() {
             />
             {storageMode === "local" ? (
               <>
-                <UpcomingRemindersSection reminders={upcomingReminders} />
+                <UpcomingRemindersSection
+                  reminders={upcomingReminders}
+                  storageMode={storageMode}
+                />
                 <RecentActivitySection
                   recentActivity={recentActivity}
                   storageMode={storageMode}
@@ -386,6 +406,10 @@ export default function HomeScreen() {
               </>
             ) : (
               <>
+                <UpcomingRemindersSection
+                  reminders={upcomingReminders}
+                  storageMode={storageMode}
+                />
                 <RecentActivitySection
                   recentActivity={recentActivity}
                   storageMode={storageMode}
@@ -600,9 +624,9 @@ function CloudRecordsNotice() {
       </Text>
       <Text className="text-sm leading-5 text-ledger-muted">
         Account mode currently saves vehicle details, cloud odometer entries,
-        cloud service records, and cloud repair records. Cloud reminders,
-        attachments, CSV export, and guest-to-account migration are
-        intentionally deferred.
+        cloud service records, cloud repair records, and cloud reminders. Cloud
+        attachments, CSV export, push notifications, and guest-to-account
+        migration are intentionally deferred.
       </Text>
     </View>
   );
@@ -610,8 +634,10 @@ function CloudRecordsNotice() {
 
 function UpcomingRemindersSection({
   reminders,
+  storageMode,
 }: {
   reminders: DashboardReminderItem[];
+  storageMode: StorageMode;
 }) {
   return (
     <View className="gap-3 rounded-card border border-ledger-line bg-ledger-surface p-4">
@@ -620,8 +646,9 @@ function UpcomingRemindersSection({
           Upcoming Reminders
         </Text>
         <Text className="text-sm leading-5 text-ledger-muted">
-          The most urgent active date and mileage reminders across your local
-          vehicles.
+          {storageMode === "cloud"
+            ? "The most urgent active cloud reminders across your account vehicles."
+            : "The most urgent active date and mileage reminders across your local vehicles."}
         </Text>
       </View>
       {reminders.length === 0 ? (
@@ -669,11 +696,7 @@ function DashboardReminderCard({ item }: { item: DashboardReminderItem }) {
             {item.vehicle.nickname}
           </Text>
         </View>
-        <View className="rounded-card bg-ledger-surface px-2 py-1">
-          <Text className="text-xs font-bold uppercase text-ledger-muted">
-            {maintenanceReminderStatusLabels[status]}
-          </Text>
-        </View>
+        <ReminderStatusPill status={status} />
       </View>
       <View className="flex-row flex-wrap gap-2">
         {item.reminder.due_date ? (

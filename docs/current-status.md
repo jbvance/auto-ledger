@@ -13,7 +13,7 @@ Vitest package tests for shared domain and validation logic plus Jest Expo
 mobile tests for focused user-visible behavior. A lightweight Maestro mobile
 E2E smoke scaffold and `docs/testing.md` are also present.
 
-Current development track: Local guest MVP features, optional Supabase Auth foundation, Supabase cloud data schema/RLS foundation, mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD, mobile cloud service record CRUD, and mobile cloud repair record CRUD are complete; broader app-side cloud sync is next.
+Current development track: Local guest MVP features, optional Supabase Auth foundation, Supabase cloud data schema/RLS foundation, mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD, mobile cloud service record CRUD, mobile cloud repair record CRUD, and mobile cloud maintenance reminder CRUD are complete; broader app-side cloud sync is next.
 
 The app is still local guest-mode first. Users can manage vehicles, odometer entries, service records, repair records, reminders, local attachments, and local CSV export without creating an account.
 
@@ -21,7 +21,7 @@ Optional Supabase Auth foundation has been added for mobile and web. Users can c
 
 Supabase cloud data schema and Row Level Security foundation has been added as SQL. The schema covers vehicles, optional vendors, odometer entries, service records, repair records, maintenance reminders, and record attachment metadata.
 
-Mobile authenticated users can create, list, view, edit, archive, and restore cloud vehicle rows in Supabase. Authenticated users can also create, list, view, edit, and delete cloud odometer entries, cloud service records, and cloud repair records for cloud vehicles. The app does not read from or write to the other cloud record tables yet.
+Mobile authenticated users can create, list, view, edit, archive, and restore cloud vehicle rows in Supabase. Authenticated users can also create, list, view, edit, and delete cloud odometer entries, cloud service records, cloud repair records, and cloud maintenance reminders for cloud vehicles. The app does not read from or write to the other cloud record tables yet.
 
 Local device notification support has been added for maintenance reminders that have a due date. Notifications are optional, requested from Settings, and scheduled locally on the device only.
 
@@ -71,8 +71,10 @@ The mobile app currently supports local guest-mode:
 - Signed-in mobile users can add/list/edit/delete cloud odometer entries for cloud vehicles saved to Supabase
 - Signed-in mobile users can add/list/view/edit/delete cloud service records for cloud vehicles saved to Supabase
 - Signed-in mobile users can add/list/view/edit/delete cloud repair records for cloud vehicles saved to Supabase
+- Signed-in mobile users can add/list/view/edit/complete/delete cloud maintenance reminders for cloud vehicles saved to Supabase
 - Cloud vehicle current odometer is updated from cloud odometer entries, cloud service records, and cloud repair records without using local guest data
 - Signed-in mobile vehicle history and dashboard recent activity include cloud odometer entries, cloud service records, and cloud repair records
+- Signed-in mobile dashboard upcoming reminders include active cloud maintenance reminders for active cloud vehicles
 - Signed-in mobile users with existing local guest records see that cloud sync for those records is coming soon
 - Export local guest data to a combined CSV file from Settings
 - CSV export includes vehicles, odometer entries, service records, repair records, maintenance reminders, and attachment metadata
@@ -98,13 +100,14 @@ The mobile app currently supports local guest-mode:
 
 ## Current Cloud Limitations
 
-- Account creation is optional and currently unlocks cloud vehicle CRUD, cloud odometer entry CRUD, cloud service record CRUD, and cloud repair record CRUD only.
+- Account creation is optional and currently unlocks cloud vehicle CRUD, cloud odometer entry CRUD, cloud service record CRUD, cloud repair record CRUD, and cloud maintenance reminder CRUD only.
 - Local guest records are not uploaded after sign-in or sign-up.
 - Guest-to-account migration is not implemented.
-- Cloud vendor, reminder, and attachment metadata tables exist as SQL setup, but app-side cloud save/load is not implemented for those record types.
+- Cloud vendor and attachment metadata tables exist as SQL setup, but app-side cloud save/load is not implemented for those record types.
 - Cloud service records use simple `vendor_name` text for now; structured `vendor_id` support is still deferred.
 - Cloud repair records use simple `vendor_name` text for now; structured `vendor_id` support is still deferred.
 - Cloud vehicle `current_odometer` is saved on the vehicle row and is recalculated from cloud odometer entries, cloud service records, and cloud repair records after cloud odometer/service/repair edits/deletes. Local guest odometer, service, and repair records are not included in cloud odometer calculations.
+- Cloud maintenance reminder status is calculated in-app from the cloud reminder due fields and the cloud vehicle `current_odometer`.
 - Supabase Storage/cloud attachments are not implemented.
 - Web cloud vehicle CRUD is deferred; the web app remains an auth/dashboard placeholder.
 
@@ -119,7 +122,9 @@ After running `packages/db/sql/001_profiles_auth_foundation.sql` and `packages/d
 - Signed-in mobile user can create, reload, edit, and delete their own odometer entries in `public.odometer_entries`.
 - Signed-in mobile user can create, reload, view, edit, and delete their own service records in `public.service_records`.
 - Signed-in mobile user can create, reload, view, edit, and delete their own repair records in `public.repair_records`.
+- Signed-in mobile user can create, reload, view, edit, complete, and delete their own maintenance reminders in `public.maintenance_reminders`.
 - Signed-in mobile user's cloud vehicle `current_odometer` updates from their own cloud odometer entries, cloud service records, and cloud repair records and does not use local guest odometer/service/repair records.
+- Signed-in mobile user's cloud reminder status uses their own cloud vehicle `current_odometer` and does not use local guest vehicle data.
 - Signed-out mobile user continues to use local guest vehicle storage and cannot access cloud vehicles through the app.
 - A second signed-in user does not see or update the first user's vehicles. Do not add public read policies.
 
@@ -127,6 +132,7 @@ After running `packages/db/sql/001_profiles_auth_foundation.sql` and `packages/d
 
 - Reminder notifications are local device notifications only.
 - Cloud push notifications, Expo push tokens, and server-side notification delivery are not implemented.
+- Cloud maintenance reminders are saved to Supabase and work in-app, but they do not schedule local or cloud notifications in this slice.
 - Pure mileage reminders do not schedule notifications because AutoLedger does not track mileage in the background. Mileage reminder status remains in-app.
 - Date-or-mileage reminders can schedule a local notification only when they include a due date.
 - Expo Go on Android with SDK 53+ does not support remote push notifications, but local notifications remain available. AutoLedger does not request push tokens or register devices for push.
@@ -155,8 +161,8 @@ After running `packages/db/sql/001_profiles_auth_foundation.sql` and `packages/d
 
 Do not assume these exist yet:
 
-- Broader cloud record sync beyond vehicles, odometer entries, service records, and repair records
-- Cloud reminder/attachment sync
+- Broader cloud record sync beyond vehicles, odometer entries, service records, repair records, and maintenance reminders
+- Cloud attachment sync
 - Guest-to-account migration
 - Supabase Storage/cloud file attachments
 - Cloud push notifications

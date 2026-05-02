@@ -162,6 +162,27 @@ describe("reminder status", () => {
       }),
     ).toBe("due_soon");
   });
+
+  it("calculates status for cloud-synced reminder data using cloud odometer", () => {
+    const cloudReminder: MaintenanceReminder = {
+      ...reminderBase,
+      due_date: "2026-06-01",
+      due_odometer: 32000,
+      id: "7a42d8c9-f2b3-4aa8-b9a2-cc2f0165f9f1",
+      local_id: "cloud_rem_1",
+      reminder_type: "date_or_mileage",
+      sync_status: "synced",
+      vehicle_id: "65a2848e-6017-4a53-820d-88f46902785c",
+    };
+
+    expect(
+      getMaintenanceReminderStatus({
+        currentOdometer: 32000,
+        reminder: cloudReminder,
+        today: "2026-05-01",
+      }),
+    ).toBe("overdue");
+  });
 });
 
 describe("odometer recalculation helper", () => {

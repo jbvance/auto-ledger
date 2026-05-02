@@ -2,6 +2,16 @@ jest.mock("expo-sqlite", () => ({
   openDatabaseAsync: jest.fn(),
 }));
 
+jest.mock("@react-native-async-storage/async-storage", () => ({
+  __esModule: true,
+  default: {
+    clear: jest.fn(async () => null),
+    getItem: jest.fn(async () => null),
+    removeItem: jest.fn(async () => null),
+    setItem: jest.fn(async () => null),
+  },
+}));
+
 jest.mock("expo-file-system/legacy", () => ({
   EncodingType: {
     UTF8: "utf8",
