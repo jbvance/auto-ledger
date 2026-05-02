@@ -30,6 +30,8 @@ import {
   type Resolver,
 } from "react-hook-form";
 
+import { DatePickerField } from "./DatePickerField";
+
 export type VehicleFormValues = {
   nickname: string;
   make: string;
@@ -246,12 +248,13 @@ export function VehicleForm({
               value,
             }))}
           />
-          <VehicleTextField
+          <DatePickerField
             control={control}
             error={errors.purchase_date}
             label="Purchase Date"
             name="purchase_date"
-            placeholder="YYYY-MM-DD"
+            optional
+            placeholder="Optional"
           />
           <VehicleTextField
             control={control}

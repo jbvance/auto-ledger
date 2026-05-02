@@ -29,6 +29,8 @@ import {
   type Resolver,
 } from "react-hook-form";
 
+import { DatePickerField } from "./DatePickerField";
+
 export type RepairRecordFormValues = {
   vehicle_id: string;
   repair_date: string;
@@ -170,7 +172,7 @@ export function RepairRecordForm({
               value,
             }))}
           />
-          <RepairTextField
+          <DatePickerField
             control={control}
             error={errors.repair_date}
             label="Repair Date"
@@ -209,12 +211,13 @@ export function RepairRecordForm({
               </Text>
             </View>
           </View>
-          <RepairTextField
+          <DatePickerField
             control={control}
             error={errors.warranty_until_date}
             label="Warranty Until Date"
             name="warranty_until_date"
-            placeholder="YYYY-MM-DD"
+            optional
+            placeholder="Optional"
           />
           <RepairTextField
             control={control}

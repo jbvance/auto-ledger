@@ -29,6 +29,8 @@ import {
   type Resolver,
 } from "react-hook-form";
 
+import { DatePickerField } from "./DatePickerField";
+
 export type ServiceRecordFormValues = {
   vehicle_id: string;
   service_date: string;
@@ -164,7 +166,7 @@ export function ServiceRecordForm({
               value,
             }))}
           />
-          <ServiceTextField
+          <DatePickerField
             control={control}
             error={errors.service_date}
             label="Service Date"

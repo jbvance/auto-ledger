@@ -32,6 +32,8 @@ import {
   type Resolver,
 } from "react-hook-form";
 
+import { DatePickerField } from "./DatePickerField";
+
 export type MaintenanceReminderFormValues = {
   vehicle_id: string;
   title: string;
@@ -177,11 +179,12 @@ export function MaintenanceReminderForm({
             }))}
           />
           {reminderType === "mileage" ? null : (
-            <ReminderTextField
+            <DatePickerField
               control={control}
               error={errors.due_date}
               label="Due Date"
               name="due_date"
+              optional
               placeholder={today()}
             />
           )}
