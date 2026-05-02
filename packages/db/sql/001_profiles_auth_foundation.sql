@@ -75,3 +75,8 @@ create trigger on_auth_user_created_create_profile
   after insert on auth.users
   for each row
   execute function public.handle_new_user_profile();
+
+-- Table privileges are still required before RLS policies can evaluate rows.
+-- Do not grant profile access to anon.
+grant usage on schema public to authenticated;
+grant select, insert, update on table public.profiles to authenticated;

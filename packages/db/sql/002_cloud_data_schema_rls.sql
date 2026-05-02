@@ -661,3 +661,23 @@ create policy "Record attachments are deletable by owner"
   for delete
   to authenticated
   using ((select auth.uid()) = user_id);
+
+-- Table privileges are still required before RLS policies can evaluate rows.
+-- These grants allow signed-in clients to reach the tables; RLS above keeps
+-- every user scoped to their own rows. Do not grant these tables to anon.
+grant usage on schema public to authenticated;
+
+grant select, insert, update, delete on table public.vehicles
+  to authenticated;
+grant select, insert, update, delete on table public.vendors
+  to authenticated;
+grant select, insert, update, delete on table public.odometer_entries
+  to authenticated;
+grant select, insert, update, delete on table public.service_records
+  to authenticated;
+grant select, insert, update, delete on table public.repair_records
+  to authenticated;
+grant select, insert, update, delete on table public.maintenance_reminders
+  to authenticated;
+grant select, insert, update, delete on table public.record_attachments
+  to authenticated;

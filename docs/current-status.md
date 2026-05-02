@@ -8,13 +8,15 @@ The web app runs successfully on port 3000.
 
 The mobile app runs successfully through Expo and has been tested in Expo Go.
 
-Current development track: Local guest MVP features, optional Supabase Auth foundation, and Supabase cloud data schema/RLS foundation are complete; app-side cloud sync is next.
+Current development track: Local guest MVP features, optional Supabase Auth foundation, Supabase cloud data schema/RLS foundation, and mobile cloud vehicle CRUD are complete; broader app-side cloud sync is next.
 
 The app is still local guest-mode first. Users can manage vehicles, odometer entries, service records, repair records, reminders, local attachments, and local CSV export without creating an account.
 
 Optional Supabase Auth foundation has been added for mobile and web. Users can create an account, sign in, and sign out without forcing account creation or uploading local guest data.
 
-Supabase cloud data schema and Row Level Security foundation has been added as SQL. The schema covers vehicles, optional vendors, odometer entries, service records, repair records, maintenance reminders, and record attachment metadata. The app does not read from or write to these cloud tables yet.
+Supabase cloud data schema and Row Level Security foundation has been added as SQL. The schema covers vehicles, optional vendors, odometer entries, service records, repair records, maintenance reminders, and record attachment metadata.
+
+Mobile authenticated users can create, list, view, edit, archive, and restore cloud vehicle rows in Supabase. The app does not read from or write to the other cloud record tables yet.
 
 Local device notification support has been added for maintenance reminders that have a due date. Notifications are optional, requested from Settings, and scheduled locally on the device only.
 
@@ -60,7 +62,8 @@ The mobile app currently supports local guest-mode:
 - Local notification cancellation when reminders are completed, deleted, disabled, or rescheduled
 - Optional Supabase account sign-up/sign-in/sign-out from mobile Settings
 - Mobile account state persists through Supabase Auth storage
-- Signed-in mobile users see that cloud sync is coming soon and local records remain on-device
+- Signed-in mobile users can add/list/view/edit/archive/restore cloud vehicles saved to Supabase
+- Signed-in mobile users with existing local guest records see that cloud sync for those records is coming soon
 - Export local guest data to a combined CSV file from Settings
 - CSV export includes vehicles, odometer entries, service records, repair records, maintenance reminders, and attachment metadata
 
@@ -78,18 +81,31 @@ The mobile app currently supports local guest-mode:
 - Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` for the web app.
 - Use `apps/mobile/.env.example` and `apps/web/.env.example` as app-local templates when running app-specific dev commands.
 - Do not expose `SUPABASE_SERVICE_ROLE_KEY` to mobile or browser code.
-- Run `packages/db/sql/001_profiles_auth_foundation.sql` in the Supabase SQL editor to create the `public.profiles` table, profile trigger, and RLS policies.
-- Run `packages/db/sql/002_cloud_data_schema_rls.sql` in the Supabase SQL editor after the profiles SQL to create cloud data tables, indexes, triggers, relationships, and RLS policies.
+- Run `packages/db/sql/001_profiles_auth_foundation.sql` in the Supabase SQL editor to create the `public.profiles` table, profile trigger, authenticated table grants, and RLS policies.
+- Run `packages/db/sql/002_cloud_data_schema_rls.sql` in the Supabase SQL editor after the profiles SQL to create cloud data tables, indexes, triggers, relationships, authenticated table grants, and RLS policies.
+- If the mobile app shows a Supabase "permission denied" warning for vehicles, rerun `packages/db/sql/002_cloud_data_schema_rls.sql` so the authenticated table grants are applied.
 - See `docs/supabase-cloud-schema.md` for setup notes and simple SQL sanity checks.
 
-## Current Auth Limitations
+## Current Cloud Limitations
 
-- Supabase Auth and cloud data schema are foundation-only.
-- Account creation is optional and does not unlock cloud record sync yet.
+- Account creation is optional and currently unlocks cloud vehicle CRUD only.
 - Local guest records are not uploaded after sign-in or sign-up.
 - Guest-to-account migration is not implemented.
-- Cloud vehicle, vendor, odometer, service, repair, reminder, and attachment metadata tables exist as SQL setup, but app-side cloud save/load is not implemented.
+- Cloud vendor, odometer, service, repair, reminder, and attachment metadata tables exist as SQL setup, but app-side cloud save/load is not implemented for those record types.
+- Cloud vehicle `current_odometer` is saved directly on the vehicle row. Cloud odometer entries and cloud recalculation from records are not implemented yet.
 - Supabase Storage/cloud attachments are not implemented.
+- Web cloud vehicle CRUD is deferred; the web app remains an auth/dashboard placeholder.
+
+## Cloud Vehicle RLS Manual Verification
+
+After running `packages/db/sql/001_profiles_auth_foundation.sql` and `packages/db/sql/002_cloud_data_schema_rls.sql` in Supabase:
+
+- Confirm the SQL includes grants for the `authenticated` role; table privileges are required before RLS policies can evaluate owner rows.
+- Signed-in mobile user can create a vehicle from the app and see a row in `public.vehicles` with `user_id = auth.uid()`.
+- Signed-in mobile user can reload the app and read their own active vehicle from Supabase.
+- Signed-in mobile user can edit and archive their own vehicle, then restore it from Archived Vehicles.
+- Signed-out mobile user continues to use local guest vehicle storage and cannot access cloud vehicles through the app.
+- A second signed-in user does not see or update the first user's vehicles. Do not add public read policies.
 
 ## Current Reminder Notification Limitations
 
@@ -124,6 +140,7 @@ The mobile app currently supports local guest-mode:
 Do not assume these exist yet:
 
 - Cloud record sync
+- Cloud odometer/service/repair/reminder/attachment sync
 - Guest-to-account migration
 - Supabase Storage/cloud file attachments
 - Cloud push notifications
@@ -138,7 +155,7 @@ Do not assume these exist yet:
 
 ## Recommended Next Feature
 
-The next recommended feature track is app-side cloud sync foundation and guest-to-account migration design, while preserving guest mode as the default local experience.
+The next recommended feature track is guest-to-account migration design and the next focused cloud sync slice, while preserving guest mode as the default local experience.
 
 Good candidates:
 
