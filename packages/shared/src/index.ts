@@ -1,10 +1,10 @@
 export const appName = "AutoLedger";
 
 export const currentDevelopmentTrack = {
-  id: "local_guest_auth_foundation",
-  label: "Local guest MVP plus auth foundation",
+  id: "local_guest_cloud_schema_foundation",
+  label: "Local guest MVP plus cloud schema foundation",
   description:
-    "Local guest MVP features and optional account auth foundation are complete; cloud sync foundation is next.",
+    "Local guest MVP features, optional account auth foundation, and cloud schema/RLS foundation are complete; app-side cloud sync is next.",
 } as const;
 
 export const vehicleTypeValues = [
