@@ -1,10 +1,10 @@
 export const appName = "AutoLedger";
 
 export const currentDevelopmentTrack = {
-  id: "local_guest_cloud_schema_foundation",
-  label: "Local guest MVP plus cloud schema foundation",
+  id: "local_guest_cloud_vehicle_odometer_foundation",
+  label: "Local guest MVP plus cloud vehicle and odometer foundation",
   description:
-    "Local guest MVP features, optional account auth foundation, and cloud schema/RLS foundation are complete; app-side cloud sync is next.",
+    "Local guest MVP features, optional account auth foundation, cloud schema/RLS foundation, mobile cloud vehicle CRUD, and mobile cloud odometer CRUD are complete; the next focused cloud slice is pending.",
 } as const;
 
 export const vehicleTypeValues = [
@@ -807,7 +807,7 @@ export const statusNavigation: NavigationSection[] = [
   {
     label: "Settings",
     description:
-      "Local reminders, notification settings, optional accounts, attachments, and CSV export are available; cloud sync is next.",
+      "Local reminders, notification settings, optional accounts, attachments, CSV export, and cloud vehicle/odometer foundations are available; broader cloud sync is next.",
   },
 ];
 

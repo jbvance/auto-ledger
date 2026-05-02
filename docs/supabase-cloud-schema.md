@@ -3,8 +3,10 @@
 This document covers the current cloud data schema foundation for AutoLedger.
 
 The SQL in this slice creates authenticated cloud tables and Row Level Security
-policies only. It does not implement mobile or web cloud sync, guest-to-account
-migration, Supabase Storage uploads, cloud attachment access, OCR, or cloud push
+policies. Mobile cloud vehicle CRUD and mobile cloud odometer entry CRUD are
+implemented against these tables. The app does not yet implement cloud service,
+repair, reminder, attachment, or vendor CRUD, guest-to-account migration,
+Supabase Storage uploads, cloud attachment access, OCR, or cloud push
 notifications.
 
 ## SQL Files
@@ -105,15 +107,16 @@ order by table_name;
 ## TypeScript Types
 
 This repo does not currently hand-maintain full generated Supabase database
-types. When cloud sync work begins, generate types from the live Supabase
-project with the Supabase CLI and commit them in the database package or another
-agreed location.
+types. Before broadening cloud sync beyond the current mobile vehicle and
+odometer slices, generate types from the live Supabase project with the Supabase
+CLI and commit them in the database package or another agreed location.
 
 ## Still Deferred
 
-- app-side cloud save/load
+- app-side cloud save/load beyond mobile vehicles and odometer entries
 - guest-to-account migration
 - upload of existing local guest data
+- cloud service, repair, reminder, vendor, and attachment metadata CRUD
 - Supabase Storage buckets and private attachment paths
 - cloud attachment sync
 - cloud push notifications

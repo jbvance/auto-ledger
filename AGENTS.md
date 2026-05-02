@@ -96,13 +96,13 @@ The data model may anticipate some future features, but the UI and workflows sho
 
 Build in focused slices. Do not attempt the whole product at once.
 
-Current development track: Local guest MVP features and optional Supabase Auth foundation are complete; cloud sync foundation is next.
+Current development track: Local guest MVP features, optional Supabase Auth foundation, Supabase cloud schema/RLS foundation, mobile cloud vehicle CRUD, and mobile cloud odometer entry CRUD are complete; broader app-side cloud sync is next.
 
-Working local guest features include vehicle management, odometer entries, service records, repair records, unified history/timeline, dashboard polish, core maintenance reminders, local reminder notification settings/code, local service/repair attachments, and local CSV export. Optional Supabase account sign-up/sign-in/sign-out exists without cloud record sync.
+Working local guest features include vehicle management, odometer entries, service records, repair records, unified history/timeline, dashboard polish, core maintenance reminders, local reminder notification settings/code, local service/repair attachments, and local CSV export. Optional Supabase account sign-up/sign-in/sign-out exists. Signed-in mobile users can create/list/view/edit/archive/restore cloud vehicles and create/list/edit/delete cloud odometer entries for those cloud vehicles.
 
 Treat `docs/current-status.md` as the source of truth for current implementation status.
 
-Do not implement cloud sync, guest-to-account migration, Supabase Storage/cloud attachments, or other future-facing features unless explicitly instructed.
+Do not implement broader cloud sync beyond the explicitly requested slice, guest-to-account migration, Supabase Storage/cloud attachments, or other future-facing features unless explicitly instructed.
 
 ---
 

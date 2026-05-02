@@ -5,21 +5,29 @@ export type SyncStatus =
   | "sync_error";
 
 export type DbCloudDataStatus = {
-  developmentTrack: "local_guest_cloud_schema_foundation";
+  developmentTrack: "local_guest_cloud_vehicle_odometer_foundation";
   authFoundationImplemented: true;
-  cloudSyncImplemented: false;
+  broaderCloudRecordSyncImplemented: false;
+  cloudOdometerCrudImplemented: true;
+  cloudServiceRecordCrudImplemented: false;
+  cloudVehicleCrudImplemented: true;
   cloudTablesImplemented: true;
   cloudSchemaRlsImplemented: true;
+  guestToAccountMigrationImplemented: false;
   profilesSqlDocumented: true;
   storageImplemented: false;
 };
 
 export const dbCloudDataStatus: DbCloudDataStatus = {
-  developmentTrack: "local_guest_cloud_schema_foundation",
+  developmentTrack: "local_guest_cloud_vehicle_odometer_foundation",
   authFoundationImplemented: true,
-  cloudSyncImplemented: false,
+  broaderCloudRecordSyncImplemented: false,
+  cloudOdometerCrudImplemented: true,
+  cloudServiceRecordCrudImplemented: false,
+  cloudVehicleCrudImplemented: true,
   cloudTablesImplemented: true,
   cloudSchemaRlsImplemented: true,
+  guestToAccountMigrationImplemented: false,
   profilesSqlDocumented: true,
   storageImplemented: false,
 };
