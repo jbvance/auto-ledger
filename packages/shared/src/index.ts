@@ -525,6 +525,43 @@ export const formatMaintenanceReminderCategory = (
   category: MaintenanceReminderCategory,
 ) => maintenanceReminderCategoryLabels[category];
 
+export type RecalculateVehicleOdometerInput = {
+  currentOdometer?: number | null;
+  initialOdometer: number;
+  odometerEntryReadings?: Array<number | null | undefined>;
+  preserveCurrent?: boolean;
+  purchaseOdometer?: number | null;
+  repairRecordReadings?: Array<number | null | undefined>;
+  serviceRecordReadings?: Array<number | null | undefined>;
+};
+
+const highestReading = (readings: Array<number | null | undefined>) =>
+  readings.reduce<number>(
+    (highest, reading) =>
+      reading === null || reading === undefined
+        ? highest
+        : Math.max(highest, reading),
+    Number.NEGATIVE_INFINITY,
+  );
+
+export const getRecalculatedVehicleOdometer = ({
+  currentOdometer,
+  initialOdometer,
+  odometerEntryReadings = [],
+  preserveCurrent = false,
+  purchaseOdometer,
+  repairRecordReadings = [],
+  serviceRecordReadings = [],
+}: RecalculateVehicleOdometerInput) =>
+  Math.max(
+    initialOdometer,
+    preserveCurrent ? (currentOdometer ?? initialOdometer) : initialOdometer,
+    purchaseOdometer ?? initialOdometer,
+    highestReading(odometerEntryReadings),
+    highestReading(serviceRecordReadings),
+    highestReading(repairRecordReadings),
+  );
+
 const parseDateOnly = (date: string) => {
   const [year, month, day] = date.split("-").map(Number);
 

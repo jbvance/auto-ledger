@@ -8,6 +8,11 @@ The web app runs successfully on port 3000.
 
 The mobile app runs successfully through Expo and has been tested in Expo Go.
 
+An initial testing foundation has been added. Root test scripts now cover
+Vitest package tests for shared domain and validation logic plus Jest Expo
+mobile tests for focused user-visible behavior. A lightweight Maestro mobile
+E2E smoke scaffold and `docs/testing.md` are also present.
+
 Current development track: Local guest MVP features, optional Supabase Auth foundation, Supabase cloud data schema/RLS foundation, mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD, mobile cloud service record CRUD, and mobile cloud repair record CRUD are complete; broader app-side cloud sync is next.
 
 The app is still local guest-mode first. Users can manage vehicles, odometer entries, service records, repair records, reminders, local attachments, and local CSV export without creating an account.
@@ -170,7 +175,7 @@ The next recommended feature track is guest-to-account migration design and the 
 
 Good candidates:
 
-- Add focused tests for shared validation, odometer/history logic, attachment validation, reminder status logic, and CSV export logic
+- Expand focused tests around shared validation, odometer/history logic, attachment validation, reminder status logic, CSV export logic, and future migration logic
 - Generate Supabase database TypeScript types from the live project after running the SQL
 - Prepare guest-to-account migration design before implementing sync
 

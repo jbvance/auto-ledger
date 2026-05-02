@@ -1,3 +1,5 @@
+import { getRecalculatedVehicleOdometer } from "@autoledger/shared";
+
 import { supabase } from "./supabase";
 
 type CloudOdometerRecalculationError = {
@@ -170,16 +172,15 @@ export const recalculateCloudVehicleOdometer = async (
     getHighestCloudServiceRecordReading(vehicleId, userId),
     getHighestCloudRepairRecordReading(vehicleId, userId),
   ]);
-  const recalculatedOdometer = Math.max(
-    vehicle.initial_odometer,
-    options.preserveCurrent
-      ? vehicle.current_odometer
-      : vehicle.initial_odometer,
-    vehicle.purchase_odometer ?? vehicle.initial_odometer,
-    highestOdometerEntryReading ?? vehicle.initial_odometer,
-    highestServiceRecordReading ?? vehicle.initial_odometer,
-    highestRepairRecordReading ?? vehicle.initial_odometer,
-  );
+  const recalculatedOdometer = getRecalculatedVehicleOdometer({
+    currentOdometer: vehicle.current_odometer,
+    initialOdometer: vehicle.initial_odometer,
+    odometerEntryReadings: [highestOdometerEntryReading],
+    preserveCurrent: options.preserveCurrent,
+    purchaseOdometer: vehicle.purchase_odometer,
+    repairRecordReadings: [highestRepairRecordReading],
+    serviceRecordReadings: [highestServiceRecordReading],
+  });
 
   const { error } = await client
     .from("vehicles")

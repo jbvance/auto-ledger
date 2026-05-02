@@ -1,3 +1,5 @@
+import { getRecalculatedVehicleOdometer } from "@autoledger/shared";
+
 import { getGuestDatabase } from "./database";
 import { getVehicle } from "./vehicles";
 
@@ -33,12 +35,12 @@ export const recalculateVehicleOdometer = async (vehicleId: string) => {
      WHERE vehicle_id = ? AND odometer_reading IS NOT NULL`,
     vehicleId,
   );
-  const recalculatedOdometer = Math.max(
-    vehicle.initial_odometer,
-    highestOdometerEntry?.reading ?? vehicle.initial_odometer,
-    highestServiceRecord?.odometer_reading ?? vehicle.initial_odometer,
-    highestRepairRecord?.odometer_reading ?? vehicle.initial_odometer,
-  );
+  const recalculatedOdometer = getRecalculatedVehicleOdometer({
+    initialOdometer: vehicle.initial_odometer,
+    odometerEntryReadings: [highestOdometerEntry?.reading],
+    repairRecordReadings: [highestRepairRecord?.odometer_reading],
+    serviceRecordReadings: [highestServiceRecord?.odometer_reading],
+  });
   const now = new Date().toISOString();
 
   await db.runAsync(
