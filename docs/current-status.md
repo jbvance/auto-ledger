@@ -13,7 +13,7 @@ Vitest package tests for shared domain and validation logic plus Jest Expo
 mobile tests for focused user-visible behavior. A lightweight Maestro mobile
 E2E smoke scaffold and `docs/testing.md` are also present.
 
-Current development track: Local guest MVP features, optional Supabase Auth foundation, Supabase cloud data schema/RLS foundation, mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD, mobile cloud service record CRUD, mobile cloud repair record CRUD, mobile cloud maintenance reminder CRUD, and cloud service/repair record attachments are complete; broader app-side cloud sync is next.
+Current development track: Local guest MVP features, optional Supabase Auth foundation, Supabase cloud data schema/RLS foundation, mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD, mobile cloud service record CRUD, mobile cloud repair record CRUD, mobile cloud maintenance reminder CRUD, cloud service/repair record attachments, and mobile navigation polish are complete; broader app-side cloud sync is next.
 
 The app is still local guest-mode first. Users can manage vehicles, odometer entries, service records, repair records, reminders, local attachments, and local CSV export without creating an account.
 
@@ -59,6 +59,11 @@ The mobile app currently supports local guest-mode:
 - Update vehicle current odometer from repair records
 - Unified vehicle history/timeline combining odometer entries, service records, and repair records
 - Polished mobile dashboard with local summary counts, vehicle cards, and recent activity
+- Bottom-tab mobile navigation for Garage, Activity, Reminders, and Settings
+- Cross-vehicle Activity tab for local or cloud odometer, service, and repair history
+- Cross-vehicle Reminders tab for active and completed local or cloud reminders
+- Vehicle detail segmented navigation for Overview, History, and Reminders
+- Vehicle detail Add Record and More menus for common vehicle actions
 - Add/list/view/edit/delete local maintenance reminders
 - Complete maintenance reminders while keeping them visible as completed
 - Date, mileage, and date-or-mileage reminder status logic

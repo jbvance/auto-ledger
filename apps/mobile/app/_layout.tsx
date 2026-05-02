@@ -33,9 +33,9 @@ export default function RootLayout() {
           }}
         >
           <Stack.Screen
-            name="index"
+            name="(tabs)"
             options={{
-              title: "Vehicles",
+              headerShown: false,
             }}
           />
           <Stack.Screen
@@ -48,12 +48,6 @@ export default function RootLayout() {
             name="vehicles/archived"
             options={{
               title: "Archived Vehicles",
-            }}
-          />
-          <Stack.Screen
-            name="settings"
-            options={{
-              title: "Settings",
             }}
           />
           <Stack.Screen

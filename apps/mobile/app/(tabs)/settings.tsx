@@ -13,21 +13,21 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import {
   cancelAllScheduledReminderNotifications,
   rescheduleActiveReminderNotifications,
-} from "../lib/maintenanceReminders";
-import { useAuth } from "../lib/auth";
-import { hasAnyLocalGuestData } from "../lib/localGuestData";
+} from "../../lib/maintenanceReminders";
+import { useAuth } from "../../lib/auth";
+import { hasAnyLocalGuestData } from "../../lib/localGuestData";
 import {
   getReminderNotificationSettings,
   updateReminderNotificationSettings,
   type ReminderNotificationSettings,
-} from "../lib/notificationSettings";
+} from "../../lib/notificationSettings";
 import {
   getLocalNotificationRuntimeMessage,
   getLocalNotificationPermissionState,
   isLocalNotificationRuntimeSupported,
   requestLocalNotificationPermission,
   type LocalNotificationPermissionState,
-} from "../lib/notifications";
+} from "../../lib/notifications";
 
 const dayOptions = [0, 1, 3, 7, 14];
 const mileOptions = [100, 250, 500, 1000];
@@ -238,20 +238,19 @@ export default function SettingsScreen() {
             <>
               <SettingsRow label="Email" value={user.email ?? "Not set"} />
               <View className="rounded-card border border-ledger-line bg-ledger-background p-3">
-              <Text className="text-sm leading-5 text-ledger-muted">
-                New vehicles, odometer readings, service records, and repair
-                records are saved to your account. Cloud reminders are
-                available for cloud vehicles. Cloud attachment and CSV sync are
-                coming soon.
-              </Text>
+                <Text className="text-sm leading-5 text-ledger-muted">
+                  New vehicles, odometer readings, service records, and repair
+                  records are saved to your account. Cloud reminders are
+                  available for cloud vehicles. Cloud attachment and CSV sync
+                  are coming soon.
+                </Text>
               </View>
               {hasLocalGuestRecords ? (
                 <View className="rounded-card border border-ledger-line bg-ledger-background p-3">
                   <Text className="text-sm leading-5 text-ledger-muted">
                     Cloud sync for existing local records is coming soon. New
                     cloud vehicles, odometer readings, service records, and
-                    repair records, and reminders will be saved to your
-                    account.
+                    repair records, and reminders will be saved to your account.
                   </Text>
                 </View>
               ) : null}

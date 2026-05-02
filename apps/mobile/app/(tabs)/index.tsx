@@ -23,23 +23,23 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { ReminderStatusPill } from "../components/ReminderStatusPill";
-import { VehicleSummaryCard } from "../components/VehicleSummaryCard";
+import { ReminderStatusPill } from "../../components/ReminderStatusPill";
+import { VehicleSummaryCard } from "../../components/VehicleSummaryCard";
 import {
   listArchivedCloudVehicles,
   listCloudVehicles,
-} from "../lib/cloudVehicles";
-import { listAllActiveCloudMaintenanceReminders } from "../lib/cloudMaintenanceReminders";
-import { listCloudOdometerEntries } from "../lib/cloudOdometerEntries";
-import { listCloudRepairRecords } from "../lib/cloudRepairRecords";
-import { listCloudServiceRecords } from "../lib/cloudServiceRecords";
-import { useAuth } from "../lib/auth";
-import { hasAnyLocalGuestData } from "../lib/localGuestData";
-import { listAllActiveMaintenanceReminders } from "../lib/maintenanceReminders";
-import { listOdometerEntries } from "../lib/odometerEntries";
-import { listRepairRecords } from "../lib/repairRecords";
-import { listServiceRecords } from "../lib/serviceRecords";
-import { listArchivedVehicles, listVehicles } from "../lib/vehicles";
+} from "../../lib/cloudVehicles";
+import { listAllActiveCloudMaintenanceReminders } from "../../lib/cloudMaintenanceReminders";
+import { listCloudOdometerEntries } from "../../lib/cloudOdometerEntries";
+import { listCloudRepairRecords } from "../../lib/cloudRepairRecords";
+import { listCloudServiceRecords } from "../../lib/cloudServiceRecords";
+import { useAuth } from "../../lib/auth";
+import { hasAnyLocalGuestData } from "../../lib/localGuestData";
+import { listAllActiveMaintenanceReminders } from "../../lib/maintenanceReminders";
+import { listOdometerEntries } from "../../lib/odometerEntries";
+import { listRepairRecords } from "../../lib/repairRecords";
+import { listServiceRecords } from "../../lib/serviceRecords";
+import { listArchivedVehicles, listVehicles } from "../../lib/vehicles";
 
 type VehicleDashboardItem = {
   historyItems: VehicleHistoryItem[];
@@ -108,15 +108,12 @@ export default function HomeScreen() {
 
     try {
       if (storageMode === "cloud") {
-        const [
-          nextVehicles,
-          nextActiveReminders,
-          nextHasLocalGuestRecords,
-        ] = await Promise.all([
-          listCloudVehicles(),
-          listAllActiveCloudMaintenanceReminders(),
-          hasAnyLocalGuestData(),
-        ]);
+        const [nextVehicles, nextActiveReminders, nextHasLocalGuestRecords] =
+          await Promise.all([
+            listCloudVehicles(),
+            listAllActiveCloudMaintenanceReminders(),
+            hasAnyLocalGuestData(),
+          ]);
         let archivedVehicleCount = 0;
 
         try {
@@ -314,7 +311,7 @@ export default function HomeScreen() {
           </Text>
           <Text className="text-lg leading-7 text-ledger-muted">
             {storageMode === "cloud"
-              ? "Vehicles, odometer readings, service records, repair records, and reminders are saved to your account. Full record sync is still coming soon."
+              ? "Vehicles, odometer readings, service records, repair records, reminders, and service/repair attachments are saved to your account."
               : "Your vehicle records stay local on this device. Cloud backup and sync remain optional later."}
           </Text>
           {storageMode === "cloud" && hasLocalGuestRecords ? (
@@ -322,7 +319,8 @@ export default function HomeScreen() {
               <Text className="text-sm leading-5 text-ledger-muted">
                 Cloud sync for existing local records is coming soon. New cloud
                 vehicles, odometer readings, service records, and repair
-                records and reminders will be saved to your account.
+                records, reminders, and service/repair attachments will be saved
+                to your account.
               </Text>
             </View>
           ) : null}
@@ -334,15 +332,6 @@ export default function HomeScreen() {
             >
               <Text className="text-center text-base font-bold text-white">
                 Add Vehicle
-              </Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              className="rounded-card border border-ledger-line bg-ledger-surface px-4 py-3"
-              onPress={() => router.push("/settings" as Href)}
-            >
-              <Text className="text-center text-base font-bold text-ledger-ink">
-                Settings
               </Text>
             </Pressable>
             <Pressable
@@ -624,9 +613,9 @@ function CloudRecordsNotice() {
       </Text>
       <Text className="text-sm leading-5 text-ledger-muted">
         Account mode currently saves vehicle details, cloud odometer entries,
-        cloud service records, cloud repair records, and cloud reminders. Cloud
-        attachments, CSV export, push notifications, and guest-to-account
-        migration are intentionally deferred.
+        cloud service records, cloud repair records, cloud reminders, and cloud
+        service/repair attachments. CSV export, push notifications, and
+        guest-to-account migration are intentionally deferred.
       </Text>
     </View>
   );

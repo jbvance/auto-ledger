@@ -47,10 +47,21 @@ import { listRepairRecords } from "../../lib/repairRecords";
 import { listServiceRecords } from "../../lib/serviceRecords";
 import { archiveVehicle, getVehicle } from "../../lib/vehicles";
 
+type VehicleDetailSection = "overview" | "history" | "reminders";
+
+const vehicleDetailSections: { label: string; value: VehicleDetailSection }[] =
+  [
+    { label: "Overview", value: "overview" },
+    { label: "History", value: "history" },
+    { label: "Reminders", value: "reminders" },
+  ];
+
 export default function VehicleDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { isLoading: isAuthLoading, user } = useAuth();
   const isCloudMode = Boolean(user);
+  const [activeSection, setActiveSection] =
+    useState<VehicleDetailSection>("overview");
   const [maintenanceReminders, setMaintenanceReminders] = useState<
     MaintenanceReminder[]
   >([]);
@@ -156,6 +167,61 @@ export default function VehicleDetailScreen() {
     );
   };
 
+  const openAddMenu = () => {
+    if (!vehicle) {
+      return;
+    }
+
+    Alert.alert("Add record", "Choose what you want to add.", [
+      {
+        text: "Odometer",
+        onPress: () =>
+          router.push(`/vehicles/${vehicle.id}/odometer/new` as Href),
+      },
+      {
+        text: "Service",
+        onPress: () =>
+          router.push(`/vehicles/${vehicle.id}/service/new` as Href),
+      },
+      {
+        text: "Repair",
+        onPress: () =>
+          router.push(`/vehicles/${vehicle.id}/repair/new` as Href),
+      },
+      {
+        text: "Reminder",
+        onPress: () =>
+          router.push(`/vehicles/${vehicle.id}/reminders/new` as Href),
+      },
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+    ]);
+  };
+
+  const openVehicleMenu = () => {
+    if (!vehicle) {
+      return;
+    }
+
+    Alert.alert(formatVehicleTitle(vehicle), "Vehicle options", [
+      {
+        text: "Edit Vehicle",
+        onPress: () => router.push(`/vehicles/${vehicle.id}/edit` as Href),
+      },
+      {
+        text: "Archive",
+        style: "destructive",
+        onPress: confirmArchive,
+      },
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+    ]);
+  };
+
   const archiveCurrentVehicle = async () => {
     if (!vehicle) {
       return;
@@ -253,22 +319,20 @@ export default function VehicleDetailScreen() {
             <Pressable
               accessibilityRole="button"
               className="flex-1 rounded-card bg-ledger-primary px-4 py-3"
-              onPress={() =>
-                router.push(`/vehicles/${vehicle.id}/edit` as Href)
-              }
+              onPress={openAddMenu}
             >
               <Text className="text-center text-base font-bold text-white">
-                Edit Vehicle
+                Add Record
               </Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
-              className="flex-1 rounded-card border border-red-200 bg-ledger-surface px-4 py-3"
+              className="rounded-card border border-ledger-line bg-ledger-surface px-4 py-3"
               disabled={isArchiving}
-              onPress={confirmArchive}
+              onPress={openVehicleMenu}
             >
-              <Text className="text-center text-base font-bold text-red-700">
-                {isArchiving ? "Archiving..." : "Archive"}
+              <Text className="text-center text-base font-bold text-ledger-ink">
+                {isArchiving ? "..." : "More"}
               </Text>
             </Pressable>
           </View>
@@ -281,187 +345,179 @@ export default function VehicleDetailScreen() {
           ) : null}
         </View>
 
-        <View className="gap-3 rounded-card border border-ledger-line bg-ledger-surface p-4">
-          <Text className="text-lg font-bold text-ledger-ink">Overview</Text>
-          <DetailRow
-            label="Current odometer"
-            value={formatOdometer(
-              vehicle.current_odometer,
-              vehicle.odometer_unit,
+        <VehicleSectionTabs
+          activeSection={activeSection}
+          onChange={setActiveSection}
+        />
+
+        {activeSection === "overview" ? (
+          <>
+            <View className="gap-3 rounded-card border border-ledger-line bg-ledger-surface p-4">
+              <Text className="text-lg font-bold text-ledger-ink">
+                Overview
+              </Text>
+              <DetailRow
+                label="Current odometer"
+                value={formatOdometer(
+                  vehicle.current_odometer,
+                  vehicle.odometer_unit,
+                )}
+              />
+              <DetailRow
+                label="Vehicle type"
+                value={vehicleTypeLabels[vehicle.vehicle_type]}
+              />
+              <DetailRow
+                label="Odometer unit"
+                value={odometerUnitLabels[vehicle.odometer_unit]}
+              />
+              <DetailRow label="Color" value={vehicle.color} />
+              <DetailRow label="VIN" value={vehicle.vin} />
+              <DetailRow label="License plate" value={vehicle.license_plate} />
+              <DetailRow label="License state" value={vehicle.license_state} />
+            </View>
+
+            <View className="gap-3 rounded-card border border-ledger-line bg-ledger-surface p-4">
+              <Text className="text-lg font-bold text-ledger-ink">
+                Ownership
+              </Text>
+              <DetailRow label="Purchase date" value={vehicle.purchase_date} />
+              <DetailRow
+                label="Purchase odometer"
+                value={
+                  vehicle.purchase_odometer === null ||
+                  vehicle.purchase_odometer === undefined
+                    ? null
+                    : formatOdometer(
+                        vehicle.purchase_odometer,
+                        vehicle.odometer_unit,
+                      )
+                }
+              />
+              <DetailRow label="Notes" value={vehicle.notes} />
+            </View>
+          </>
+        ) : null}
+
+        {activeSection === "history" ? (
+          <View className="gap-3 rounded-card border border-ledger-line bg-ledger-surface p-4">
+            <View className="gap-1">
+              <Text className="text-lg font-bold text-ledger-ink">History</Text>
+              <Text className="text-sm leading-5 text-ledger-muted">
+                {isCloudMode
+                  ? "Cloud odometer readings, service records, and repair records appear here newest first."
+                  : "Odometer entries, service records, and repair records appear here newest first."}
+              </Text>
+            </View>
+            {historyItems.length === 0 ? (
+              <View className="gap-2 rounded-card border border-ledger-line bg-ledger-background p-4">
+                <Text className="text-base font-bold text-ledger-ink">
+                  No history yet
+                </Text>
+                <Text className="text-sm leading-5 text-ledger-muted">
+                  {isCloudMode
+                    ? "Add an odometer reading, service record, or repair record to build this vehicle's cloud history."
+                    : "Add an odometer reading, service record, or repair record to build this vehicle's local timeline."}
+                </Text>
+              </View>
+            ) : (
+              <View className="gap-3">
+                {historyItems.map((item) => (
+                  <HistoryItemCard
+                    item={item}
+                    key={`${item.type}-${item.id}`}
+                    vehicle={vehicle}
+                  />
+                ))}
+              </View>
             )}
-          />
-          <DetailRow
-            label="Vehicle type"
-            value={vehicleTypeLabels[vehicle.vehicle_type]}
-          />
-          <DetailRow
-            label="Odometer unit"
-            value={odometerUnitLabels[vehicle.odometer_unit]}
-          />
-          <DetailRow label="Color" value={vehicle.color} />
-          <DetailRow label="VIN" value={vehicle.vin} />
-          <DetailRow label="License plate" value={vehicle.license_plate} />
-          <DetailRow label="License state" value={vehicle.license_state} />
-        </View>
-
-        <View className="gap-3 rounded-card border border-ledger-line bg-ledger-surface p-4">
-          <Text className="text-lg font-bold text-ledger-ink">Ownership</Text>
-          <DetailRow label="Purchase date" value={vehicle.purchase_date} />
-          <DetailRow
-            label="Purchase odometer"
-            value={
-              vehicle.purchase_odometer === null ||
-              vehicle.purchase_odometer === undefined
-                ? null
-                : formatOdometer(
-                    vehicle.purchase_odometer,
-                    vehicle.odometer_unit,
-                  )
-            }
-          />
-          <DetailRow label="Notes" value={vehicle.notes} />
-        </View>
-
-        <View className="gap-3 rounded-card border border-ledger-line bg-ledger-surface p-4">
-          <Text className="text-lg font-bold text-ledger-ink">Log records</Text>
-          <Text className="text-sm leading-5 text-ledger-muted">
-            {isCloudMode
-              ? "Add cloud odometer readings, service records, repair records, or reminders for this account-saved vehicle. Attachment cloud sync is coming soon."
-              : "Add local readings, routine service, or non-routine repairs for this vehicle."}
-          </Text>
-          <View className="flex-row flex-wrap gap-2">
-            <RecordActionButton
-              label="Odometer"
-              onPress={() =>
-                router.push(`/vehicles/${vehicle.id}/odometer/new` as Href)
-              }
-            />
-            <RecordActionButton
-              label="Service"
-              onPress={() =>
-                router.push(`/vehicles/${vehicle.id}/service/new` as Href)
-              }
-            />
-            <RecordActionButton
-              label="Repair"
-              onPress={() =>
-                router.push(`/vehicles/${vehicle.id}/repair/new` as Href)
-              }
-            />
           </View>
-        </View>
+        ) : null}
 
-        <View className="gap-3 rounded-card border border-ledger-line bg-ledger-surface p-4">
-          <View className="gap-1">
-            <Text className="text-lg font-bold text-ledger-ink">History</Text>
+        {activeSection === "reminders" ? (
+          <View className="gap-3 rounded-card border border-ledger-line bg-ledger-surface p-4">
+            <View className="flex-row items-start justify-between gap-3">
+              <View className="flex-1 gap-1">
+                <Text className="text-lg font-bold text-ledger-ink">
+                  Reminders
+                </Text>
+                <Text className="text-sm leading-5 text-ledger-muted">
+                  {isCloudMode
+                    ? "Date and mileage reminders are saved to your account for this cloud vehicle. Cloud push notifications are not implemented yet."
+                    : "Date and mileage reminders stay local on this device."}
+                </Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                className="rounded-card bg-ledger-primary px-3 py-2"
+                onPress={() =>
+                  router.push(`/vehicles/${vehicle.id}/reminders/new` as Href)
+                }
+              >
+                <Text className="text-sm font-bold text-white">Add</Text>
+              </Pressable>
+            </View>
+            {activeReminders.length === 0 && completedReminders.length === 0 ? (
+              <View className="gap-2 rounded-card border border-ledger-line bg-ledger-background p-4">
+                <Text className="text-base font-bold text-ledger-ink">
+                  No reminders yet
+                </Text>
+                <Text className="text-sm leading-5 text-ledger-muted">
+                  Add a date, mileage, or date-or-mileage reminder for upcoming
+                  maintenance.
+                </Text>
+              </View>
+            ) : (
+              <View className="gap-4">
+                {activeReminders.length > 0 ? (
+                  <View className="gap-3">
+                    <Text className="text-xs font-bold uppercase text-ledger-muted">
+                      Active
+                    </Text>
+                    {activeReminders.map((reminder) => (
+                      <ReminderCard
+                        key={reminder.id}
+                        reminder={reminder}
+                        vehicle={vehicle}
+                      />
+                    ))}
+                  </View>
+                ) : null}
+                {completedReminders.length > 0 ? (
+                  <View className="gap-3">
+                    <Text className="text-xs font-bold uppercase text-ledger-muted">
+                      Completed
+                    </Text>
+                    {completedReminders.map((reminder) => (
+                      <ReminderCard
+                        key={reminder.id}
+                        reminder={reminder}
+                        vehicle={vehicle}
+                      />
+                    ))}
+                  </View>
+                ) : null}
+              </View>
+            )}
+          </View>
+        ) : null}
+
+        {activeSection === "overview" && isCloudMode ? (
+          <CloudVehicleRecordsNotice />
+        ) : null}
+
+        {activeSection === "overview" ? (
+          <View className="gap-3 rounded-card border border-ledger-line bg-ledger-surface p-4">
+            <Text className="text-base font-bold text-ledger-ink">
+              {isCloudMode ? "Cloud storage" : "Local storage"}
+            </Text>
             <Text className="text-sm leading-5 text-ledger-muted">
               {isCloudMode
-                ? "Cloud odometer readings, service records, and repair records appear here newest first."
-                : "Odometer entries, service records, and repair records appear here newest first."}
+                ? "This vehicle, its records, reminders, and service/repair attachments are saved to your account through Supabase RLS and private Storage."
+                : "This vehicle is saved locally on this device. Cloud backup and sync are optional later."}
             </Text>
           </View>
-          {historyItems.length === 0 ? (
-            <View className="gap-2 rounded-card border border-ledger-line bg-ledger-background p-4">
-              <Text className="text-base font-bold text-ledger-ink">
-                No history yet
-              </Text>
-              <Text className="text-sm leading-5 text-ledger-muted">
-                {isCloudMode
-                  ? "Add an odometer reading, service record, or repair record to build this vehicle's cloud history."
-                  : "Add an odometer reading, service record, or repair record to build this vehicle's local timeline."}
-              </Text>
-            </View>
-          ) : (
-            <View className="gap-3">
-              {historyItems.map((item) => (
-                <HistoryItemCard
-                  item={item}
-                  key={`${item.type}-${item.id}`}
-                  vehicle={vehicle}
-                />
-              ))}
-            </View>
-          )}
-        </View>
-
-        <View className="gap-3 rounded-card border border-ledger-line bg-ledger-surface p-4">
-          <View className="flex-row items-start justify-between gap-3">
-            <View className="flex-1 gap-1">
-              <Text className="text-lg font-bold text-ledger-ink">
-                Reminders
-              </Text>
-              <Text className="text-sm leading-5 text-ledger-muted">
-                {isCloudMode
-                  ? "Date and mileage reminders are saved to your account for this cloud vehicle. Cloud push notifications are not implemented yet."
-                  : "Date and mileage reminders stay local on this device."}
-              </Text>
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              className="rounded-card bg-ledger-primary px-3 py-2"
-              onPress={() =>
-                router.push(`/vehicles/${vehicle.id}/reminders/new` as Href)
-              }
-            >
-              <Text className="text-sm font-bold text-white">Add</Text>
-            </Pressable>
-          </View>
-          {activeReminders.length === 0 && completedReminders.length === 0 ? (
-            <View className="gap-2 rounded-card border border-ledger-line bg-ledger-background p-4">
-              <Text className="text-base font-bold text-ledger-ink">
-                No reminders yet
-              </Text>
-              <Text className="text-sm leading-5 text-ledger-muted">
-                Add a date, mileage, or date-or-mileage reminder for upcoming
-                maintenance.
-              </Text>
-            </View>
-          ) : (
-            <View className="gap-4">
-              {activeReminders.length > 0 ? (
-                <View className="gap-3">
-                  <Text className="text-xs font-bold uppercase text-ledger-muted">
-                    Active
-                  </Text>
-                  {activeReminders.map((reminder) => (
-                    <ReminderCard
-                      key={reminder.id}
-                      reminder={reminder}
-                      vehicle={vehicle}
-                    />
-                  ))}
-                </View>
-              ) : null}
-              {completedReminders.length > 0 ? (
-                <View className="gap-3">
-                  <Text className="text-xs font-bold uppercase text-ledger-muted">
-                    Completed
-                  </Text>
-                  {completedReminders.map((reminder) => (
-                    <ReminderCard
-                      key={reminder.id}
-                      reminder={reminder}
-                      vehicle={vehicle}
-                    />
-                  ))}
-                </View>
-              ) : null}
-            </View>
-          )}
-        </View>
-
-        {isCloudMode ? <CloudVehicleRecordsNotice /> : null}
-
-        <View className="gap-3 rounded-card border border-ledger-line bg-ledger-surface p-4">
-          <Text className="text-base font-bold text-ledger-ink">
-            {isCloudMode ? "Cloud storage" : "Local storage"}
-          </Text>
-          <Text className="text-sm leading-5 text-ledger-muted">
-            {isCloudMode
-              ? "This vehicle, its odometer readings, service records, repair records, and reminders are saved to your account through Supabase RLS. Cloud attachments and CSV export are not implemented yet."
-              : "This vehicle is saved locally on this device. Cloud backup and sync are not implemented yet."}
-          </Text>
-        </View>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -475,10 +531,45 @@ function CloudVehicleRecordsNotice() {
       </Text>
       <Text className="text-sm leading-5 text-ledger-muted">
         Cloud odometer entries, service records, repair records, and reminders
-        are available for this vehicle. Cloud attachments, CSV export, push
-        notifications, and guest-to-account migration are intentionally
-        deferred.
+        are available for this vehicle. Cloud service and repair attachments are
+        available from record detail screens. CSV export, push notifications,
+        and guest-to-account migration are still deferred.
       </Text>
+    </View>
+  );
+}
+
+function VehicleSectionTabs({
+  activeSection,
+  onChange,
+}: {
+  activeSection: VehicleDetailSection;
+  onChange: (section: VehicleDetailSection) => void;
+}) {
+  return (
+    <View className="flex-row rounded-card border border-ledger-line bg-ledger-surface p-1">
+      {vehicleDetailSections.map((section) => {
+        const isActive = activeSection === section.value;
+
+        return (
+          <Pressable
+            accessibilityRole="button"
+            className={`flex-1 rounded-card px-3 py-2 ${
+              isActive ? "bg-ledger-primary" : "bg-ledger-surface"
+            }`}
+            key={section.value}
+            onPress={() => onChange(section.value)}
+          >
+            <Text
+              className={`text-center text-sm font-bold ${
+                isActive ? "text-white" : "text-ledger-muted"
+              }`}
+            >
+              {section.label}
+            </Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -536,24 +627,6 @@ function ReminderCard({
           {reminder.notes}
         </Text>
       ) : null}
-    </Pressable>
-  );
-}
-
-function RecordActionButton({
-  label,
-  onPress,
-}: {
-  label: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      className="rounded-card bg-ledger-primary px-4 py-3"
-      onPress={onPress}
-    >
-      <Text className="text-center text-sm font-bold text-white">{label}</Text>
     </Pressable>
   );
 }
