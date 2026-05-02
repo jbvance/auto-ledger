@@ -113,9 +113,9 @@ After running `packages/db/sql/001_profiles_auth_foundation.sql` and `packages/d
 - Cloud push notifications, Expo push tokens, and server-side notification delivery are not implemented.
 - Pure mileage reminders do not schedule notifications because AutoLedger does not track mileage in the background. Mileage reminder status remains in-app.
 - Date-or-mileage reminders can schedule a local notification only when they include a due date.
-- Expo Go on Android with SDK 53+ does not support remote push notifications. AutoLedger does not request push tokens or register devices for push.
-- Local reminder notification code is guarded in Expo Go on Android so reminders keep working in-app if notification APIs are unavailable.
-- A development build may be needed later for full local notification testing on device.
+- Expo Go on Android with SDK 53+ does not support remote push notifications, but local notifications remain available. AutoLedger does not request push tokens or register devices for push.
+- Notification APIs are still treated as optional at runtime so reminders keep working in-app if local notification permission or scheduling is unavailable.
+- A development build may be needed later for final notification behavior testing on device.
 
 ## Current Attachment Limitations
 
