@@ -31,6 +31,8 @@ Local photo attachments can be previewed inside AutoLedger from an attachment de
 
 Cloud attachment support has been added for authenticated service and repair records. Files are uploaded to a private `record-attachments` Supabase Storage bucket in user-scoped paths, and metadata is stored in `public.record_attachments`.
 
+Guest-to-account migration readiness planning has been completed. Migration is not implemented yet, and the plan lives at `docs/guest-to-account-migration-plan.md`.
+
 Local CSV export support has been added for guest-mode data. Export creates one combined CSV file locally and opens the device share sheet when available.
 
 ## Working Mobile Features
@@ -117,6 +119,7 @@ The mobile app currently supports local guest-mode:
 - Account creation is optional and currently unlocks cloud vehicle CRUD, cloud odometer entry CRUD, cloud service record CRUD, cloud repair record CRUD, cloud maintenance reminder CRUD, and cloud service/repair attachment support.
 - Local guest records are not uploaded after sign-in or sign-up.
 - Guest-to-account migration is not implemented.
+- Guest-to-account migration planning is complete in `docs/guest-to-account-migration-plan.md`.
 - Cloud vendor tables exist as SQL setup, but app-side cloud vendor CRUD is not implemented.
 - Cloud service records use simple `vendor_name` text for now; structured `vendor_id` support is still deferred.
 - Cloud repair records use simple `vendor_name` text for now; structured `vendor_id` support is still deferred.
