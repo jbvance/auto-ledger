@@ -61,6 +61,7 @@ The mobile app currently supports local guest-mode:
 - Polished mobile dashboard with local summary counts, vehicle cards, and recent activity
 - Bottom-tab mobile navigation for Garage, Activity, Reminders, and Settings
 - Cross-vehicle Activity tab for local or cloud odometer, service, and repair history
+- Add Activity flow from the Activity tab for odometer, service, and repair records
 - Cross-vehicle Reminders tab for active and completed local or cloud reminders
 - Vehicle detail segmented navigation for Overview, History, and Reminders
 - Vehicle detail Add Record and More menus for common vehicle actions

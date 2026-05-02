@@ -3,6 +3,8 @@ import {
   formatCostAmount,
   formatDisplayDate,
   formatOdometer,
+  formatVehicleSubtitle,
+  formatVehicleTitle,
   type OdometerEntry,
   type RepairRecord,
   type ServiceRecord,
@@ -13,6 +15,7 @@ import { router, useFocusEffect, type Href } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  Modal,
   Pressable,
   ScrollView,
   Text,
@@ -43,6 +46,30 @@ type ActivityItem = VehicleHistoryItem & {
   vehicle: Vehicle;
 };
 
+type ActivityRecordType = "odometer" | "service" | "repair";
+
+const activityRecordTypeOptions: {
+  description: string;
+  label: string;
+  value: ActivityRecordType;
+}[] = [
+  {
+    description: "Mileage reading",
+    label: "Odometer",
+    value: "odometer",
+  },
+  {
+    description: "Routine maintenance",
+    label: "Service",
+    value: "service",
+  },
+  {
+    description: "Unexpected fix",
+    label: "Repair",
+    value: "repair",
+  },
+];
+
 const sortActivityItems = (items: ActivityItem[]) =>
   [...items].sort((first, second) => {
     const dateComparison = second.date.localeCompare(first.date);
@@ -57,8 +84,12 @@ const sortActivityItems = (items: ActivityItem[]) =>
 export default function ActivityScreen() {
   const { isLoading: isAuthLoading, user } = useAuth();
   const [activityItems, setActivityItems] = useState<ActivityItem[]>([]);
+  const [activeVehicles, setActiveVehicles] = useState<Vehicle[]>([]);
+  const [isAddMenuVisible, setIsAddMenuVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [selectedRecordType, setSelectedRecordType] =
+    useState<ActivityRecordType | null>(null);
   const storageMode: StorageMode = user ? "cloud" : "local";
 
   const loadActivity = useCallback(async () => {
@@ -74,6 +105,7 @@ export default function ActivityScreen() {
         storageMode === "cloud"
           ? await loadCloudRecordSets()
           : await loadLocalRecordSets();
+      const nextVehicles = recordSets.map((recordSet) => recordSet.vehicle);
       const nextItems = sortActivityItems(
         recordSets.flatMap((recordSet) =>
           buildVehicleHistoryItems({
@@ -89,6 +121,7 @@ export default function ActivityScreen() {
         ),
       );
 
+      setActiveVehicles(nextVehicles);
       setActivityItems(nextItems);
     } catch (error: unknown) {
       console.warn("Unable to load activity.", error);
@@ -110,6 +143,39 @@ export default function ActivityScreen() {
     }, [loadActivity]),
   );
 
+  const closeAddMenu = () => {
+    setIsAddMenuVisible(false);
+    setSelectedRecordType(null);
+  };
+
+  const routeToNewActivity = (
+    recordType: ActivityRecordType,
+    vehicleId: string,
+  ) => {
+    closeAddMenu();
+
+    if (recordType === "odometer") {
+      router.push(`/vehicles/${vehicleId}/odometer/new` as Href);
+      return;
+    }
+
+    if (recordType === "service") {
+      router.push(`/vehicles/${vehicleId}/service/new` as Href);
+      return;
+    }
+
+    router.push(`/vehicles/${vehicleId}/repair/new` as Href);
+  };
+
+  const chooseRecordType = (recordType: ActivityRecordType) => {
+    if (activeVehicles.length === 1) {
+      routeToNewActivity(recordType, activeVehicles[0].id);
+      return;
+    }
+
+    setSelectedRecordType(recordType);
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-ledger-background">
       <ScrollView contentContainerClassName="gap-5 px-6 py-6 pb-28">
@@ -124,6 +190,16 @@ export default function ActivityScreen() {
             Mileage, service, and repair records across your active vehicles,
             newest first.
           </Text>
+          <Pressable
+            accessibilityRole="button"
+            className="mt-2 rounded-card bg-ledger-primary px-4 py-3"
+            disabled={isLoading || isAuthLoading}
+            onPress={() => setIsAddMenuVisible(true)}
+          >
+            <Text className="text-center text-base font-bold text-white">
+              Add Activity
+            </Text>
+          </Pressable>
         </View>
 
         {isLoading || isAuthLoading ? (
@@ -177,7 +253,155 @@ export default function ActivityScreen() {
           </View>
         )}
       </ScrollView>
+      <AddActivityMenu
+        isVisible={isAddMenuVisible}
+        onAddVehicle={() => {
+          closeAddMenu();
+          router.push("/vehicles/new" as Href);
+        }}
+        onChooseRecordType={chooseRecordType}
+        onChooseVehicle={(vehicleId) => {
+          if (!selectedRecordType) {
+            return;
+          }
+
+          routeToNewActivity(selectedRecordType, vehicleId);
+        }}
+        onClose={closeAddMenu}
+        onSelectRecordType={setSelectedRecordType}
+        selectedRecordType={selectedRecordType}
+        vehicles={activeVehicles}
+      />
     </SafeAreaView>
+  );
+}
+
+function AddActivityMenu({
+  isVisible,
+  onAddVehicle,
+  onChooseRecordType,
+  onChooseVehicle,
+  onClose,
+  onSelectRecordType,
+  selectedRecordType,
+  vehicles,
+}: {
+  isVisible: boolean;
+  onAddVehicle: () => void;
+  onChooseRecordType: (recordType: ActivityRecordType) => void;
+  onChooseVehicle: (vehicleId: string) => void;
+  onClose: () => void;
+  onSelectRecordType: (recordType: ActivityRecordType | null) => void;
+  selectedRecordType: ActivityRecordType | null;
+  vehicles: Vehicle[];
+}) {
+  const selectedOption = activityRecordTypeOptions.find(
+    (option) => option.value === selectedRecordType,
+  );
+
+  return (
+    <Modal
+      animationType="fade"
+      onRequestClose={onClose}
+      transparent
+      visible={isVisible}
+    >
+      <View className="flex-1 justify-end bg-black/40">
+        <Pressable className="flex-1" onPress={onClose} />
+        <View className="gap-4 rounded-t-3xl bg-ledger-background px-6 pb-8 pt-5">
+          <View className="flex-row items-start justify-between gap-3">
+            <View className="flex-1 gap-1">
+              <Text className="text-sm font-bold uppercase text-ledger-primary">
+                Add activity
+              </Text>
+              <Text className="text-2xl font-extrabold text-ledger-ink">
+                {selectedOption ? `Choose vehicle` : "What are you logging?"}
+              </Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              className="rounded-card border border-ledger-line bg-ledger-surface px-3 py-2"
+              onPress={onClose}
+            >
+              <Text className="text-sm font-bold text-ledger-ink">Close</Text>
+            </Pressable>
+          </View>
+
+          {selectedOption ? (
+            <View className="gap-3">
+              <Pressable
+                accessibilityRole="button"
+                className="self-start rounded-card border border-ledger-line bg-ledger-surface px-3 py-2"
+                onPress={() => onSelectRecordType(null)}
+              >
+                <Text className="text-sm font-bold text-ledger-ink">
+                  Change type
+                </Text>
+              </Pressable>
+              {vehicles.length === 0 ? (
+                <View className="gap-3 rounded-card border border-ledger-line bg-ledger-surface p-4">
+                  <Text className="text-base font-bold text-ledger-ink">
+                    No active vehicles
+                  </Text>
+                  <Text className="text-sm leading-5 text-ledger-muted">
+                    Add a vehicle before logging odometer, service, or repair
+                    activity.
+                  </Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    className="rounded-card bg-ledger-primary px-4 py-3"
+                    onPress={onAddVehicle}
+                  >
+                    <Text className="text-center text-base font-bold text-white">
+                      Add Vehicle
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <ScrollView
+                  className="max-h-96"
+                  contentContainerClassName="gap-3"
+                >
+                  {vehicles.map((vehicle) => (
+                    <Pressable
+                      accessibilityRole="button"
+                      className="gap-1 rounded-card border border-ledger-line bg-ledger-surface p-4"
+                      key={vehicle.id}
+                      onPress={() => onChooseVehicle(vehicle.id)}
+                    >
+                      <Text className="text-base font-bold text-ledger-ink">
+                        {formatVehicleTitle(vehicle)}
+                      </Text>
+                      <Text className="text-sm leading-5 text-ledger-muted">
+                        {formatVehicleSubtitle(vehicle)}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              )}
+            </View>
+          ) : (
+            <View className="gap-3">
+              {activityRecordTypeOptions.map((option) => (
+                <Pressable
+                  accessibilityRole="button"
+                  className="gap-1 rounded-card border border-ledger-line bg-ledger-surface p-4"
+                  key={option.value}
+                  onPress={() => onChooseRecordType(option.value)}
+                >
+                  <Text className="text-base font-bold text-ledger-ink">
+                    {option.label}
+                  </Text>
+                  <Text className="text-sm leading-5 text-ledger-muted">
+                    {option.description}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+        </View>
+      </View>
+    </Modal>
   );
 }
 
