@@ -5,11 +5,11 @@ export type SyncStatus =
   | "sync_error";
 
 export type DbCloudDataStatus = {
-  developmentTrack: "local_guest_cloud_vehicle_odometer_foundation";
+  developmentTrack: "local_guest_cloud_vehicle_odometer_service_foundation";
   authFoundationImplemented: true;
   broaderCloudRecordSyncImplemented: false;
   cloudOdometerCrudImplemented: true;
-  cloudServiceRecordCrudImplemented: false;
+  cloudServiceRecordCrudImplemented: true;
   cloudVehicleCrudImplemented: true;
   cloudTablesImplemented: true;
   cloudSchemaRlsImplemented: true;
@@ -19,11 +19,11 @@ export type DbCloudDataStatus = {
 };
 
 export const dbCloudDataStatus: DbCloudDataStatus = {
-  developmentTrack: "local_guest_cloud_vehicle_odometer_foundation",
+  developmentTrack: "local_guest_cloud_vehicle_odometer_service_foundation",
   authFoundationImplemented: true,
   broaderCloudRecordSyncImplemented: false,
   cloudOdometerCrudImplemented: true,
-  cloudServiceRecordCrudImplemented: false,
+  cloudServiceRecordCrudImplemented: true,
   cloudVehicleCrudImplemented: true,
   cloudTablesImplemented: true,
   cloudSchemaRlsImplemented: true,

@@ -13,24 +13,47 @@ import {
   defaultServiceRecordFormValues,
   ServiceRecordForm,
 } from "../../../../components/ServiceRecordForm";
+import { createCloudServiceRecord } from "../../../../lib/cloudServiceRecords";
+import { getCloudVehicle } from "../../../../lib/cloudVehicles";
+import { useAuth } from "../../../../lib/auth";
 import { createServiceRecord } from "../../../../lib/serviceRecords";
 import { getVehicle } from "../../../../lib/vehicles";
 
 export default function AddServiceRecordScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { isLoading: isAuthLoading, user } = useAuth();
+  const isCloudMode = Boolean(user);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const loadVehicle = useCallback(async () => {
-    if (!id) {
+    if (!id || isAuthLoading) {
       return;
     }
 
     setIsLoading(true);
-    const nextVehicle = await getVehicle(id);
-    setVehicle(nextVehicle);
-    setIsLoading(false);
-  }, [id]);
+    setLoadError(null);
+
+    try {
+      const nextVehicle = isCloudMode
+        ? await getCloudVehicle(id)
+        : await getVehicle(id);
+
+      setVehicle(nextVehicle);
+    } catch (error: unknown) {
+      setLoadError(
+        isCloudMode
+          ? error instanceof Error
+            ? error.message
+            : "Unable to load this cloud vehicle. Please try again."
+          : "Unable to load this local vehicle. Please try again.",
+      );
+      setVehicle(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [id, isAuthLoading, isCloudMode]);
 
   useFocusEffect(
     useCallback(() => {
@@ -43,11 +66,14 @@ export default function AddServiceRecordScreen() {
       return;
     }
 
-    const record = await createServiceRecord(input);
+    const record = isCloudMode
+      ? await createCloudServiceRecord(input)
+      : await createServiceRecord(input);
+
     router.replace(`/vehicles/${vehicle.id}/service/${record.id}` as Href);
   };
 
-  if (isLoading) {
+  if (isLoading || isAuthLoading) {
     return (
       <SafeAreaView className="flex-1 bg-ledger-background">
         <View className="flex-1 items-center justify-center">
@@ -65,7 +91,10 @@ export default function AddServiceRecordScreen() {
             Vehicle not found
           </Text>
           <Text className="text-base leading-6 text-ledger-muted">
-            This vehicle may have been archived or removed from local storage.
+            {loadError ??
+              (isCloudMode
+                ? "This cloud vehicle may have been archived or is not available for this account."
+                : "This vehicle may have been archived or removed from local storage.")}
           </Text>
         </View>
       </SafeAreaView>
@@ -76,7 +105,11 @@ export default function AddServiceRecordScreen() {
     <SafeAreaView className="flex-1 bg-ledger-background">
       <ServiceRecordForm
         defaultValues={defaultServiceRecordFormValues(vehicle)}
-        description="Log routine maintenance for this vehicle. This stays local on your device."
+        description={
+          isCloudMode
+            ? "Log routine maintenance for this cloud vehicle. Attachments are still local-only and are not available for cloud service records yet."
+            : "Log routine maintenance for this vehicle. This stays local on your device."
+        }
         onSubmit={saveRecord}
         submitLabel="Save Service Record"
         title="Add service"

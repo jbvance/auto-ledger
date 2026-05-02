@@ -1,5 +1,9 @@
 import type { OdometerEntry, OdometerEntryInput } from "@autoledger/shared";
 
+import {
+  getCloudVehicleForOdometer,
+  recalculateCloudVehicleOdometer,
+} from "./cloudVehicleOdometer";
 import { supabase } from "./supabase";
 
 type CloudOdometerError = {
@@ -17,14 +21,6 @@ type CloudOdometerEntryRow = Omit<
   source_type: string;
   sync_status: string;
   user_id: string;
-};
-
-type CloudVehicleOdometerRow = {
-  current_odometer: number;
-  id: string;
-  initial_odometer: number;
-  odometer_unit: string;
-  purchase_odometer: number | null;
 };
 
 type CloudOdometerEntryPayload = {
@@ -112,30 +108,6 @@ const getAuthenticatedUserId = async () => {
   return data.user.id;
 };
 
-const getCloudVehicleForOdometer = async (
-  vehicleId: string,
-  userId: string,
-): Promise<CloudVehicleOdometerRow | null> => {
-  const client = requireSupabase();
-  const { data, error } = await client
-    .from("vehicles")
-    .select(
-      "id, current_odometer, initial_odometer, odometer_unit, purchase_odometer",
-    )
-    .eq("id", vehicleId)
-    .eq("user_id", userId)
-    .is("archived_at", null)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(
-      formatCloudOdometerError("Unable to load cloud vehicle", error),
-    );
-  }
-
-  return data as CloudVehicleOdometerRow | null;
-};
-
 const assertEntryMatchesCloudVehicle = async (
   input: OdometerEntryInput,
   userId: string,
@@ -163,60 +135,6 @@ const toCloudOdometerEntryPayload = (
   source_type: input.source_type,
   vehicle_id: input.vehicle_id,
 });
-
-const recalculateCloudVehicleOdometer = async (
-  vehicleId: string,
-  userId: string,
-  options: { preserveCurrent?: boolean } = {},
-) => {
-  const client = requireSupabase();
-  const vehicle = await getCloudVehicleForOdometer(vehicleId, userId);
-
-  if (!vehicle) {
-    return;
-  }
-
-  const { data, error } = await client
-    .from("odometer_entries")
-    .select("reading")
-    .eq("vehicle_id", vehicleId)
-    .eq("user_id", userId)
-    .order("reading", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(
-      formatCloudOdometerError("Unable to recalculate cloud odometer", error),
-    );
-  }
-
-  const highestReading = (data as { reading: number } | null)?.reading;
-  const recalculatedOdometer = Math.max(
-    vehicle.initial_odometer,
-    options.preserveCurrent
-      ? vehicle.current_odometer
-      : vehicle.initial_odometer,
-    vehicle.purchase_odometer ?? vehicle.initial_odometer,
-    highestReading ?? vehicle.initial_odometer,
-  );
-
-  const { error: updateError } = await client
-    .from("vehicles")
-    .update({ current_odometer: recalculatedOdometer })
-    .eq("id", vehicleId)
-    .eq("user_id", userId)
-    .is("archived_at", null);
-
-  if (updateError) {
-    throw new Error(
-      formatCloudOdometerError(
-        "Unable to update cloud vehicle odometer",
-        updateError,
-      ),
-    );
-  }
-};
 
 export const listCloudOdometerEntries = async (
   vehicleId: string,

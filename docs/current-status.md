@@ -8,7 +8,7 @@ The web app runs successfully on port 3000.
 
 The mobile app runs successfully through Expo and has been tested in Expo Go.
 
-Current development track: Local guest MVP features, optional Supabase Auth foundation, Supabase cloud data schema/RLS foundation, mobile cloud vehicle CRUD, and mobile cloud odometer entry CRUD are complete; broader app-side cloud sync is next.
+Current development track: Local guest MVP features, optional Supabase Auth foundation, Supabase cloud data schema/RLS foundation, mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD, and mobile cloud service record CRUD are complete; broader app-side cloud sync is next.
 
 The app is still local guest-mode first. Users can manage vehicles, odometer entries, service records, repair records, reminders, local attachments, and local CSV export without creating an account.
 
@@ -16,7 +16,7 @@ Optional Supabase Auth foundation has been added for mobile and web. Users can c
 
 Supabase cloud data schema and Row Level Security foundation has been added as SQL. The schema covers vehicles, optional vendors, odometer entries, service records, repair records, maintenance reminders, and record attachment metadata.
 
-Mobile authenticated users can create, list, view, edit, archive, and restore cloud vehicle rows in Supabase. Authenticated users can also create, list, edit, and delete cloud odometer entries for cloud vehicles. The app does not read from or write to the other cloud record tables yet.
+Mobile authenticated users can create, list, view, edit, archive, and restore cloud vehicle rows in Supabase. Authenticated users can also create, list, edit, and delete cloud odometer entries and cloud service records for cloud vehicles. The app does not read from or write to the other cloud record tables yet.
 
 Local device notification support has been added for maintenance reminders that have a due date. Notifications are optional, requested from Settings, and scheduled locally on the device only.
 
@@ -64,7 +64,9 @@ The mobile app currently supports local guest-mode:
 - Mobile account state persists through Supabase Auth storage
 - Signed-in mobile users can add/list/view/edit/archive/restore cloud vehicles saved to Supabase
 - Signed-in mobile users can add/list/edit/delete cloud odometer entries for cloud vehicles saved to Supabase
-- Cloud vehicle current odometer is updated from cloud odometer entries without using local guest odometer data
+- Signed-in mobile users can add/list/view/edit/delete cloud service records for cloud vehicles saved to Supabase
+- Cloud vehicle current odometer is updated from cloud odometer entries and cloud service records without using local guest data
+- Signed-in mobile vehicle history and dashboard recent activity include cloud odometer entries and cloud service records
 - Signed-in mobile users with existing local guest records see that cloud sync for those records is coming soon
 - Export local guest data to a combined CSV file from Settings
 - CSV export includes vehicles, odometer entries, service records, repair records, maintenance reminders, and attachment metadata
@@ -90,11 +92,12 @@ The mobile app currently supports local guest-mode:
 
 ## Current Cloud Limitations
 
-- Account creation is optional and currently unlocks cloud vehicle CRUD and cloud odometer entry CRUD only.
+- Account creation is optional and currently unlocks cloud vehicle CRUD, cloud odometer entry CRUD, and cloud service record CRUD only.
 - Local guest records are not uploaded after sign-in or sign-up.
 - Guest-to-account migration is not implemented.
-- Cloud vendor, service, repair, reminder, and attachment metadata tables exist as SQL setup, but app-side cloud save/load is not implemented for those record types.
-- Cloud vehicle `current_odometer` is saved on the vehicle row and is recalculated from cloud odometer entries after cloud odometer entry edits/deletes. Cloud service and repair records do not update cloud odometer yet.
+- Cloud vendor, repair, reminder, and attachment metadata tables exist as SQL setup, but app-side cloud save/load is not implemented for those record types.
+- Cloud service records use simple `vendor_name` text for now; structured `vendor_id` support is still deferred.
+- Cloud vehicle `current_odometer` is saved on the vehicle row and is recalculated from cloud odometer entries and cloud service records after cloud odometer/service edits/deletes. Cloud repair records do not update cloud odometer yet because cloud repair CRUD is not implemented.
 - Supabase Storage/cloud attachments are not implemented.
 - Web cloud vehicle CRUD is deferred; the web app remains an auth/dashboard placeholder.
 
@@ -107,7 +110,8 @@ After running `packages/db/sql/001_profiles_auth_foundation.sql` and `packages/d
 - Signed-in mobile user can reload the app and read their own active vehicle from Supabase.
 - Signed-in mobile user can edit and archive their own vehicle, then restore it from Archived Vehicles.
 - Signed-in mobile user can create, reload, edit, and delete their own odometer entries in `public.odometer_entries`.
-- Signed-in mobile user's cloud vehicle `current_odometer` updates from their own cloud odometer entries and does not use local guest odometer entries.
+- Signed-in mobile user can create, reload, view, edit, and delete their own service records in `public.service_records`.
+- Signed-in mobile user's cloud vehicle `current_odometer` updates from their own cloud odometer entries and cloud service records and does not use local guest odometer/service/repair records.
 - Signed-out mobile user continues to use local guest vehicle storage and cannot access cloud vehicles through the app.
 - A second signed-in user does not see or update the first user's vehicles. Do not add public read policies.
 
@@ -143,8 +147,8 @@ After running `packages/db/sql/001_profiles_auth_foundation.sql` and `packages/d
 
 Do not assume these exist yet:
 
-- Broader cloud record sync beyond vehicles and odometer entries
-- Cloud service/repair/reminder/attachment sync
+- Broader cloud record sync beyond vehicles, odometer entries, and service records
+- Cloud repair/reminder/attachment sync
 - Guest-to-account migration
 - Supabase Storage/cloud file attachments
 - Cloud push notifications

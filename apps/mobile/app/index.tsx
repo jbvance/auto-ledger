@@ -30,6 +30,7 @@ import {
   listCloudVehicles,
 } from "../lib/cloudVehicles";
 import { listCloudOdometerEntries } from "../lib/cloudOdometerEntries";
+import { listCloudServiceRecords } from "../lib/cloudServiceRecords";
 import { useAuth } from "../lib/auth";
 import { hasAnyLocalGuestData } from "../lib/localGuestData";
 import { listAllActiveMaintenanceReminders } from "../lib/maintenanceReminders";
@@ -119,25 +120,47 @@ export default function HomeScreen() {
 
         const nextDashboardItems = await Promise.all(
           nextVehicles.map(async (vehicle) => {
-            const odometerEntries = await listCloudOdometerEntries(vehicle.id);
+            const [odometerEntries, serviceRecords] = await Promise.all([
+              listCloudOdometerEntries(vehicle.id),
+              listCloudServiceRecords(vehicle.id),
+            ]);
 
             return {
               historyItems: buildVehicleHistoryItems({
                 odometerEntries,
                 repairRecords: [],
-                serviceRecords: [],
+                serviceRecords,
               }),
               odometerEntries,
               repairRecords: [],
-              serviceRecords: [],
+              serviceRecords,
               vehicle,
             };
           }),
         );
+        const allRecentActivity = nextDashboardItems
+          .flatMap((item) =>
+            item.historyItems.map(
+              (historyItem): RecentActivityItem => ({
+                ...historyItem,
+                vehicle: item.vehicle,
+              }),
+            ),
+          )
+          .sort((first, second) => {
+            const dateComparison = second.date.localeCompare(first.date);
+
+            if (dateComparison !== 0) {
+              return dateComparison;
+            }
+
+            return second.created_at.localeCompare(first.created_at);
+          })
+          .slice(0, 5);
 
         setDashboardItems(nextDashboardItems);
         setHasLocalGuestRecords(nextHasLocalGuestRecords);
-        setRecentActivity([]);
+        setRecentActivity(allRecentActivity);
         setUpcomingReminders([]);
         setCounts({
           archivedVehicles: archivedVehicleCount,
@@ -147,7 +170,10 @@ export default function HomeScreen() {
             0,
           ),
           repairRecords: 0,
-          serviceRecords: 0,
+          serviceRecords: nextDashboardItems.reduce(
+            (total, item) => total + item.serviceRecords.length,
+            0,
+          ),
           vehicles: nextVehicles.length,
         });
         return;
@@ -272,7 +298,8 @@ export default function HomeScreen() {
             <View className="rounded-card border border-ledger-line bg-ledger-surface p-3">
               <Text className="text-sm leading-5 text-ledger-muted">
                 Cloud sync for existing local records is coming soon. New cloud
-                vehicles and odometer readings will be saved to your account.
+                vehicles, odometer readings, and service records will be saved
+                to your account.
               </Text>
             </View>
           ) : null}
@@ -346,10 +373,19 @@ export default function HomeScreen() {
             {storageMode === "local" ? (
               <>
                 <UpcomingRemindersSection reminders={upcomingReminders} />
-                <RecentActivitySection recentActivity={recentActivity} />
+                <RecentActivitySection
+                  recentActivity={recentActivity}
+                  storageMode={storageMode}
+                />
               </>
             ) : (
-              <CloudRecordsNotice />
+              <>
+                <RecentActivitySection
+                  recentActivity={recentActivity}
+                  storageMode={storageMode}
+                />
+                <CloudRecordsNotice />
+              </>
             )}
           </>
         )}
@@ -529,7 +565,7 @@ function DashboardVehicleCard({
             ) : (
               <Text className="text-sm leading-5 text-ledger-muted">
                 {storageMode === "cloud"
-                  ? "No cloud odometer history yet. Add a reading from the vehicle detail screen."
+                  ? "No cloud history yet. Add a reading or service record from the vehicle detail screen."
                   : "No local history yet. Add a reading, service record, or repair record from the vehicle detail screen."}
               </Text>
             )}
@@ -557,9 +593,9 @@ function CloudRecordsNotice() {
         Cloud record status
       </Text>
       <Text className="text-sm leading-5 text-ledger-muted">
-        Account mode currently saves vehicle details and cloud odometer entries.
-        Cloud service records, repair records, reminders, attachments, CSV
-        export, and guest-to-account migration are intentionally deferred.
+        Account mode currently saves vehicle details, cloud odometer entries,
+        and cloud service records. Cloud repair records, reminders, attachments,
+        CSV export, and guest-to-account migration are intentionally deferred.
       </Text>
     </View>
   );
@@ -668,8 +704,10 @@ function DashboardReminderCard({ item }: { item: DashboardReminderItem }) {
 
 function RecentActivitySection({
   recentActivity,
+  storageMode,
 }: {
   recentActivity: RecentActivityItem[];
+  storageMode: StorageMode;
 }) {
   return (
     <View className="gap-3 rounded-card border border-ledger-line bg-ledger-surface p-4">
@@ -678,15 +716,17 @@ function RecentActivitySection({
           Recent Activity
         </Text>
         <Text className="text-sm leading-5 text-ledger-muted">
-          The latest local mileage, service, and repair records across active
-          vehicles.
+          {storageMode === "cloud"
+            ? "The latest cloud mileage and service records across active vehicles."
+            : "The latest local mileage, service, and repair records across active vehicles."}
         </Text>
       </View>
       {recentActivity.length === 0 ? (
         <View className="rounded-card bg-ledger-background p-3">
           <Text className="text-sm leading-5 text-ledger-muted">
-            No activity yet. Add an odometer reading, service record, or repair
-            record to see it here.
+            {storageMode === "cloud"
+              ? "No activity yet. Add a cloud odometer reading or service record to see it here."
+              : "No activity yet. Add an odometer reading, service record, or repair record to see it here."}
           </Text>
         </View>
       ) : (

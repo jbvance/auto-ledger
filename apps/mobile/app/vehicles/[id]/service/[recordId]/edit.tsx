@@ -10,19 +10,20 @@ import {
   type Href,
 } from "expo-router";
 import { useCallback, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   ServiceRecordForm,
   serviceRecordToFormValues,
 } from "../../../../../components/ServiceRecordForm";
+import {
+  deleteCloudServiceRecord,
+  getCloudServiceRecord,
+  updateCloudServiceRecord,
+} from "../../../../../lib/cloudServiceRecords";
+import { getCloudVehicle } from "../../../../../lib/cloudVehicles";
+import { useAuth } from "../../../../../lib/auth";
 import {
   deleteServiceRecord,
   getServiceRecord,
@@ -35,25 +36,47 @@ export default function EditServiceRecordScreen() {
     id: string;
     recordId: string;
   }>();
+  const { isLoading: isAuthLoading, user } = useAuth();
+  const isCloudMode = Boolean(user);
   const [record, setRecord] = useState<ServiceRecord | null>(null);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadRecord = useCallback(async () => {
-    if (!id || !recordId) {
+    if (!id || !recordId || isAuthLoading) {
       return;
     }
 
     setIsLoading(true);
-    const [nextVehicle, nextRecord] = await Promise.all([
-      getVehicle(id),
-      getServiceRecord(recordId),
-    ]);
-    setVehicle(nextVehicle);
-    setRecord(nextRecord);
-    setIsLoading(false);
-  }, [id, recordId]);
+    setLoadError(null);
+
+    try {
+      const [nextVehicle, nextRecord] = await Promise.all([
+        isCloudMode ? getCloudVehicle(id) : getVehicle(id),
+        isCloudMode
+          ? getCloudServiceRecord(recordId)
+          : getServiceRecord(recordId),
+      ]);
+
+      setVehicle(nextVehicle);
+      setRecord(nextRecord);
+    } catch (error: unknown) {
+      setLoadError(
+        isCloudMode
+          ? error instanceof Error
+            ? error.message
+            : "Unable to load this cloud service record. Please try again."
+          : "Unable to load this local service record. Please try again.",
+      );
+      setVehicle(null);
+      setRecord(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [id, isAuthLoading, isCloudMode, recordId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -66,7 +89,12 @@ export default function EditServiceRecordScreen() {
       return;
     }
 
-    await updateServiceRecord(record.id, input);
+    if (isCloudMode) {
+      await updateCloudServiceRecord(record.id, input);
+    } else {
+      await updateServiceRecord(record.id, input);
+    }
+
     router.replace(`/vehicles/${vehicle.id}/service/${record.id}` as Href);
   };
 
@@ -77,7 +105,9 @@ export default function EditServiceRecordScreen() {
 
     Alert.alert(
       "Delete service record?",
-      "This local service record will be removed and the vehicle odometer will be recalculated.",
+      isCloudMode
+        ? "This cloud service record will be removed and the vehicle odometer will be recalculated."
+        : "This local service record will be removed and the vehicle odometer will be recalculated.",
       [
         {
           text: "Cancel",
@@ -100,12 +130,30 @@ export default function EditServiceRecordScreen() {
     }
 
     setIsDeleting(true);
-    await deleteServiceRecord(record.id);
-    setIsDeleting(false);
-    router.replace(`/vehicles/${vehicle.id}` as Href);
+    setActionError(null);
+
+    try {
+      if (isCloudMode) {
+        await deleteCloudServiceRecord(record.id);
+      } else {
+        await deleteServiceRecord(record.id);
+      }
+
+      router.replace(`/vehicles/${vehicle.id}` as Href);
+    } catch (error: unknown) {
+      setActionError(
+        isCloudMode
+          ? error instanceof Error
+            ? error.message
+            : "Unable to delete this cloud service record. Please try again."
+          : "Unable to delete this local service record. Please try again.",
+      );
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
-  if (isLoading) {
+  if (isLoading || isAuthLoading) {
     return (
       <SafeAreaView className="flex-1 bg-ledger-background">
         <View className="flex-1 items-center justify-center">
@@ -123,7 +171,10 @@ export default function EditServiceRecordScreen() {
             Service record not found
           </Text>
           <Text className="text-base leading-6 text-ledger-muted">
-            This local service record may have been deleted.
+            {loadError ??
+              (isCloudMode
+                ? "This cloud service record may have been deleted or is not available for this account."
+                : "This local service record may have been deleted.")}
           </Text>
         </View>
       </SafeAreaView>
@@ -134,13 +185,24 @@ export default function EditServiceRecordScreen() {
     <SafeAreaView className="flex-1 bg-ledger-background">
       <ServiceRecordForm
         defaultValues={serviceRecordToFormValues(record)}
-        description="Update this local service record. Odometer changes will recalculate the vehicle's current odometer."
+        description={
+          isCloudMode
+            ? "Update this cloud service record. Odometer changes will recalculate the cloud vehicle's current odometer."
+            : "Update this local service record. Odometer changes will recalculate the vehicle's current odometer."
+        }
         onSubmit={saveRecord}
         submitLabel="Save Changes"
         title="Edit service"
         vehicle={vehicle}
       />
       <View className="px-6 pb-6">
+        {actionError ? (
+          <View className="mb-3 rounded-card border border-red-200 bg-ledger-surface p-3">
+            <Text className="text-sm leading-5 text-ledger-muted">
+              {actionError}
+            </Text>
+          </View>
+        ) : null}
         <Pressable
           accessibilityRole="button"
           className="rounded-card border border-red-200 bg-ledger-surface px-4 py-3"
