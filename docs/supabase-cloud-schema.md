@@ -3,9 +3,10 @@
 This document covers the current cloud data schema foundation for AutoLedger.
 
 The SQL in this slice creates authenticated cloud tables and Row Level Security
-policies. Mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD, and
-mobile cloud service record CRUD are implemented against these tables. The app
-does not yet implement cloud repair, reminder, attachment, or vendor CRUD,
+policies. Mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD,
+mobile cloud service record CRUD, and mobile cloud repair record CRUD are
+implemented against these tables. The app does not yet implement cloud
+reminder, attachment, or vendor CRUD,
 guest-to-account migration, Supabase Storage uploads, cloud attachment access,
 OCR, or cloud push notifications.
 
@@ -117,7 +118,7 @@ agreed location.
 - app-side cloud save/load beyond mobile vehicles, odometer entries, and service records
 - guest-to-account migration
 - upload of existing local guest data
-- cloud repair, reminder, vendor, and attachment metadata CRUD
+- cloud reminder, vendor, and attachment metadata CRUD
 - Supabase Storage buckets and private attachment paths
 - cloud attachment sync
 - cloud push notifications

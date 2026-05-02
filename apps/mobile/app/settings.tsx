@@ -239,17 +239,17 @@ export default function SettingsScreen() {
               <SettingsRow label="Email" value={user.email ?? "Not set"} />
               <View className="rounded-card border border-ledger-line bg-ledger-background p-3">
                 <Text className="text-sm leading-5 text-ledger-muted">
-                  New vehicles, odometer readings, and service records are saved
-                  to your account. Cloud repair, reminder, attachment, and CSV
-                  sync are coming soon.
+                  New vehicles, odometer readings, service records, and repair
+                  records are saved to your account. Cloud reminder,
+                  attachment, and CSV sync are coming soon.
                 </Text>
               </View>
               {hasLocalGuestRecords ? (
                 <View className="rounded-card border border-ledger-line bg-ledger-background p-3">
                   <Text className="text-sm leading-5 text-ledger-muted">
                     Cloud sync for existing local records is coming soon. New
-                    cloud vehicles, odometer readings, and service records will
-                    be saved to your account.
+                    cloud vehicles, odometer readings, service records, and
+                    repair records will be saved to your account.
                   </Text>
                 </View>
               ) : null}

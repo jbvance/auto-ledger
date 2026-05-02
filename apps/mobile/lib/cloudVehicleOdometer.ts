@@ -122,6 +122,33 @@ const getHighestCloudServiceRecordReading = async (
   return (data as { odometer_reading: number } | null)?.odometer_reading;
 };
 
+const getHighestCloudRepairRecordReading = async (
+  vehicleId: string,
+  userId: string,
+) => {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("repair_records")
+    .select("odometer_reading")
+    .eq("vehicle_id", vehicleId)
+    .eq("user_id", userId)
+    .filter("odometer_reading", "not.is", "null")
+    .order("odometer_reading", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      formatCloudOdometerRecalculationError(
+        "Unable to recalculate cloud odometer from repair records",
+        error,
+      ),
+    );
+  }
+
+  return (data as { odometer_reading: number } | null)?.odometer_reading;
+};
+
 export const recalculateCloudVehicleOdometer = async (
   vehicleId: string,
   userId: string,
@@ -134,11 +161,15 @@ export const recalculateCloudVehicleOdometer = async (
     return;
   }
 
-  const [highestOdometerEntryReading, highestServiceRecordReading] =
-    await Promise.all([
-      getHighestCloudOdometerEntryReading(vehicleId, userId),
-      getHighestCloudServiceRecordReading(vehicleId, userId),
-    ]);
+  const [
+    highestOdometerEntryReading,
+    highestServiceRecordReading,
+    highestRepairRecordReading,
+  ] = await Promise.all([
+    getHighestCloudOdometerEntryReading(vehicleId, userId),
+    getHighestCloudServiceRecordReading(vehicleId, userId),
+    getHighestCloudRepairRecordReading(vehicleId, userId),
+  ]);
   const recalculatedOdometer = Math.max(
     vehicle.initial_odometer,
     options.preserveCurrent
@@ -147,6 +178,7 @@ export const recalculateCloudVehicleOdometer = async (
     vehicle.purchase_odometer ?? vehicle.initial_odometer,
     highestOdometerEntryReading ?? vehicle.initial_odometer,
     highestServiceRecordReading ?? vehicle.initial_odometer,
+    highestRepairRecordReading ?? vehicle.initial_odometer,
   );
 
   const { error } = await client

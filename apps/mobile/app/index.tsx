@@ -30,6 +30,7 @@ import {
   listCloudVehicles,
 } from "../lib/cloudVehicles";
 import { listCloudOdometerEntries } from "../lib/cloudOdometerEntries";
+import { listCloudRepairRecords } from "../lib/cloudRepairRecords";
 import { listCloudServiceRecords } from "../lib/cloudServiceRecords";
 import { useAuth } from "../lib/auth";
 import { hasAnyLocalGuestData } from "../lib/localGuestData";
@@ -120,19 +121,21 @@ export default function HomeScreen() {
 
         const nextDashboardItems = await Promise.all(
           nextVehicles.map(async (vehicle) => {
-            const [odometerEntries, serviceRecords] = await Promise.all([
-              listCloudOdometerEntries(vehicle.id),
-              listCloudServiceRecords(vehicle.id),
-            ]);
+            const [odometerEntries, serviceRecords, repairRecords] =
+              await Promise.all([
+                listCloudOdometerEntries(vehicle.id),
+                listCloudServiceRecords(vehicle.id),
+                listCloudRepairRecords(vehicle.id),
+              ]);
 
             return {
               historyItems: buildVehicleHistoryItems({
                 odometerEntries,
-                repairRecords: [],
+                repairRecords,
                 serviceRecords,
               }),
               odometerEntries,
-              repairRecords: [],
+              repairRecords,
               serviceRecords,
               vehicle,
             };
@@ -169,7 +172,10 @@ export default function HomeScreen() {
             (total, item) => total + item.odometerEntries.length,
             0,
           ),
-          repairRecords: 0,
+          repairRecords: nextDashboardItems.reduce(
+            (total, item) => total + item.repairRecords.length,
+            0,
+          ),
           serviceRecords: nextDashboardItems.reduce(
             (total, item) => total + item.serviceRecords.length,
             0,
@@ -291,15 +297,15 @@ export default function HomeScreen() {
           </Text>
           <Text className="text-lg leading-7 text-ledger-muted">
             {storageMode === "cloud"
-              ? "Vehicles and odometer readings are saved to your account. Full record sync is still coming soon."
+              ? "Vehicles, odometer readings, service records, and repair records are saved to your account. Full record sync is still coming soon."
               : "Your vehicle records stay local on this device. Cloud backup and sync remain optional later."}
           </Text>
           {storageMode === "cloud" && hasLocalGuestRecords ? (
             <View className="rounded-card border border-ledger-line bg-ledger-surface p-3">
               <Text className="text-sm leading-5 text-ledger-muted">
                 Cloud sync for existing local records is coming soon. New cloud
-                vehicles, odometer readings, and service records will be saved
-                to your account.
+                vehicles, odometer readings, service records, and repair
+                records will be saved to your account.
               </Text>
             </View>
           ) : null}
@@ -565,7 +571,7 @@ function DashboardVehicleCard({
             ) : (
               <Text className="text-sm leading-5 text-ledger-muted">
                 {storageMode === "cloud"
-                  ? "No cloud history yet. Add a reading or service record from the vehicle detail screen."
+                  ? "No cloud history yet. Add a reading, service record, or repair record from the vehicle detail screen."
                   : "No local history yet. Add a reading, service record, or repair record from the vehicle detail screen."}
               </Text>
             )}
@@ -594,8 +600,9 @@ function CloudRecordsNotice() {
       </Text>
       <Text className="text-sm leading-5 text-ledger-muted">
         Account mode currently saves vehicle details, cloud odometer entries,
-        and cloud service records. Cloud repair records, reminders, attachments,
-        CSV export, and guest-to-account migration are intentionally deferred.
+        cloud service records, and cloud repair records. Cloud reminders,
+        attachments, CSV export, and guest-to-account migration are
+        intentionally deferred.
       </Text>
     </View>
   );
@@ -717,7 +724,7 @@ function RecentActivitySection({
         </Text>
         <Text className="text-sm leading-5 text-ledger-muted">
           {storageMode === "cloud"
-            ? "The latest cloud mileage and service records across active vehicles."
+            ? "The latest cloud mileage, service, and repair records across active vehicles."
             : "The latest local mileage, service, and repair records across active vehicles."}
         </Text>
       </View>
@@ -725,7 +732,7 @@ function RecentActivitySection({
         <View className="rounded-card bg-ledger-background p-3">
           <Text className="text-sm leading-5 text-ledger-muted">
             {storageMode === "cloud"
-              ? "No activity yet. Add a cloud odometer reading or service record to see it here."
+              ? "No activity yet. Add a cloud odometer reading, service record, or repair record to see it here."
               : "No activity yet. Add an odometer reading, service record, or repair record to see it here."}
           </Text>
         </View>

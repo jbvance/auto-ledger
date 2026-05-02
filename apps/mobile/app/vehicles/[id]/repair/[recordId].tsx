@@ -24,6 +24,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { RecordAttachmentsSection } from "../../../../components/RecordAttachmentsSection";
+import { getCloudRepairRecord } from "../../../../lib/cloudRepairRecords";
+import { getCloudVehicle } from "../../../../lib/cloudVehicles";
+import { useAuth } from "../../../../lib/auth";
 import { listAttachmentsForRepairRecord } from "../../../../lib/recordAttachments";
 import { getRepairRecord } from "../../../../lib/repairRecords";
 import { getVehicle } from "../../../../lib/vehicles";
@@ -33,6 +36,8 @@ export default function RepairRecordDetailScreen() {
     id: string;
     recordId: string;
   }>();
+  const { isLoading: isAuthLoading, user } = useAuth();
+  const isCloudMode = Boolean(user);
   const [attachments, setAttachments] = useState<RecordAttachment[]>([]);
   const [attachmentLoadError, setAttachmentLoadError] = useState<string | null>(
     null,
@@ -40,9 +45,10 @@ export default function RepairRecordDetailScreen() {
   const [record, setRecord] = useState<RepairRecord | null>(null);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadAttachments = useCallback(async () => {
-    if (!recordId) {
+    if (!recordId || isCloudMode) {
       return;
     }
 
@@ -56,23 +62,46 @@ export default function RepairRecordDetailScreen() {
         "Unable to load attachments right now. The record details are still available.",
       );
     }
-  }, [recordId]);
+  }, [isCloudMode, recordId]);
 
   const loadRecord = useCallback(async () => {
-    if (!id || !recordId) {
+    if (!id || !recordId || isAuthLoading) {
       return;
     }
 
     setIsLoading(true);
-    const [nextVehicle, nextRecord] = await Promise.all([
-      getVehicle(id),
-      getRepairRecord(recordId),
-    ]);
-    setVehicle(nextVehicle);
-    setRecord(nextRecord);
-    await loadAttachments();
-    setIsLoading(false);
-  }, [id, loadAttachments, recordId]);
+    setLoadError(null);
+
+    try {
+      const [nextVehicle, nextRecord] = await Promise.all([
+        isCloudMode ? getCloudVehicle(id) : getVehicle(id),
+        isCloudMode
+          ? getCloudRepairRecord(recordId)
+          : getRepairRecord(recordId),
+      ]);
+
+      setVehicle(nextVehicle);
+      setRecord(nextRecord);
+
+      if (isCloudMode) {
+        setAttachments([]);
+      } else {
+        await loadAttachments();
+      }
+    } catch (error: unknown) {
+      setLoadError(
+        isCloudMode
+          ? error instanceof Error
+            ? error.message
+            : "Unable to load this cloud repair record. Please try again."
+          : "Unable to load this local repair record. Please try again.",
+      );
+      setVehicle(null);
+      setRecord(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [id, isAuthLoading, isCloudMode, loadAttachments, recordId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -80,7 +109,7 @@ export default function RepairRecordDetailScreen() {
     }, [loadRecord]),
   );
 
-  if (isLoading) {
+  if (isLoading || isAuthLoading) {
     return (
       <SafeAreaView className="flex-1 bg-ledger-background">
         <View className="flex-1 items-center justify-center">
@@ -98,7 +127,10 @@ export default function RepairRecordDetailScreen() {
             Repair record not found
           </Text>
           <Text className="text-base leading-6 text-ledger-muted">
-            This local repair record may have been deleted.
+            {loadError ??
+              (isCloudMode
+                ? "This cloud repair record may have been deleted or is not available for this account."
+                : "This local repair record may have been deleted.")}
           </Text>
         </View>
       </SafeAreaView>
@@ -195,13 +227,25 @@ export default function RepairRecordDetailScreen() {
           </View>
         ) : null}
 
-        <RecordAttachmentsSection
-          attachments={attachments}
-          onAttachmentsChanged={loadAttachments}
-          recordId={record.id}
-          recordType="repair"
-          vehicle={vehicle}
-        />
+        {isCloudMode ? (
+          <View className="gap-2 rounded-card border border-ledger-line bg-ledger-surface p-4">
+            <Text className="text-base font-bold text-ledger-ink">
+              Attachments
+            </Text>
+            <Text className="text-sm leading-5 text-ledger-muted">
+              Cloud attachments and Supabase Storage are not implemented yet for
+              account repair records.
+            </Text>
+          </View>
+        ) : (
+          <RecordAttachmentsSection
+            attachments={attachments}
+            onAttachmentsChanged={loadAttachments}
+            recordId={record.id}
+            recordType="repair"
+            vehicle={vehicle}
+          />
+        )}
       </ScrollView>
     </SafeAreaView>
   );
