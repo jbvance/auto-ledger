@@ -3,6 +3,8 @@ import {
   formatDisplayDate,
   formatMaintenanceReminderCategory,
   formatOdometer,
+  formatVehicleSubtitle,
+  formatVehicleTitle,
   getMaintenanceReminderStatus,
   type MaintenanceReminder,
   type Vehicle,
@@ -11,6 +13,7 @@ import { router, useFocusEffect, type Href } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  Modal,
   Pressable,
   ScrollView,
   Text,
@@ -48,6 +51,8 @@ const sortReminderItems = (items: ReminderItem[]) => {
 
 export default function RemindersScreen() {
   const { isLoading: isAuthLoading, user } = useAuth();
+  const [activeVehicles, setActiveVehicles] = useState<Vehicle[]>([]);
+  const [isAddMenuVisible, setIsAddMenuVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reminderItems, setReminderItems] = useState<ReminderItem[]>([]);
@@ -62,11 +67,16 @@ export default function RemindersScreen() {
     setLoadError(null);
 
     try {
+      const nextVehicles =
+        storageMode === "cloud"
+          ? await listCloudVehicles()
+          : await listVehicles();
       const nextReminderItems =
         storageMode === "cloud"
-          ? await loadCloudReminderItems()
-          : await loadLocalReminderItems();
+          ? await loadCloudReminderItems(nextVehicles)
+          : await loadLocalReminderItems(nextVehicles);
 
+      setActiveVehicles(nextVehicles);
       setReminderItems(sortReminderItems(nextReminderItems));
     } catch (error: unknown) {
       console.warn("Unable to load reminders.", error);
@@ -95,6 +105,24 @@ export default function RemindersScreen() {
     (item) => item.reminder.is_completed,
   );
 
+  const closeAddMenu = () => {
+    setIsAddMenuVisible(false);
+  };
+
+  const routeToNewReminder = (vehicleId: string) => {
+    closeAddMenu();
+    router.push(`/vehicles/${vehicleId}/reminders/new` as Href);
+  };
+
+  const addReminder = () => {
+    if (activeVehicles.length === 1) {
+      routeToNewReminder(activeVehicles[0].id);
+      return;
+    }
+
+    setIsAddMenuVisible(true);
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-ledger-background">
       <ScrollView contentContainerClassName="gap-5 px-6 py-6 pb-28">
@@ -109,6 +137,16 @@ export default function RemindersScreen() {
             Date and mileage reminders across your active vehicles, grouped by
             what still needs attention.
           </Text>
+          <Pressable
+            accessibilityRole="button"
+            className="mt-2 rounded-card bg-ledger-primary px-4 py-3"
+            disabled={isLoading || isAuthLoading}
+            onPress={addReminder}
+          >
+            <Text className="text-center text-base font-bold text-white">
+              Add Reminder
+            </Text>
+          </Pressable>
         </View>
 
         {isLoading || isAuthLoading ? (
@@ -169,13 +207,23 @@ export default function RemindersScreen() {
           </>
         )}
       </ScrollView>
+      <AddReminderMenu
+        isVisible={isAddMenuVisible}
+        onAddVehicle={() => {
+          closeAddMenu();
+          router.push("/vehicles/new" as Href);
+        }}
+        onChooseVehicle={routeToNewReminder}
+        onClose={closeAddMenu}
+        vehicles={activeVehicles}
+      />
     </SafeAreaView>
   );
 }
 
-async function loadCloudReminderItems(): Promise<ReminderItem[]> {
-  const vehicles = await listCloudVehicles();
-
+async function loadCloudReminderItems(
+  vehicles: Vehicle[],
+): Promise<ReminderItem[]> {
   return (
     await Promise.all(
       vehicles.map(async (vehicle) => {
@@ -192,9 +240,9 @@ async function loadCloudReminderItems(): Promise<ReminderItem[]> {
   ).flat();
 }
 
-async function loadLocalReminderItems(): Promise<ReminderItem[]> {
-  const vehicles = await listVehicles();
-
+async function loadLocalReminderItems(
+  vehicles: Vehicle[],
+): Promise<ReminderItem[]> {
   return (
     await Promise.all(
       vehicles.map(async (vehicle) => {
@@ -209,6 +257,90 @@ async function loadLocalReminderItems(): Promise<ReminderItem[]> {
       }),
     )
   ).flat();
+}
+
+function AddReminderMenu({
+  isVisible,
+  onAddVehicle,
+  onChooseVehicle,
+  onClose,
+  vehicles,
+}: {
+  isVisible: boolean;
+  onAddVehicle: () => void;
+  onChooseVehicle: (vehicleId: string) => void;
+  onClose: () => void;
+  vehicles: Vehicle[];
+}) {
+  return (
+    <Modal
+      animationType="fade"
+      onRequestClose={onClose}
+      transparent
+      visible={isVisible}
+    >
+      <View className="flex-1 justify-end bg-black/40">
+        <Pressable className="flex-1" onPress={onClose} />
+        <View className="gap-4 rounded-t-3xl bg-ledger-background px-6 pb-8 pt-5">
+          <View className="flex-row items-start justify-between gap-3">
+            <View className="flex-1 gap-1">
+              <Text className="text-sm font-bold uppercase text-ledger-primary">
+                Add reminder
+              </Text>
+              <Text className="text-2xl font-extrabold text-ledger-ink">
+                Choose vehicle
+              </Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              className="rounded-card border border-ledger-line bg-ledger-surface px-3 py-2"
+              onPress={onClose}
+            >
+              <Text className="text-sm font-bold text-ledger-ink">Close</Text>
+            </Pressable>
+          </View>
+
+          {vehicles.length === 0 ? (
+            <View className="gap-3 rounded-card border border-ledger-line bg-ledger-surface p-4">
+              <Text className="text-base font-bold text-ledger-ink">
+                No active vehicles
+              </Text>
+              <Text className="text-sm leading-5 text-ledger-muted">
+                Add a vehicle before creating date or mileage reminders.
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                className="rounded-card bg-ledger-primary px-4 py-3"
+                onPress={onAddVehicle}
+              >
+                <Text className="text-center text-base font-bold text-white">
+                  Add Vehicle
+                </Text>
+              </Pressable>
+            </View>
+          ) : (
+            <ScrollView className="max-h-96" contentContainerClassName="gap-3">
+              {vehicles.map((vehicle) => (
+                <Pressable
+                  accessibilityRole="button"
+                  className="gap-1 rounded-card border border-ledger-line bg-ledger-surface p-4"
+                  key={vehicle.id}
+                  onPress={() => onChooseVehicle(vehicle.id)}
+                >
+                  <Text className="text-base font-bold text-ledger-ink">
+                    {formatVehicleTitle(vehicle)}
+                  </Text>
+                  <Text className="text-sm leading-5 text-ledger-muted">
+                    {formatVehicleSubtitle(vehicle)}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
 }
 
 function ReminderSection({
