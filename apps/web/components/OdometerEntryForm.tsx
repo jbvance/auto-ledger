@@ -98,7 +98,6 @@ export function OdometerEntryForm({
           className="min-h-28 w-full rounded-lg border border-[var(--line)] bg-[var(--background)] px-4 py-3 text-base text-[var(--foreground)]"
           defaultValue={defaultValues.notes}
           name="notes"
-          placeholder="Optional context"
         />
       </label>
 

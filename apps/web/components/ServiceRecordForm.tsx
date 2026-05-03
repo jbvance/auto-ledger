@@ -75,7 +75,6 @@ export function ServiceRecordForm({
           defaultValue={defaultValues.title}
           label="Title"
           name="title"
-          placeholder="Oil change"
           required
         />
         <SelectField
@@ -100,7 +99,6 @@ export function ServiceRecordForm({
           label="Odometer Reading"
           min={0}
           name="odometer_reading"
-          placeholder={`${vehicle.current_odometer}`}
           type="number"
         />
         <TextField
@@ -108,7 +106,6 @@ export function ServiceRecordForm({
           defaultValue={defaultValues.vendor_name}
           label="Vendor / Shop"
           name="vendor_name"
-          placeholder="Local mechanic or dealership"
         />
         <div className="grid gap-4 sm:grid-cols-[1fr_96px]">
           <TextField
@@ -116,7 +113,6 @@ export function ServiceRecordForm({
             label="Cost"
             min={0}
             name="cost_amount"
-            placeholder="89.99"
             step="0.01"
             type="number"
           />
@@ -139,7 +135,6 @@ export function ServiceRecordForm({
           className="min-h-28 w-full rounded-lg border border-[var(--line)] bg-[var(--background)] px-4 py-3 text-base text-[var(--foreground)]"
           defaultValue={defaultValues.description}
           name="description"
-          placeholder="Work performed, parts replaced, or shop details"
         />
       </label>
 
@@ -151,7 +146,6 @@ export function ServiceRecordForm({
           className="min-h-28 w-full rounded-lg border border-[var(--line)] bg-[var(--background)] px-4 py-3 text-base text-[var(--foreground)]"
           defaultValue={defaultValues.notes}
           name="notes"
-          placeholder="Anything helpful to remember"
         />
       </label>
 

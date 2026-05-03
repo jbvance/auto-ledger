@@ -449,7 +449,13 @@ export const loadWebCloudVehicleDetail = async ({
   ).map(mapCloudRepairRecordRow);
   const maintenanceReminders = (
     (reminderResult.data ?? []) as CloudMaintenanceReminderRow[]
-  ).map(mapCloudMaintenanceReminderRow);
+  )
+    .map(mapCloudMaintenanceReminderRow)
+    .sort((first, second) =>
+      compareMaintenanceRemindersByUrgency(first, second, {
+        [vehicle.id]: vehicle.current_odometer,
+      }),
+    );
   const attachments = await listVehicleRecordAttachments({
     repairRecordIds: repairRecords.map((record) => record.id),
     serviceRecordIds: serviceRecords.map((record) => record.id),

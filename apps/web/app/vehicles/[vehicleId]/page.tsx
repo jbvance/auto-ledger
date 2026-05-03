@@ -9,6 +9,7 @@ import {
   formatVehicleTitle,
   getAttachmentDisplayName,
   getMaintenanceReminderStatus,
+  maintenanceReminderStatusLabels,
   maintenanceReminderTypeLabels,
   odometerSourceTypeLabels,
   repairRecordCategoryLabels,
@@ -401,51 +402,153 @@ function ReminderSection({
   reminders: MaintenanceReminder[];
   vehicle: Vehicle;
 }) {
-  return (
-    <section className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5">
-      <h2 className="text-xl font-bold">Maintenance Reminders</h2>
-      {reminders.length === 0 ? (
-        <EmptyText>No cloud reminders yet.</EmptyText>
-      ) : (
-        <div className="mt-4 flex flex-col gap-3">
-          {reminders.slice(0, 8).map((reminder) => {
-            const status = getMaintenanceReminderStatus({
-              currentOdometer: vehicle.current_odometer,
-              reminder,
-            });
+  const canMutate = !vehicle.archived_at;
+  const activeReminders = reminders.filter((reminder) => !reminder.is_completed);
+  const completedReminders = reminders.filter(
+    (reminder) => reminder.is_completed,
+  );
 
-            return (
-              <div
-                className="rounded-lg border border-[var(--line)] bg-[var(--background)] p-3"
-                key={reminder.id}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-bold">{reminder.title}</p>
-                    <p className="mt-1 text-sm text-[var(--muted)]">
-                      {formatMaintenanceReminderCategory(reminder.category)} -{" "}
-                      {maintenanceReminderTypeLabels[reminder.reminder_type]}
-                    </p>
-                  </div>
-                  <span className="rounded-md bg-[var(--surface)] px-2 py-1 text-xs font-bold uppercase text-[var(--muted)]">
-                    {status.replace("_", " ")}
-                  </span>
-                </div>
-                <p className="mt-2 text-sm text-[var(--muted)]">
-                  {reminder.due_date
-                    ? formatDisplayDate(reminder.due_date)
-                    : "No due date"}
-                  {reminder.due_odometer === null ||
-                  reminder.due_odometer === undefined
-                    ? ""
-                    : ` - Due ${formatOdometer(reminder.due_odometer, vehicle.odometer_unit)}`}
-                </p>
-              </div>
-            );
-          })}
+  return (
+    <section
+      className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5"
+      id="maintenance-reminders"
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="text-xl font-bold">Maintenance Reminders</h2>
+          <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
+            Cloud reminders sorted by calculated urgency for this vehicle.
+          </p>
+        </div>
+        {canMutate ? (
+          <Link
+            className="inline-flex items-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-3 text-center text-sm font-bold text-white"
+            href={`/vehicles/${vehicle.id}/reminders/new`}
+          >
+            <Plus aria-hidden="true" className="size-4" />
+            Add Reminder
+          </Link>
+        ) : null}
+      </div>
+      {reminders.length === 0 ? (
+        <div className="mt-4 rounded-lg bg-[var(--background)] p-3">
+          <p className="text-sm leading-6 text-[var(--muted)]">
+            No cloud reminders yet.
+          </p>
+          {canMutate ? (
+            <Link
+              className="mt-3 inline-flex items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm font-bold text-[var(--foreground)]"
+              href={`/vehicles/${vehicle.id}/reminders/new`}
+            >
+              <Plus aria-hidden="true" className="size-4" />
+              Add Reminder
+            </Link>
+          ) : null}
+        </div>
+      ) : (
+        <div className="mt-4 flex flex-col gap-5">
+          <ReminderList
+            reminders={activeReminders}
+            title="Active"
+            vehicle={vehicle}
+          />
+          {completedReminders.length > 0 ? (
+            <ReminderList
+              reminders={completedReminders}
+              title="Completed"
+              vehicle={vehicle}
+            />
+          ) : null}
         </div>
       )}
     </section>
+  );
+}
+
+function ReminderList({
+  reminders,
+  title,
+  vehicle,
+}: {
+  reminders: MaintenanceReminder[];
+  title: string;
+  vehicle: Vehicle;
+}) {
+  if (reminders.length === 0) {
+    return (
+      <div>
+        <h3 className="text-sm font-bold uppercase text-[var(--muted)]">
+          {title}
+        </h3>
+        <p className="mt-2 rounded-lg bg-[var(--background)] p-3 text-sm leading-6 text-[var(--muted)]">
+          No {title.toLowerCase()} cloud reminders.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h3 className="text-sm font-bold uppercase text-[var(--muted)]">
+        {title}
+      </h3>
+      <div className="mt-3 flex flex-col gap-3">
+        {reminders.map((reminder) => {
+          const status = getMaintenanceReminderStatus({
+            currentOdometer: vehicle.current_odometer,
+            reminder,
+          });
+
+          return (
+            <div
+              className="rounded-lg border border-[var(--line)] bg-[var(--background)] p-3"
+              key={reminder.id}
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <Link
+                    className="font-bold text-[var(--foreground)] transition hover:text-[var(--primary)]"
+                    href={`/vehicles/${vehicle.id}/reminders/${reminder.id}`}
+                  >
+                    {reminder.title}
+                  </Link>
+                  <p className="mt-1 text-sm text-[var(--muted)]">
+                    {formatMaintenanceReminderCategory(reminder.category)} -{" "}
+                    {maintenanceReminderTypeLabels[reminder.reminder_type]}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-md bg-[var(--surface)] px-2 py-1 text-xs font-bold uppercase text-[var(--muted)]">
+                    {maintenanceReminderStatusLabels[status]}
+                  </span>
+                  <Link
+                    className="inline-flex items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-center text-sm font-bold text-[var(--foreground)]"
+                    href={`/vehicles/${vehicle.id}/reminders/${reminder.id}`}
+                  >
+                    <Eye aria-hidden="true" className="size-4" />
+                    View
+                  </Link>
+                </div>
+              </div>
+              <p className="mt-2 text-sm text-[var(--muted)]">
+                {reminder.due_date
+                  ? formatDisplayDate(reminder.due_date)
+                  : "No due date"}
+                {reminder.due_odometer === null ||
+                reminder.due_odometer === undefined
+                  ? ""
+                  : ` - Due ${formatOdometer(reminder.due_odometer, vehicle.odometer_unit)}`}
+              </p>
+              {reminder.notes ? (
+                <p className="mt-3 line-clamp-2 text-sm leading-6 text-[var(--muted)]">
+                  {reminder.notes}
+                </p>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

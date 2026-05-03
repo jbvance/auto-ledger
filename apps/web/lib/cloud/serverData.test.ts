@@ -321,6 +321,35 @@ describe("web cloud server data", () => {
     );
   });
 
+  it("sorts vehicle detail reminders by calculated urgency", async () => {
+    mocks.rows.vehicles = [createVehicleRow({ current_odometer: 42000 })];
+    mocks.rows.maintenance_reminders = [
+      createMaintenanceReminderRow({
+        due_date: "2026-12-01",
+        id: "future-reminder",
+        local_id: "future_reminder",
+        title: "Future reminder",
+      }),
+      createMaintenanceReminderRow({
+        due_date: null,
+        due_odometer: 41000,
+        id: "overdue-mileage-reminder",
+        local_id: "overdue_mileage_reminder",
+        reminder_type: "mileage",
+        title: "Mileage overdue",
+      }),
+    ];
+
+    const detail = await loadWebCloudVehicleDetail({
+      userId: "user-1",
+      vehicleId: "vehicle-1",
+    });
+
+    expect(detail?.maintenanceReminders.map((reminder) => reminder.id)).toEqual(
+      ["overdue-mileage-reminder", "future-reminder"],
+    );
+  });
+
   it("returns null for a missing or not-owned vehicle detail", async () => {
     mocks.rows.vehicles = [
       createVehicleRow({

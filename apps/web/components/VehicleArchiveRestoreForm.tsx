@@ -1,5 +1,6 @@
 "use client";
 
+import { Archive, RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
@@ -91,13 +92,15 @@ function SubmitButton({
   variant: "danger" | "secondary";
 }) {
   const { pending } = useFormStatus();
+  const Icon = label.toLowerCase().includes("restore") ? RotateCcw : Archive;
   const className =
     variant === "danger"
-      ? "rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800 disabled:opacity-70"
-      : "rounded-lg border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm font-bold text-[var(--foreground)] disabled:opacity-70";
+      ? "inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800 disabled:opacity-70"
+      : "inline-flex items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm font-bold text-[var(--foreground)] disabled:opacity-70";
 
   return (
     <button className={className} disabled={pending} type="submit">
+      <Icon aria-hidden="true" className="size-4" />
       {pending ? "Working..." : label}
     </button>
   );

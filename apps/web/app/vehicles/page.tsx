@@ -5,6 +5,7 @@ import {
   vehicleTypeLabels,
   type Vehicle,
 } from "@autoledger/shared";
+import { BellPlus, Eye, Pencil } from "lucide-react";
 import Link from "next/link";
 
 import {
@@ -173,9 +174,10 @@ function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
       </div>
       <div className="flex flex-wrap gap-3">
         <Link
-          className="rounded-lg border border-[var(--line)] bg-[var(--background)] px-4 py-3 text-sm font-bold text-[var(--foreground)]"
+          className="inline-flex items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--background)] px-4 py-3 text-sm font-bold text-[var(--foreground)]"
           href={`/vehicles/${vehicle.id}`}
         >
+          <Eye aria-hidden="true" className="size-4" />
           View Details
         </Link>
         {isArchived ? (
@@ -186,10 +188,20 @@ function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
           />
         ) : (
           <Link
-            className="rounded-lg border border-[var(--line)] bg-[var(--background)] px-4 py-3 text-sm font-bold text-[var(--foreground)]"
+            className="inline-flex items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--background)] px-4 py-3 text-sm font-bold text-[var(--foreground)]"
             href={`/vehicles/${vehicle.id}/edit`}
           >
+            <Pencil aria-hidden="true" className="size-4" />
             Edit
+          </Link>
+        )}
+        {isArchived ? null : (
+          <Link
+            className="inline-flex items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--background)] px-4 py-3 text-sm font-bold text-[var(--foreground)]"
+            href={`/vehicles/${vehicle.id}/reminders/new`}
+          >
+            <BellPlus aria-hidden="true" className="size-4" />
+            Add Reminder
           </Link>
         )}
       </div>

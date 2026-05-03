@@ -85,6 +85,10 @@ development build app id when a dev build exists.
 - Web cloud vehicle create/update payload mapping, validation errors,
   missing/not-owned vehicle handling, archive/restore guards, and edit form
   value mapping with mocked Supabase responses.
+- Web cloud maintenance reminder create/update payload mapping, reminder type
+  validation, due date/mileage field normalization, complete/delete behavior,
+  form value mapping, and vehicle detail urgency ordering with mocked Supabase
+  responses.
 - Cloud record attachment Storage path generation.
 - Guest attachment migration parent mapping resolution, preserved attachment
   local IDs, mapping creation, missing parent mapping skips, unsupported

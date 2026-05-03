@@ -53,7 +53,6 @@ export function VehicleForm({
           defaultValue={defaultValues.nickname}
           label="Nickname"
           name="nickname"
-          placeholder="Family SUV"
           required
         />
         <TextField
@@ -61,7 +60,6 @@ export function VehicleForm({
           defaultValue={defaultValues.make}
           label="Make"
           name="make"
-          placeholder="Toyota"
           required
         />
         <TextField
@@ -69,7 +67,6 @@ export function VehicleForm({
           defaultValue={defaultValues.model}
           label="Model"
           name="model"
-          placeholder="RAV4"
           required
         />
         <TextField
@@ -77,7 +74,6 @@ export function VehicleForm({
           label="Year"
           min={1886}
           name="year"
-          placeholder="2022"
           required
           type="number"
         />
@@ -86,14 +82,12 @@ export function VehicleForm({
           defaultValue={defaultValues.trim}
           label="Trim"
           name="trim"
-          placeholder="XLE"
         />
         <TextField
           autoComplete="off"
           defaultValue={defaultValues.color}
           label="Color"
           name="color"
-          placeholder="Silver"
         />
         <SelectField
           defaultValue={defaultValues.vehicle_type}
@@ -109,7 +103,6 @@ export function VehicleForm({
           label="Current Odometer"
           min={0}
           name="current_odometer"
-          placeholder="42500"
           required
           type="number"
         />
@@ -128,21 +121,18 @@ export function VehicleForm({
           label="VIN"
           maxLength={17}
           name="vin"
-          placeholder="Optional"
         />
         <TextField
           autoComplete="off"
           defaultValue={defaultValues.license_plate}
           label="License Plate"
           name="license_plate"
-          placeholder="Optional"
         />
         <TextField
           autoComplete="off"
           defaultValue={defaultValues.license_state}
           label="License State"
           name="license_state"
-          placeholder="TX"
         />
         <TextField
           defaultValue={defaultValues.purchase_date}
@@ -155,7 +145,6 @@ export function VehicleForm({
           label="Purchase Odometer"
           min={0}
           name="purchase_odometer"
-          placeholder="Optional"
           type="number"
         />
       </div>
@@ -168,7 +157,6 @@ export function VehicleForm({
           className="min-h-28 w-full rounded-lg border border-[var(--line)] bg-[var(--background)] px-4 py-3 text-base text-[var(--foreground)]"
           defaultValue={defaultValues.notes}
           name="notes"
-          placeholder="Anything helpful to remember"
         />
       </label>
 

@@ -6,6 +6,7 @@ import {
   formatVehicleSubtitle,
   formatVehicleTitle,
   getMaintenanceReminderStatus,
+  maintenanceReminderStatusLabels,
   vehicleTypeLabels,
   type MaintenanceReminder,
   type Vehicle,
@@ -211,14 +212,23 @@ function ReminderSummarySection({
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="font-bold">{reminder.title}</p>
+                    {vehicle ? (
+                      <Link
+                        className="font-bold text-[var(--foreground)] transition hover:text-[var(--primary)]"
+                        href={`/vehicles/${vehicle.id}/reminders/${reminder.id}`}
+                      >
+                        {reminder.title}
+                      </Link>
+                    ) : (
+                      <p className="font-bold">{reminder.title}</p>
+                    )}
                     <p className="mt-1 text-sm text-[var(--muted)]">
                       {vehicle?.nickname ?? "Cloud vehicle"} -{" "}
                       {formatMaintenanceReminderCategory(reminder.category)}
                     </p>
                   </div>
                   <span className="rounded-md bg-[var(--surface)] px-2 py-1 text-xs font-bold uppercase text-[var(--muted)]">
-                    {status.replace("_", " ")}
+                    {maintenanceReminderStatusLabels[status]}
                   </span>
                 </div>
                 <p className="mt-2 text-sm text-[var(--muted)]">
