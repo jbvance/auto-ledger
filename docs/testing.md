@@ -92,6 +92,8 @@ development build app id when a dev build exists.
 - Web cloud CSV export dataset recognition, empty header-only exports, shared
   CSV escaping behavior for cloud rows, and attachment metadata export without
   signed URLs or file binaries.
+- Web cloud service/repair record deletion cleanup for related attachment
+  Storage objects and metadata.
 - Cloud record attachment Storage path generation.
 - Guest attachment migration parent mapping resolution, preserved attachment
   local IDs, mapping creation, missing parent mapping skips, unsupported

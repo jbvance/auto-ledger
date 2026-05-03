@@ -563,6 +563,56 @@ export const deleteWebCloudAttachment = async (
   return true;
 };
 
+export const deleteWebCloudAttachmentsForServiceRecord = async ({
+  serviceRecordId,
+  userId,
+  vehicleId,
+}: {
+  serviceRecordId: string;
+  userId: string;
+  vehicleId: string;
+}) => {
+  const attachments = await listWebCloudAttachmentsForServiceRecord({
+    serviceRecordId,
+    userId,
+    vehicleId,
+  });
+
+  for (const attachment of attachments) {
+    await deleteWebCloudAttachment({
+      attachmentId: attachment.id,
+      serviceRecordId,
+      userId,
+      vehicleId,
+    });
+  }
+};
+
+export const deleteWebCloudAttachmentsForRepairRecord = async ({
+  repairRecordId,
+  userId,
+  vehicleId,
+}: {
+  repairRecordId: string;
+  userId: string;
+  vehicleId: string;
+}) => {
+  const attachments = await listWebCloudAttachmentsForRepairRecord({
+    repairRecordId,
+    userId,
+    vehicleId,
+  });
+
+  for (const attachment of attachments) {
+    await deleteWebCloudAttachment({
+      attachmentId: attachment.id,
+      repairRecordId,
+      userId,
+      vehicleId,
+    });
+  }
+};
+
 export const createSignedUrlForCloudAttachment = async (
   input: AttachmentLookupInput,
 ) => {

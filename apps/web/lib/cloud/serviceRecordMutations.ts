@@ -7,6 +7,7 @@ import {
   serviceRecordSelect,
   type CloudServiceRecordRow,
 } from "./mappers";
+import { deleteWebCloudAttachmentsForServiceRecord } from "./recordAttachmentData";
 import {
   getWebCloudVehicleForOdometer,
   recalculateWebCloudVehicleOdometer,
@@ -55,13 +56,6 @@ const formatCloudServiceRecordError = (
 
   if (error.message.toLowerCase().includes("permission denied")) {
     return `${action}. Supabase denied access to service records. Confirm authenticated grants and Row Level Security policies are installed.`;
-  }
-
-  if (
-    error.code === "23503" ||
-    error.message.toLowerCase().includes("record_attachments")
-  ) {
-    return `${action}. This service record may still have cloud attachments. Delete its attachments from the service record detail page, then try again.`;
   }
 
   return `${action}. ${error.message}`;
@@ -284,6 +278,12 @@ export const deleteWebCloudServiceRecord = async ({
   if (!existing) {
     return false;
   }
+
+  await deleteWebCloudAttachmentsForServiceRecord({
+    serviceRecordId,
+    userId,
+    vehicleId,
+  });
 
   const supabase = await createClient();
   const { error } = await supabase

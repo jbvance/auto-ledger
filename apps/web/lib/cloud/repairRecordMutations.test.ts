@@ -15,6 +15,7 @@ import {
 
 type TableName =
   | "odometer_entries"
+  | "record_attachments"
   | "repair_records"
   | "service_records"
   | "vehicles";
@@ -50,8 +51,10 @@ type MockRows = Record<TableName, Array<Record<string, unknown>>>;
 
 const mocks = vi.hoisted(() => ({
   createClient: vi.fn(),
+  remove: vi.fn(),
   rows: {
     odometer_entries: [],
+    record_attachments: [],
     repair_records: [],
     service_records: [],
     vehicles: [],
@@ -210,6 +213,11 @@ class MockSupabaseQuery {
 
 const createMockSupabaseClient = () => ({
   from: (table: TableName) => new MockSupabaseQuery(table),
+  storage: {
+    from: vi.fn(() => ({
+      remove: mocks.remove,
+    })),
+  },
 });
 
 const createVehicleRow = (
@@ -307,10 +315,39 @@ const createOdometerEntryRow = (
   ...overrides,
 });
 
+const createRecordAttachmentRow = (
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> => ({
+  created_at: "2026-01-02T12:00:00.000Z",
+  file_name: "receipt.pdf",
+  file_size_bytes: 2048,
+  file_type: "pdf",
+  id: "attachment-1",
+  local_id: "cloud_attachment_1",
+  local_uri: null,
+  mime_type: "application/pdf",
+  ocr_processed_at: null,
+  ocr_status: "not_started",
+  ocr_text: null,
+  ocr_vendor: null,
+  repair_record_id: "rep-1",
+  service_record_id: null,
+  storage_bucket: "record-attachments",
+  storage_path:
+    "user-1/vehicles/vehicle-1/repair-records/rep-1/cloud_attachment_1-receipt.pdf",
+  sync_status: "synced",
+  updated_at: "2026-01-02T12:00:00.000Z",
+  user_id: "user-1",
+  vehicle_id: "vehicle-1",
+  ...overrides,
+});
+
 describe("web cloud repair record mutations", () => {
   beforeEach(() => {
     mocks.createClient.mockResolvedValue(createMockSupabaseClient());
+    mocks.remove.mockResolvedValue({ error: null });
     mocks.rows.odometer_entries = [];
+    mocks.rows.record_attachments = [];
     mocks.rows.repair_records = [];
     mocks.rows.service_records = [];
     mocks.rows.vehicles = [createVehicleRow()];
@@ -458,5 +495,26 @@ describe("web cloud repair record mutations", () => {
     expect(deleted).toBe(true);
     expect(mocks.rows.repair_records.map((row) => row.id)).toEqual(["rep-2"]);
     expect(mocks.rows.vehicles[0]?.current_odometer).toBe(43000);
+  });
+
+  it("deletes repair record attachments from Storage before deleting the repair record", async () => {
+    mocks.rows.vehicles = [createVehicleRow({ current_odometer: 44000 })];
+    mocks.rows.repair_records = [
+      createRepairRecordRow({ id: "rep-1", odometer_reading: 44000 }),
+    ];
+    mocks.rows.record_attachments = [createRecordAttachmentRow()];
+
+    const deleted = await deleteWebCloudRepairRecord({
+      repairRecordId: "rep-1",
+      userId: "user-1",
+      vehicleId: "vehicle-1",
+    });
+
+    expect(deleted).toBe(true);
+    expect(mocks.remove).toHaveBeenCalledWith([
+      "user-1/vehicles/vehicle-1/repair-records/rep-1/cloud_attachment_1-receipt.pdf",
+    ]);
+    expect(mocks.rows.record_attachments).toHaveLength(0);
+    expect(mocks.rows.repair_records).toHaveLength(0);
   });
 });

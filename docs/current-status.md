@@ -85,7 +85,7 @@ Vitest package tests for shared domain and validation logic plus Jest Expo
 mobile tests for focused user-visible behavior. A lightweight Maestro mobile
 E2E smoke scaffold and `docs/testing.md` are also present.
 
-Current development track: Local guest MVP features, optional Supabase Auth foundation, Supabase cloud data schema/RLS foundation, mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD, mobile cloud service record CRUD, mobile cloud repair record CRUD, mobile cloud maintenance reminder CRUD, cloud service/repair record attachments, guest-to-account vehicle migration, guest-to-account odometer-entry migration, guest-to-account service-record migration, guest-to-account repair-record migration, guest-to-account maintenance-reminder migration, guest-to-account service/repair attachment migration, final guest-to-account migration review/status/retry UX, mobile navigation polish, web authenticated cloud dashboard/vehicle read-only views, web cloud vehicle create/edit/archive/restore, web cloud odometer entry create/edit/delete, web cloud service record create/view/edit/delete, web cloud repair record create/view/edit/delete, web cloud maintenance reminder create/view/edit/complete/delete, web cloud service/repair attachment viewing/upload/delete, and web cloud CSV export are complete; broader app-side cloud sync and broader web attachment edit flows are next.
+Current development track: Local guest MVP features, optional Supabase Auth foundation, Supabase cloud data schema/RLS foundation, mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD, mobile cloud service record CRUD, mobile cloud repair record CRUD, mobile cloud maintenance reminder CRUD, cloud service/repair record attachments, guest-to-account vehicle migration, guest-to-account odometer-entry migration, guest-to-account service-record migration, guest-to-account repair-record migration, guest-to-account maintenance-reminder migration, guest-to-account service/repair attachment migration, final guest-to-account migration review/status/retry UX, mobile navigation polish, web authenticated cloud dashboard/vehicle read-only views, web cloud vehicle create/edit/archive/restore, web cloud odometer entry create/edit/delete, web cloud service record create/view/edit/delete, web cloud repair record create/view/edit/delete, web cloud maintenance reminder create/view/edit/complete/delete, web cloud service/repair attachment viewing/upload/delete, and web cloud CSV export are complete; account/data privacy controls, broader app-side cloud sync, and web attachment edit/rename are next candidate slices.
 
 The app is still local guest-mode first. Users can manage vehicles, odometer entries, service records, repair records, reminders, local attachments, and local CSV export without creating an account.
 
@@ -366,6 +366,9 @@ After running `packages/db/sql/001_profiles_auth_foundation.sql` and `packages/d
   remove the uploaded Storage object and reports cleanup failures without
   exposing a public file URL. Web attachment edit/rename and local guest
   attachment flows are still deferred.
+- Web service and repair record deletion now removes related cloud attachment
+  Storage objects and metadata before deleting the parent record, so users do
+  not need to manually delete each attachment first.
 - Existing local guest service/repair attachments can be uploaded through the focused attachment-only migration action after their parent service/repair records have been migrated. They are not uploaded automatically after sign-in or sign-up.
 - OCR is not implemented.
 - Vehicle-level documents are not implemented.
@@ -400,12 +403,14 @@ Do not assume these exist yet:
 
 ## Recommended Next Feature
 
-The next recommended feature track is a focused web cloud records slice or a carefully scoped cloud export/sync slice, while preserving guest mode as the default mobile experience and keeping web account views cloud-only.
+The next recommended feature track is focused account and data privacy controls, while preserving guest mode as the default mobile experience and keeping web account views cloud-only. This should be designed as an explicit, export-first, confirmation-heavy slice that separates cloud account/data deletion from local guest data cleanup.
 
 Good candidates:
 
 - Generate Supabase database TypeScript types from the live project after running the SQL.
-- Continue focused tests around shared validation, odometer/history logic, attachment validation, reminder status logic, CSV export logic, and migration logic.
-- Plan a focused web attachment edit/rename slice.
+- Add server-only cloud account/data deletion planning and implementation that never exposes `SUPABASE_SERVICE_ROLE_KEY` to mobile or browser code.
+- Add explicit local guest data cleanup controls only after export-first UX and strong confirmation copy are in place.
+- Continue focused tests around shared validation, odometer/history logic, attachment validation, reminder status logic, CSV export logic, migration logic, and deletion/cleanup ordering.
+- Plan a focused web attachment edit/rename slice after privacy controls or as a separate later slice.
 
 Do not implement households, fuel tracking, VIN lookup, OCR, payments/subscriptions, PDF export, fleet/business tooling, or an auto shop portal unless specifically requested.

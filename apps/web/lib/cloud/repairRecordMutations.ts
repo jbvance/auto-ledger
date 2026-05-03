@@ -7,6 +7,7 @@ import {
   repairRecordSelect,
   type CloudRepairRecordRow,
 } from "./mappers";
+import { deleteWebCloudAttachmentsForRepairRecord } from "./recordAttachmentData";
 import {
   getWebCloudVehicleForOdometer,
   recalculateWebCloudVehicleOdometer,
@@ -57,13 +58,6 @@ const formatCloudRepairRecordError = (
 
   if (error.message.toLowerCase().includes("permission denied")) {
     return `${action}. Supabase denied access to repair records. Confirm authenticated grants and Row Level Security policies are installed.`;
-  }
-
-  if (
-    error.code === "23503" ||
-    error.message.toLowerCase().includes("record_attachments")
-  ) {
-    return `${action}. This repair record may still have cloud attachments. Delete its attachments from the repair record detail page, then try again.`;
   }
 
   return `${action}. ${error.message}`;
@@ -288,6 +282,12 @@ export const deleteWebCloudRepairRecord = async ({
   if (!existing) {
     return false;
   }
+
+  await deleteWebCloudAttachmentsForRepairRecord({
+    repairRecordId,
+    userId,
+    vehicleId,
+  });
 
   const supabase = await createClient();
   const { error } = await supabase
