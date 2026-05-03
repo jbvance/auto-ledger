@@ -107,7 +107,7 @@ export default function AddRepairRecordScreen() {
         defaultValues={defaultRepairRecordFormValues(vehicle)}
         description={
           isCloudMode
-            ? "Log a non-routine repair for this cloud vehicle. Attachments are still local-only and are not available for cloud repair records yet."
+            ? "Log a non-routine repair for this cloud vehicle. Photos and PDFs can be added from the saved cloud repair record detail screen."
             : "Log a non-routine repair for this vehicle. This stays local on your device."
         }
         onSubmit={saveRecord}

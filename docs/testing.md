@@ -73,6 +73,10 @@ development build app id when a dev build exists.
 - Cloud-compatible maintenance reminder row mapping.
 - Cloud-compatible record attachment row mapping.
 - Cloud record attachment Storage path generation.
+- Guest attachment migration parent mapping resolution, preserved attachment
+  local IDs, mapping creation, missing parent mapping skips, unsupported
+  relationship skips, missing local file upload failure handling, and rerun
+  duplicate prevention with mocked Supabase/Storage helpers.
 - Guest migration readiness summary counts and local not-started migration run
   storage helpers.
 - Vehicle-only migration duplicate prevention, local ID preservation, archived
@@ -110,7 +114,6 @@ development build app id when a dev build exists.
 - Notification delivery behavior on real iOS/Android devices.
 - Attachment picker/file-copy behavior on real devices.
 - Live guest-to-account upload migration against a real Supabase project.
-- Guest-to-account attachment migration.
 - Cloud CSV export.
 - Live Supabase Storage upload/open/delete integration for cloud attachments.
 - Supabase cloud maintenance reminder CRUD integration against a live Supabase

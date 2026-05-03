@@ -230,6 +230,15 @@ const initializeGuestDatabase = async (db: SQLite.SQLiteDatabase) => {
         skipped_maintenance_reminders INTEGER NOT NULL DEFAULT 0,
         skipped_maintenance_reminders_missing_vehicle_mapping INTEGER NOT NULL DEFAULT 0,
         failed_maintenance_reminders INTEGER NOT NULL DEFAULT 0,
+        total_record_attachments INTEGER NOT NULL DEFAULT 0,
+        migrated_record_attachments INTEGER NOT NULL DEFAULT 0,
+        skipped_record_attachments INTEGER NOT NULL DEFAULT 0,
+        skipped_record_attachments_missing_parent_mapping INTEGER NOT NULL DEFAULT 0,
+        skipped_record_attachments_unsupported INTEGER NOT NULL DEFAULT 0,
+        failed_record_attachments INTEGER NOT NULL DEFAULT 0,
+        failed_record_attachment_uploads INTEGER NOT NULL DEFAULT 0,
+        failed_record_attachment_metadata INTEGER NOT NULL DEFAULT 0,
+        failed_record_attachment_cleanup INTEGER NOT NULL DEFAULT 0,
         error_message TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
@@ -485,6 +494,105 @@ const initializeGuestDatabase = async (db: SQLite.SQLiteDatabase) => {
     await db.execAsync(`
         ALTER TABLE migration_runs
         ADD COLUMN failed_maintenance_reminders INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (!(await columnExists(db, "migration_runs", "total_record_attachments"))) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN total_record_attachments INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (
+    !(await columnExists(db, "migration_runs", "migrated_record_attachments"))
+  ) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN migrated_record_attachments INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (
+    !(await columnExists(db, "migration_runs", "skipped_record_attachments"))
+  ) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN skipped_record_attachments INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (
+    !(await columnExists(
+      db,
+      "migration_runs",
+      "skipped_record_attachments_missing_parent_mapping",
+    ))
+  ) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN skipped_record_attachments_missing_parent_mapping INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (
+    !(await columnExists(
+      db,
+      "migration_runs",
+      "skipped_record_attachments_unsupported",
+    ))
+  ) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN skipped_record_attachments_unsupported INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (
+    !(await columnExists(db, "migration_runs", "failed_record_attachments"))
+  ) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN failed_record_attachments INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (
+    !(await columnExists(
+      db,
+      "migration_runs",
+      "failed_record_attachment_uploads",
+    ))
+  ) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN failed_record_attachment_uploads INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (
+    !(await columnExists(
+      db,
+      "migration_runs",
+      "failed_record_attachment_metadata",
+    ))
+  ) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN failed_record_attachment_metadata INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (
+    !(await columnExists(
+      db,
+      "migration_runs",
+      "failed_record_attachment_cleanup",
+    ))
+  ) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN failed_record_attachment_cleanup INTEGER NOT NULL DEFAULT 0;
       `);
   }
 

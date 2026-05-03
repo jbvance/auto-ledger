@@ -44,6 +44,7 @@ export type MigrationEntityType =
   | "attachment"
   | "maintenance_reminder"
   | "odometer_entry"
+  | "record_attachment"
   | "repair_record"
   | "service_record"
   | "vehicle";
@@ -55,10 +56,15 @@ export type MigrationRun = {
   error_message: string | null;
   failed_odometer_entries: number;
   failed_maintenance_reminders?: number;
+  failed_record_attachment_cleanup?: number;
+  failed_record_attachment_metadata?: number;
+  failed_record_attachment_uploads?: number;
+  failed_record_attachments?: number;
   failed_repair_records: number;
   failed_service_records: number;
   failed_vehicles: number;
   migrated_maintenance_reminders?: number;
+  migrated_record_attachments?: number;
   id: string;
   migrated_odometer_entries: number;
   migrated_repair_records: number;
@@ -69,6 +75,9 @@ export type MigrationRun = {
   migration_scope: string;
   skipped_odometer_entries: number;
   skipped_odometer_entries_missing_vehicle_mapping: number;
+  skipped_record_attachments?: number;
+  skipped_record_attachments_missing_parent_mapping?: number;
+  skipped_record_attachments_unsupported?: number;
   skipped_repair_records: number;
   skipped_repair_records_missing_vehicle_mapping: number;
   skipped_service_records: number;
@@ -78,6 +87,7 @@ export type MigrationRun = {
   skipped_vehicles: number;
   total_maintenance_reminders?: number;
   total_odometer_entries: number;
+  total_record_attachments?: number;
   total_repair_records: number;
   total_service_records: number;
   total_vehicles: number;
@@ -149,6 +159,18 @@ export type MigrationRunMaintenanceReminderCounts = {
   skippedMaintenanceReminders: number;
   skippedMaintenanceRemindersMissingVehicleMapping: number;
   totalMaintenanceReminders: number;
+};
+
+export type MigrationRunRecordAttachmentCounts = {
+  failedRecordAttachmentCleanup: number;
+  failedRecordAttachmentMetadata: number;
+  failedRecordAttachmentUploads: number;
+  failedRecordAttachments: number;
+  migratedRecordAttachments: number;
+  skippedRecordAttachments: number;
+  skippedRecordAttachmentsMissingParentMapping: number;
+  skippedRecordAttachmentsUnsupported: number;
+  totalRecordAttachments: number;
 };
 
 type CountRow = {
@@ -850,6 +872,106 @@ export const createMaintenanceReminderMigrationRun = async ({
   return run;
 };
 
+export const createRecordAttachmentMigrationRun = async ({
+  accountId,
+  totalRecordAttachments,
+}: {
+  accountId: string;
+  totalRecordAttachments: number;
+}): Promise<MigrationRun> => {
+  const db = await getGuestDatabase();
+  const now = new Date().toISOString();
+  const run: MigrationRun = {
+    account_id: accountId,
+    completed_at: null,
+    created_at: now,
+    error_message: null,
+    failed_maintenance_reminders: 0,
+    failed_odometer_entries: 0,
+    failed_record_attachment_cleanup: 0,
+    failed_record_attachment_metadata: 0,
+    failed_record_attachment_uploads: 0,
+    failed_record_attachments: 0,
+    failed_repair_records: 0,
+    failed_service_records: 0,
+    failed_vehicles: 0,
+    id: createLocalId("migration_run"),
+    migrated_maintenance_reminders: 0,
+    migrated_odometer_entries: 0,
+    migrated_record_attachments: 0,
+    migrated_repair_records: 0,
+    migrated_service_records: 0,
+    migrated_vehicles: 0,
+    migration_scope: "record_attachments",
+    skipped_maintenance_reminders: 0,
+    skipped_maintenance_reminders_missing_vehicle_mapping: 0,
+    skipped_odometer_entries: 0,
+    skipped_odometer_entries_missing_vehicle_mapping: 0,
+    skipped_record_attachments: 0,
+    skipped_record_attachments_missing_parent_mapping: 0,
+    skipped_record_attachments_unsupported: 0,
+    skipped_repair_records: 0,
+    skipped_repair_records_missing_vehicle_mapping: 0,
+    skipped_service_records: 0,
+    skipped_service_records_missing_vehicle_mapping: 0,
+    skipped_vehicles: 0,
+    started_at: now,
+    status: "running",
+    total_maintenance_reminders: 0,
+    total_odometer_entries: 0,
+    total_record_attachments: totalRecordAttachments,
+    total_repair_records: 0,
+    total_service_records: 0,
+    total_vehicles: 0,
+    updated_at: now,
+  };
+
+  await db.runAsync(
+    `INSERT INTO migration_runs (
+      id,
+      account_id,
+      migration_scope,
+      started_at,
+      completed_at,
+      status,
+      total_record_attachments,
+      migrated_record_attachments,
+      skipped_record_attachments,
+      skipped_record_attachments_missing_parent_mapping,
+      skipped_record_attachments_unsupported,
+      failed_record_attachments,
+      failed_record_attachment_uploads,
+      failed_record_attachment_metadata,
+      failed_record_attachment_cleanup,
+      error_message,
+      created_at,
+      updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      run.id,
+      run.account_id,
+      run.migration_scope,
+      run.started_at,
+      run.completed_at,
+      run.status,
+      run.total_record_attachments ?? 0,
+      run.migrated_record_attachments ?? 0,
+      run.skipped_record_attachments ?? 0,
+      run.skipped_record_attachments_missing_parent_mapping ?? 0,
+      run.skipped_record_attachments_unsupported ?? 0,
+      run.failed_record_attachments ?? 0,
+      run.failed_record_attachment_uploads ?? 0,
+      run.failed_record_attachment_metadata ?? 0,
+      run.failed_record_attachment_cleanup ?? 0,
+      run.error_message,
+      run.created_at,
+      run.updated_at,
+    ],
+  );
+
+  return run;
+};
+
 export const updateMigrationRunStatus = async ({
   completedAt = null,
   counts,
@@ -1058,6 +1180,56 @@ export const updateMaintenanceReminderMigrationRunStatus = async ({
   );
 };
 
+export const updateRecordAttachmentMigrationRunStatus = async ({
+  completedAt = null,
+  counts,
+  errorMessage = null,
+  runId,
+  status,
+}: {
+  completedAt?: string | null;
+  counts: MigrationRunRecordAttachmentCounts;
+  errorMessage?: string | null;
+  runId: string;
+  status: MigrationRunStatus;
+}): Promise<void> => {
+  const db = await getGuestDatabase();
+
+  await db.runAsync(
+    `UPDATE migration_runs
+     SET completed_at = ?,
+         status = ?,
+         total_record_attachments = ?,
+         migrated_record_attachments = ?,
+         skipped_record_attachments = ?,
+         skipped_record_attachments_missing_parent_mapping = ?,
+         skipped_record_attachments_unsupported = ?,
+         failed_record_attachments = ?,
+         failed_record_attachment_uploads = ?,
+         failed_record_attachment_metadata = ?,
+         failed_record_attachment_cleanup = ?,
+         error_message = ?,
+         updated_at = ?
+     WHERE id = ?`,
+    [
+      completedAt,
+      status,
+      counts.totalRecordAttachments,
+      counts.migratedRecordAttachments,
+      counts.skippedRecordAttachments,
+      counts.skippedRecordAttachmentsMissingParentMapping,
+      counts.skippedRecordAttachmentsUnsupported,
+      counts.failedRecordAttachments,
+      counts.failedRecordAttachmentUploads,
+      counts.failedRecordAttachmentMetadata,
+      counts.failedRecordAttachmentCleanup,
+      errorMessage,
+      new Date().toISOString(),
+      runId,
+    ],
+  );
+};
+
 export const getMigrationEntityMapping = async ({
   accountId,
   entityType,
@@ -1156,6 +1328,22 @@ export const getMaintenanceReminderMigrationMappings = async (
      FROM migration_entity_mappings
      WHERE account_id = ?
        AND entity_type = 'maintenance_reminder'
+     ORDER BY updated_at DESC, created_at DESC`,
+    accountId,
+  );
+
+  return rows;
+};
+
+export const getAttachmentMigrationMappings = async (
+  accountId: string,
+): Promise<MigrationEntityMapping[]> => {
+  const db = await getGuestDatabase();
+  const rows = await db.getAllAsync<MigrationEntityMapping>(
+    `SELECT *
+     FROM migration_entity_mappings
+     WHERE account_id = ?
+       AND entity_type = 'record_attachment'
      ORDER BY updated_at DESC, created_at DESC`,
     accountId,
   );
@@ -1267,4 +1455,12 @@ export const upsertMaintenanceReminderMigrationMapping = async (
   upsertMigrationEntityMapping({
     ...input,
     entityType: "maintenance_reminder",
+  });
+
+export const upsertAttachmentMigrationMapping = async (
+  input: VehicleMigrationMappingInput,
+): Promise<MigrationEntityMapping> =>
+  upsertMigrationEntityMapping({
+    ...input,
+    entityType: "record_attachment",
   });

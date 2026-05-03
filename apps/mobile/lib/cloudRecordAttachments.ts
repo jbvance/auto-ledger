@@ -27,28 +27,100 @@ export type CloudRecordAttachmentRow = Omit<
   user_id: string;
 };
 
-type CloudAttachmentParentRecord = {
+export type CloudAttachmentParentRecord = {
   id: string;
   user_id: string;
   vehicle_id: string;
 };
 
-type CloudRecordAttachmentPayload = {
+export type CloudRecordAttachmentPayload = {
+  created_at?: string;
   file_name: string;
   file_size_bytes: number | null;
   file_type: RecordAttachment["file_type"];
   local_id: string;
   local_uri: null;
   mime_type: string;
+  ocr_processed_at?: string | null;
   ocr_status: RecordAttachment["ocr_status"];
+  ocr_text?: string | null;
+  ocr_vendor?: string | null;
   repair_record_id: string | null;
   service_record_id: string | null;
   storage_bucket: string;
   storage_path: string;
   sync_status: RecordAttachment["sync_status"];
+  updated_at?: string;
   user_id: string;
   vehicle_id: string;
 };
+
+type CreateCloudAttachmentOptions = {
+  localId?: string;
+};
+
+type BuildCloudRecordAttachmentPayloadInput = {
+  input: RecordAttachmentInput;
+  localId: string;
+  parentRecord: CloudAttachmentParentRecord;
+  recordType: RecordAttachmentRecordType;
+  uploadedSize?: number | null;
+};
+
+export type CloudRecordAttachmentDuplicateStatus =
+  | "already_migrated"
+  | "conflicting_duplicate"
+  | "not_found";
+
+export type CloudRecordAttachmentDuplicateState = {
+  reason: string | null;
+  status: CloudRecordAttachmentDuplicateStatus;
+};
+
+export type CloudRecordAttachmentMetadataWriteStatus =
+  | "metadata_insert_failed_cleanup_failed"
+  | "metadata_insert_failed_cleanup_succeeded"
+  | "saved";
+
+export type CloudRecordAttachmentMetadataWriteResult =
+  | {
+      attachment: RecordAttachment;
+      cleanupErrorMessage: null;
+      errorMessage: null;
+      status: "saved";
+      storageBucket: string;
+      storagePath: string;
+    }
+  | {
+      attachment: null;
+      cleanupErrorMessage: null;
+      errorMessage: string;
+      status: "metadata_insert_failed_cleanup_succeeded";
+      storageBucket: string;
+      storagePath: string;
+    }
+  | {
+      attachment: null;
+      cleanupErrorMessage: string;
+      errorMessage: string;
+      status: "metadata_insert_failed_cleanup_failed";
+      storageBucket: string;
+      storagePath: string;
+    };
+
+export type LocalAttachmentFileAvailability =
+  | {
+      errorMessage: null;
+      fileSizeBytes: number | null;
+      isAvailable: true;
+      localUri: string;
+    }
+  | {
+      errorMessage: string;
+      fileSizeBytes: number | null;
+      isAvailable: false;
+      localUri: string;
+    };
 
 export const cloudRecordAttachmentSelect = `
   id,
@@ -75,6 +147,16 @@ export const cloudRecordAttachmentSelect = `
 
 const createCloudLocalId = () =>
   `cloud_att_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+
+const resolveAttachmentLocalId = (localId?: string) => {
+  const nextLocalId = localId ?? createCloudLocalId();
+
+  if (!nextLocalId.trim()) {
+    throw new Error("Attachment local ID is required.");
+  }
+
+  return nextLocalId;
+};
 
 const base64Characters =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -117,6 +199,121 @@ export const mapCloudRecordAttachmentRow = (
   sync_status: row.sync_status as RecordAttachment["sync_status"],
 });
 
+export const buildCloudRecordAttachmentPayload = ({
+  input,
+  localId,
+  parentRecord,
+  recordType,
+  uploadedSize = null,
+}: BuildCloudRecordAttachmentPayloadInput): CloudRecordAttachmentPayload => {
+  const storagePath = getRecordAttachmentStoragePath({
+    attachmentId: localId,
+    fileName: input.file_name,
+    recordId: parentRecord.id,
+    recordType,
+    userId: parentRecord.user_id,
+    vehicleId: parentRecord.vehicle_id,
+  });
+
+  return {
+    file_name: input.file_name,
+    file_size_bytes: input.file_size_bytes ?? uploadedSize ?? null,
+    file_type: input.file_type,
+    local_id: localId,
+    local_uri: null,
+    mime_type: input.mime_type,
+    ocr_status: "not_started",
+    repair_record_id: recordType === "repair" ? parentRecord.id : null,
+    service_record_id: recordType === "service" ? parentRecord.id : null,
+    storage_bucket: recordAttachmentStorageBucket,
+    storage_path: storagePath,
+    sync_status: "synced",
+    user_id: parentRecord.user_id,
+    vehicle_id: parentRecord.vehicle_id,
+  };
+};
+
+const valuesMatch = ({
+  existing,
+  expected,
+  field,
+}: {
+  existing: number | string | null | undefined;
+  expected: number | string | null | undefined;
+  field: string;
+}) => {
+  if (field === "file_size_bytes" && expected === null) {
+    return true;
+  }
+
+  return (existing ?? null) === (expected ?? null);
+};
+
+export const getCloudRecordAttachmentDuplicateState = ({
+  existing,
+  expected,
+}: {
+  existing: RecordAttachment | null;
+  expected: CloudRecordAttachmentPayload;
+}): CloudRecordAttachmentDuplicateState => {
+  if (!existing) {
+    return {
+      reason: null,
+      status: "not_found",
+    };
+  }
+
+  const expectedFields: Array<
+    [
+      keyof Pick<
+        RecordAttachment,
+        | "file_name"
+        | "file_size_bytes"
+        | "file_type"
+        | "local_id"
+        | "mime_type"
+        | "repair_record_id"
+        | "service_record_id"
+        | "storage_bucket"
+        | "storage_path"
+        | "vehicle_id"
+      >,
+      number | string | null,
+    ]
+  > = [
+    ["local_id", expected.local_id],
+    ["vehicle_id", expected.vehicle_id],
+    ["service_record_id", expected.service_record_id],
+    ["repair_record_id", expected.repair_record_id],
+    ["file_name", expected.file_name],
+    ["file_type", expected.file_type],
+    ["mime_type", expected.mime_type],
+    ["file_size_bytes", expected.file_size_bytes],
+    ["storage_bucket", expected.storage_bucket],
+    ["storage_path", expected.storage_path],
+  ];
+  const mismatchedField = expectedFields.find(
+    ([field, expectedValue]) =>
+      !valuesMatch({
+        existing: existing[field],
+        expected: expectedValue,
+        field,
+      }),
+  )?.[0];
+
+  if (mismatchedField) {
+    return {
+      reason: `Existing cloud attachment with local_id "${expected.local_id}" does not match expected ${mismatchedField}.`,
+      status: "conflicting_duplicate",
+    };
+  }
+
+  return {
+    reason: null,
+    status: "already_migrated",
+  };
+};
+
 const formatCloudRecordAttachmentError = (
   action: string,
   error: CloudRecordAttachmentError,
@@ -138,6 +335,98 @@ const formatCloudRecordAttachmentError = (
   }
 
   return `${action}. ${error.message}`;
+};
+
+const getFileSizeLimitMessage = (
+  fileType: RecordAttachment["file_type"],
+  fileSizeBytes: number | null | undefined,
+) => {
+  if (
+    fileSizeBytes === null ||
+    fileSizeBytes === undefined ||
+    fileSizeBytes <= recordAttachmentFileSizeLimits[fileType]
+  ) {
+    return null;
+  }
+
+  return `${fileType === "photo" ? "Photo" : "PDF"} attachments must be ${recordAttachmentFileSizeLimitLabels[fileType]} or smaller.`;
+};
+
+export const verifyLocalAttachmentFileForUpload = async ({
+  fileType,
+  localUri,
+}: {
+  fileType: RecordAttachment["file_type"];
+  localUri: string | null | undefined;
+}): Promise<LocalAttachmentFileAvailability> => {
+  const normalizedUri = localUri?.trim() ?? "";
+
+  if (!normalizedUri) {
+    return {
+      errorMessage: "Attachment file URI is missing.",
+      fileSizeBytes: null,
+      isAvailable: false,
+      localUri: normalizedUri,
+    };
+  }
+
+  try {
+    const fileInfo = await FileSystem.getInfoAsync(normalizedUri);
+
+    if (!fileInfo.exists) {
+      return {
+        errorMessage: "Attachment file is no longer available on this device.",
+        fileSizeBytes: null,
+        isAvailable: false,
+        localUri: normalizedUri,
+      };
+    }
+
+    const fileSizeBytes =
+      "size" in fileInfo && typeof fileInfo.size === "number"
+        ? fileInfo.size
+        : null;
+
+    if (fileSizeBytes !== null && fileSizeBytes <= 0) {
+      return {
+        errorMessage: "Attachment file is empty.",
+        fileSizeBytes,
+        isAvailable: false,
+        localUri: normalizedUri,
+      };
+    }
+
+    const fileSizeLimitMessage = getFileSizeLimitMessage(
+      fileType,
+      fileSizeBytes,
+    );
+
+    if (fileSizeLimitMessage) {
+      return {
+        errorMessage: fileSizeLimitMessage,
+        fileSizeBytes,
+        isAvailable: false,
+        localUri: normalizedUri,
+      };
+    }
+
+    return {
+      errorMessage: null,
+      fileSizeBytes,
+      isAvailable: true,
+      localUri: normalizedUri,
+    };
+  } catch (error: unknown) {
+    return {
+      errorMessage:
+        error instanceof Error && error.message
+          ? `Attachment file could not be checked before upload. ${error.message}`
+          : "Attachment file could not be checked before upload.",
+      fileSizeBytes: null,
+      isAvailable: false,
+      localUri: normalizedUri,
+    };
+  }
 };
 
 const requireSupabase = () => {
@@ -236,24 +525,71 @@ const getCloudAttachment = async (
     : null;
 };
 
-const uploadLocalFileToStorage = async ({
+export const getCloudAttachmentByLocalIdForUser = async ({
+  localId,
+  userId,
+}: {
+  localId: string;
+  userId: string;
+}): Promise<RecordAttachment | null> => {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("record_attachments")
+    .select(cloudRecordAttachmentSelect)
+    .eq("user_id", userId)
+    .eq("local_id", localId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      formatCloudRecordAttachmentError(
+        "Unable to check migrated attachment metadata",
+        error,
+      ),
+    );
+  }
+
+  return data
+    ? mapCloudRecordAttachmentRow(data as CloudRecordAttachmentRow)
+    : null;
+};
+
+export type StorageUploadResult = {
+  sizeBytes: number;
+  status: "already_exists" | "uploaded";
+};
+
+export const uploadLocalFileToStorage = async ({
+  allowExistingObject = false,
   contentType,
   fileType,
   localUri,
   path,
 }: {
+  allowExistingObject?: boolean;
   contentType: string;
   fileType: RecordAttachment["file_type"];
   localUri: string;
   path: string;
-}) => {
+}): Promise<StorageUploadResult> => {
   const client = requireSupabase();
+  const availability = await verifyLocalAttachmentFileForUpload({
+    fileType,
+    localUri,
+  });
   let body: ArrayBuffer;
 
+  if (!availability.isAvailable) {
+    throw new Error(availability.errorMessage);
+  }
+
   try {
-    const base64File = await FileSystem.readAsStringAsync(localUri, {
+    const base64File = await FileSystem.readAsStringAsync(
+      availability.localUri,
+      {
       encoding: FileSystem.EncodingType.Base64,
-    });
+      },
+    );
     body = decodeBase64ToArrayBuffer(base64File);
   } catch (error: unknown) {
     throw new Error(
@@ -267,10 +603,10 @@ const uploadLocalFileToStorage = async ({
     throw new Error("Unable to read the selected file for upload.");
   }
 
-  if (body.byteLength > recordAttachmentFileSizeLimits[fileType]) {
-    throw new Error(
-      `${fileType === "photo" ? "Photo" : "PDF"} attachments must be ${recordAttachmentFileSizeLimitLabels[fileType]} or smaller.`,
-    );
+  const bodySizeLimitMessage = getFileSizeLimitMessage(fileType, body.byteLength);
+
+  if (bodySizeLimitMessage) {
+    throw new Error(bodySizeLimitMessage);
   }
 
   const { error } = await client.storage
@@ -281,12 +617,29 @@ const uploadLocalFileToStorage = async ({
     });
 
   if (error) {
+    const lowerMessage = error.message.toLowerCase();
+
+    if (
+      allowExistingObject &&
+      (lowerMessage.includes("already exists") ||
+        lowerMessage.includes("duplicate") ||
+        lowerMessage.includes("resource already exists"))
+    ) {
+      return {
+        sizeBytes: body.byteLength,
+        status: "already_exists",
+      };
+    }
+
     throw new Error(
       formatCloudRecordAttachmentError("Unable to upload attachment", error),
     );
   }
 
-  return body.byteLength;
+  return {
+    sizeBytes: body.byteLength,
+    status: "uploaded",
+  };
 };
 
 const removeStorageObject = async (
@@ -308,16 +661,98 @@ const removeStorageObject = async (
   }
 };
 
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error && error.message
+    ? error.message
+    : "Unknown attachment error.";
+
+export const insertCloudAttachmentMetadataWithUploadCleanup = async ({
+  payload,
+  storageBucket = payload.storage_bucket,
+  storagePath = payload.storage_path,
+}: {
+  payload: CloudRecordAttachmentPayload;
+  storageBucket?: string;
+  storagePath?: string;
+}): Promise<CloudRecordAttachmentMetadataWriteResult> => {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("record_attachments")
+    .insert(payload)
+    .select(cloudRecordAttachmentSelect)
+    .single();
+
+  if (!error) {
+    return {
+      attachment: mapCloudRecordAttachmentRow(data as CloudRecordAttachmentRow),
+      cleanupErrorMessage: null,
+      errorMessage: null,
+      status: "saved",
+      storageBucket,
+      storagePath,
+    };
+  }
+
+  const errorMessage = formatCloudRecordAttachmentError(
+    "Attachment uploaded, but metadata could not be saved",
+    error,
+  );
+
+  try {
+    await removeStorageObject(storagePath, storageBucket);
+
+    return {
+      attachment: null,
+      cleanupErrorMessage: null,
+      errorMessage,
+      status: "metadata_insert_failed_cleanup_succeeded",
+      storageBucket,
+      storagePath,
+    };
+  } catch (cleanupError: unknown) {
+    const cleanupErrorMessage = getErrorMessage(cleanupError);
+
+    console.warn(
+      "Unable to clean up uploaded attachment after metadata failure.",
+      cleanupError,
+    );
+
+    return {
+      attachment: null,
+      cleanupErrorMessage,
+      errorMessage,
+      status: "metadata_insert_failed_cleanup_failed",
+      storageBucket,
+      storagePath,
+    };
+  }
+};
+
+export const getCloudRecordAttachmentMetadataWriteErrorMessage = (
+  result: CloudRecordAttachmentMetadataWriteResult,
+) => {
+  if (result.status === "saved") {
+    return null;
+  }
+
+  if (result.status === "metadata_insert_failed_cleanup_failed") {
+    return `${result.errorMessage} The uploaded file could not be cleaned up automatically, so retry may need to reuse or remove ${result.storagePath}.`;
+  }
+
+  return result.errorMessage;
+};
+
 const createCloudAttachment = async ({
   input,
+  options,
   parentRecord,
   recordType,
 }: {
   input: RecordAttachmentInput;
+  options?: CreateCloudAttachmentOptions;
   parentRecord: CloudAttachmentParentRecord;
   recordType: RecordAttachmentRecordType;
 }): Promise<RecordAttachment> => {
-  const client = requireSupabase();
   const validation = recordAttachmentSchema.safeParse(input);
 
   if (!validation.success) {
@@ -333,7 +768,7 @@ const createCloudAttachment = async ({
     throw new Error("Attachment vehicle must match the cloud record.");
   }
 
-  const localId = createCloudLocalId();
+  const localId = resolveAttachmentLocalId(options?.localId);
   const storagePath = getRecordAttachmentStoragePath({
     attachmentId: localId,
     fileName: validatedInput.file_name,
@@ -342,54 +777,34 @@ const createCloudAttachment = async ({
     userId: parentRecord.user_id,
     vehicleId: parentRecord.vehicle_id,
   });
-  const uploadedSize = await uploadLocalFileToStorage({
+  const uploadResult = await uploadLocalFileToStorage({
     contentType: validatedInput.mime_type,
     fileType: validatedInput.file_type,
     localUri: validatedInput.local_uri,
     path: storagePath,
   });
-  const payload: CloudRecordAttachmentPayload = {
-    file_name: validatedInput.file_name,
-    file_size_bytes: validatedInput.file_size_bytes ?? uploadedSize ?? null,
-    file_type: validatedInput.file_type,
-    local_id: localId,
-    local_uri: null,
-    mime_type: validatedInput.mime_type,
-    ocr_status: "not_started",
-    repair_record_id: recordType === "repair" ? parentRecord.id : null,
-    service_record_id: recordType === "service" ? parentRecord.id : null,
-    storage_bucket: recordAttachmentStorageBucket,
-    storage_path: storagePath,
-    sync_status: "synced",
-    user_id: parentRecord.user_id,
-    vehicle_id: parentRecord.vehicle_id,
-  };
+  const payload = buildCloudRecordAttachmentPayload({
+    input: validatedInput,
+    localId,
+    parentRecord,
+    recordType,
+    uploadedSize: uploadResult.sizeBytes,
+  });
 
-  const { data, error } = await client
-    .from("record_attachments")
-    .insert(payload)
-    .select(cloudRecordAttachmentSelect)
-    .single();
+  const metadataWriteResult =
+    await insertCloudAttachmentMetadataWithUploadCleanup({
+      payload,
+      storagePath,
+    });
 
-  if (error) {
-    try {
-      await removeStorageObject(storagePath);
-    } catch (cleanupError: unknown) {
-      console.warn(
-        "Unable to clean up uploaded attachment after metadata failure.",
-        cleanupError,
-      );
-    }
-
+  if (metadataWriteResult.status !== "saved") {
     throw new Error(
-      formatCloudRecordAttachmentError(
-        "Attachment uploaded, but metadata could not be saved",
-        error,
-      ),
+      getCloudRecordAttachmentMetadataWriteErrorMessage(metadataWriteResult) ??
+        "Attachment uploaded, but metadata could not be saved.",
     );
   }
 
-  return mapCloudRecordAttachmentRow(data as CloudRecordAttachmentRow);
+  return metadataWriteResult.attachment;
 };
 
 export const listCloudAttachmentsForServiceRecord = async (
@@ -446,6 +861,7 @@ export const listCloudAttachmentsForRepairRecord = async (
 
 export const createCloudAttachmentForServiceRecord = async (
   input: RecordAttachmentInput,
+  options?: CreateCloudAttachmentOptions,
 ): Promise<RecordAttachment> => {
   const userId = await getAuthenticatedUserId();
   const serviceRecordId = input.service_record_id;
@@ -465,6 +881,7 @@ export const createCloudAttachmentForServiceRecord = async (
 
   return createCloudAttachment({
     input,
+    options,
     parentRecord,
     recordType: "service",
   });
@@ -472,6 +889,7 @@ export const createCloudAttachmentForServiceRecord = async (
 
 export const createCloudAttachmentForRepairRecord = async (
   input: RecordAttachmentInput,
+  options?: CreateCloudAttachmentOptions,
 ): Promise<RecordAttachment> => {
   const userId = await getAuthenticatedUserId();
   const repairRecordId = input.repair_record_id;
@@ -491,6 +909,7 @@ export const createCloudAttachmentForRepairRecord = async (
 
   return createCloudAttachment({
     input,
+    options,
     parentRecord,
     recordType: "repair",
   });

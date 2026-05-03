@@ -14,7 +14,7 @@ import { useAuth } from "../../lib/auth";
 import { getGuestMigrationSummary } from "../../lib/guestMigration";
 
 const localDataMessage =
-  "Signed in. Local records are still on this device. Vehicle, odometer, service record, repair record, and reminder migration tools are available in Settings, and attachments will migrate in a future slice. New cloud records you add while signed in will save to your account.";
+  "Signed in. Local records are still on this device. Vehicle, odometer, service record, repair record, reminder, and attachment migration tools are available in Settings. New cloud records you add while signed in will save to your account.";
 
 export default function SignInScreen() {
   const { isConfigured, isLoading, signIn, user } = useAuth();

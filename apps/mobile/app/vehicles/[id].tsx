@@ -532,8 +532,9 @@ function CloudVehicleRecordsNotice() {
       <Text className="text-sm leading-5 text-ledger-muted">
         Cloud odometer entries, service records, repair records, and reminders
         are available for this vehicle. Cloud service and repair attachments are
-        available from record detail screens. CSV export, push notifications,
-        and later guest-to-account migration slices are still deferred.
+        available from record detail screens. Focused guest-to-account migration
+        actions are available in Settings. CSV export and push notifications are
+        still deferred.
       </Text>
     </View>
   );

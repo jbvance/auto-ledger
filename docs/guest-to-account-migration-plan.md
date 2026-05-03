@@ -4,17 +4,17 @@ This document audits the current repo readiness for migrating local guest data
 to an authenticated Supabase account. Slice 1 readiness/status detection,
 Slice 2 vehicle-only migration, Slice 3 odometer-entry-only migration,
 Slice 4 service-record-only migration, Slice 5 repair-record-only migration,
-and Slice 6 maintenance-reminder-only migration are now implemented locally.
-Full migration is not implemented yet: attachments are still deferred. Vehicle,
-odometer, service record, repair record, and maintenance reminder migration do
-not delete local data.
+Slice 6 maintenance-reminder-only migration, and Slice 7 service/repair
+attachment-only migration are now implemented locally. Full automatic sync is
+not implemented yet. Vehicle, odometer, service record, repair record,
+maintenance reminder, and attachment migration do not delete local data.
 
 ## 1. Current Readiness Summary
 
 The repo is ready for vehicle-only, odometer-entry-only,
-service-record-only, repair-record-only, and maintenance-reminder-only
-migration and mostly ready at the data model level for attachment migration. It
-is not yet ready for full guest-to-account migration.
+service-record-only, repair-record-only, maintenance-reminder-only, and
+service/repair attachment-only migration. It is not yet ready for automatic
+full guest-to-account sync.
 
 Ready:
 
@@ -91,6 +91,15 @@ Ready:
 - Cloud attachment Storage setup exists in
   `packages/db/sql/003_record_attachments_storage_rls.sql` with a private
   `record-attachments` bucket and user-scoped Storage RLS.
+- `apps/mobile/lib/guestAttachmentMigration.ts` migrates local guest
+  service/repair attachments only after vehicle and service/repair parent
+  mappings exist, preserves each local attachment `local_id`, writes
+  `entity_type = 'record_attachment'` mappings, uses deterministic private
+  Storage paths, uploads files before inserting metadata, reuses existing
+  matching `user_id + local_id` cloud metadata on rerun, and reports missing
+  parent mappings, unsupported relationships, missing local files, upload
+  failures, metadata failures, and cleanup failures without deleting local data
+  or files.
 - Shared TypeScript types and Zod validation schemas exist for all records in
   `packages/shared/src/index.ts` and `packages/validation/src/index.ts`.
 
@@ -112,14 +121,13 @@ Not ready:
   completed or skipped service record mappings, repair-record-only migration
   writes completed or skipped repair record mappings, and
   maintenance-reminder-only migration writes completed or skipped reminder
-  mappings. Attachment mappings are not written yet.
-- There is no full migration prompt/progress UI and no attachment upload/retry
-  workflow yet. The current Settings actions are intentionally scoped to
-  vehicles, odometer entries, service records, repair records, and maintenance
-  reminders.
-- Cloud attachment upload currently uses a generated attachment local ID and
-  `upsert: false`, so it is not idempotent for retrying migrated local
-  attachments.
+  mappings. Attachment-only migration writes completed, skipped, or failed
+  `record_attachment` mappings.
+- There is no full migration prompt/progress UI. The current Settings actions
+  are intentionally focused by entity type.
+- Regular cloud attachment creation generates a cloud-only local ID. Attachment
+  migration uses a dedicated helper that preserves local IDs and checks existing
+  metadata before upload so reruns do not duplicate cloud metadata.
 - Local notification IDs should remain local-only. Cloud reminders currently
   include `scheduled_notification_id` for parity, but migration should set it to
   null or omit it for cloud rows.
@@ -388,13 +396,20 @@ Slice 6: migrate reminders - complete
 - Preserve local IDs and user-entered fields.
 - Do not copy local notification IDs to cloud reminders.
 
-Slice 7: migrate attachments
+Slice 7: migrate attachments - complete
 
 - Upload local photo/PDF files to Supabase Storage.
 - Create cloud attachment metadata after upload.
 - Make retries idempotent around local attachment IDs and deterministic Storage
   paths.
 - Report missing/inaccessible local files without failing parent records.
+- Preserve local attachment `local_id` values and write
+  `record_attachment` migration mappings.
+- Keep local guest attachment metadata and local files untouched.
+- Reuse existing matching `user_id + local_id` cloud metadata on rerun before
+  attempting another upload.
+- Attempt Storage cleanup if metadata insert fails after upload; report cleanup
+  failures with the affected Storage path.
 
 Slice 8: cleanup/retry UX
 
@@ -587,7 +602,10 @@ Manual Expo Go checklist:
   the correct cloud vehicles.
 - Run reminder migration again and verify no duplicate cloud reminder rows are
   created.
-- Confirm attachments were not migrated yet.
+- Run "Migrate attachments to account" and verify cloud attachment metadata rows
+  are attached to the correct migrated service/repair records.
+- Run attachment migration again and verify no duplicate cloud metadata rows or
+  duplicate deterministic Storage files are created.
 - Turn off network during child record or attachment migration and verify retry
   resumes without deleting local data.
 - Delete or make one local attachment file inaccessible and verify the
@@ -601,9 +619,9 @@ Manual Expo Go checklist:
   record migration use dedicated helpers instead. Reminder migration also uses a
   dedicated helper so local reminder IDs and completed state are preserved.
 - Durable local mapping/status tables exist and are now used for vehicle,
-  odometer, service record, repair record, and maintenance reminder migration.
-  Attachment migration must reuse the vehicle mapping table and the migrated
-  service/repair parent mappings.
+  odometer, service record, repair record, maintenance reminder, and attachment
+  migration. Attachment migration reuses the vehicle mapping table and the
+  migrated service/repair parent mappings.
 - Attachment retry needs careful idempotency because file upload and metadata
   insert are two separate operations.
 - Archived local vehicles need special handling because some cloud helper
@@ -613,7 +631,8 @@ Manual Expo Go checklist:
 
 ## Next Safest Slice
 
-The next safest implementation slice is attachment migration. It should use the
-existing vehicle mappings and service/repair parent mappings, preserve local
-attachment IDs, use deterministic private Storage paths, and report missing
-local files without deleting local guest data.
+The next safest implementation slice is cleanup/retry UX and broader cloud
+sync/export work. Attachment migration now uses existing vehicle mappings and
+service/repair parent mappings, preserves local attachment IDs, uses
+deterministic private Storage paths, and reports missing local files without
+deleting local guest data.

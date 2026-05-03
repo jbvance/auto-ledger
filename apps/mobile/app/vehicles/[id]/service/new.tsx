@@ -107,7 +107,7 @@ export default function AddServiceRecordScreen() {
         defaultValues={defaultServiceRecordFormValues(vehicle)}
         description={
           isCloudMode
-            ? "Log routine maintenance for this cloud vehicle. Attachments are still local-only and are not available for cloud service records yet."
+            ? "Log routine maintenance for this cloud vehicle. Photos and PDFs can be added from the saved cloud service record detail screen."
             : "Log routine maintenance for this vehicle. This stays local on your device."
         }
         onSubmit={saveRecord}

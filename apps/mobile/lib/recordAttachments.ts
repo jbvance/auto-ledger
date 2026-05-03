@@ -244,6 +244,17 @@ export const listAttachmentsForRepairRecord = async (
   return rows.map(mapAttachmentRow);
 };
 
+export const listAllAttachments = async (): Promise<RecordAttachment[]> => {
+  const db = await getGuestDatabase();
+  const rows = await db.getAllAsync<RecordAttachmentRow>(
+    `SELECT *
+     FROM record_attachments
+     ORDER BY created_at DESC`,
+  );
+
+  return rows.map(mapAttachmentRow);
+};
+
 export const getAttachment = async (
   id: string,
 ): Promise<RecordAttachment | null> => {

@@ -24,6 +24,11 @@ import {
   type MigrationRun,
 } from "../../lib/guestMigration";
 import {
+  getAttachmentMigrationMappings,
+  migrateGuestAttachmentsToCloud,
+  type GuestAttachmentMigrationResult,
+} from "../../lib/guestAttachmentMigration";
+import {
   migrateGuestMaintenanceRemindersToCloud,
   type GuestMaintenanceReminderMigrationResult,
 } from "../../lib/guestMaintenanceReminderMigration";
@@ -91,6 +96,7 @@ export default function SettingsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isMigratingMaintenanceReminders, setIsMigratingMaintenanceReminders] =
     useState(false);
+  const [isMigratingAttachments, setIsMigratingAttachments] = useState(false);
   const [isMigratingOdometerEntries, setIsMigratingOdometerEntries] =
     useState(false);
   const [isMigratingRepairRecords, setIsMigratingRepairRecords] =
@@ -102,6 +108,8 @@ export default function SettingsScreen() {
   const [migrationRun, setMigrationRun] = useState<MigrationRun | null>(null);
   const [maintenanceReminderMigrationResult, setMaintenanceReminderMigrationResult] =
     useState<GuestMaintenanceReminderMigrationResult | null>(null);
+  const [attachmentMigrationResult, setAttachmentMigrationResult] =
+    useState<GuestAttachmentMigrationResult | null>(null);
   const [odometerMigrationResult, setOdometerMigrationResult] =
     useState<GuestOdometerMigrationResult | null>(null);
   const [repairRecordMigrationResult, setRepairRecordMigrationResult] =
@@ -121,6 +129,10 @@ export default function SettingsScreen() {
   const [
     maintenanceReminderMigrationMappingCount,
     setMaintenanceReminderMigrationMappingCount,
+  ] = useState(0);
+  const [
+    attachmentMigrationMappingCount,
+    setAttachmentMigrationMappingCount,
   ] = useState(0);
   const [vehicleMigrationMappingCount, setVehicleMigrationMappingCount] =
     useState(0);
@@ -162,6 +174,10 @@ export default function SettingsScreen() {
       accountId && nextMigrationSummary.hasGuestData
         ? await getMaintenanceReminderMigrationMappings(accountId)
         : [];
+    const nextAttachmentMigrationMappings =
+      accountId && nextMigrationSummary.hasGuestData
+        ? await getAttachmentMigrationMappings(accountId)
+        : [];
 
     setSettings(nextSettings);
     setGuestMigrationSummary(nextMigrationSummary);
@@ -175,6 +191,7 @@ export default function SettingsScreen() {
     setMaintenanceReminderMigrationMappingCount(
       nextMaintenanceReminderMigrationMappings.length,
     );
+    setAttachmentMigrationMappingCount(nextAttachmentMigrationMappings.length);
     setVehicleMigrationMappingCount(nextVehicleMigrationMappings.length);
     setPermissionState(nextPermissionState);
     setIsLoading(false);
@@ -451,6 +468,43 @@ export default function SettingsScreen() {
     }
   };
 
+  const migrateAttachmentsToCurrentAccount = async () => {
+    if (!user) {
+      return;
+    }
+
+    setAccountFeedback(null);
+    setIsMigratingAttachments(true);
+
+    try {
+      const result = await migrateGuestAttachmentsToCloud(user.id);
+      const issueCount =
+        result.failedCount +
+        result.skippedMissingParentMappingCount +
+        result.skippedUnsupportedCount;
+
+      setAttachmentMigrationResult(result);
+      setMigrationRun(result.run);
+      setAttachmentMigrationMappingCount(
+        result.results.filter((item) => item.cloudId).length,
+      );
+      setAccountFeedback(
+        issueCount > 0
+          ? `Attachment migration finished with ${issueCount} issue${issueCount === 1 ? "" : "s"}. Local guest data and files were not changed.`
+          : "Attachment migration finished. Local guest data and files remain on this device.",
+      );
+      await loadSettings();
+    } catch (error: unknown) {
+      setAccountFeedback(
+        error instanceof Error
+          ? error.message
+          : "Unable to migrate attachments. Local guest data and files were not changed.",
+      );
+    } finally {
+      setIsMigratingAttachments(false);
+    }
+  };
+
   if (isLoading || !settings) {
     return (
       <SafeAreaView className="flex-1 bg-ledger-background">
@@ -585,7 +639,7 @@ export default function SettingsScreen() {
 
             <SettingsRow
               label="Status"
-              value="Vehicle, odometer, service, repair, and reminder migration available"
+              value="Vehicle, odometer, service, repair, reminder, and attachment migration available"
             />
             <SettingsRow
               label="Readiness"
@@ -625,6 +679,12 @@ export default function SettingsScreen() {
                 value={`${migrationRun.migrated_maintenance_reminders ?? 0} copied, ${migrationRun.skipped_maintenance_reminders ?? 0} already present, ${migrationRun.skipped_maintenance_reminders_missing_vehicle_mapping ?? 0} missing vehicle mapping, ${migrationRun.failed_maintenance_reminders ?? 0} failed`}
               />
             ) : null}
+            {migrationRun?.migration_scope === "record_attachments" ? (
+              <SettingsRow
+                label="Attachment run"
+                value={`${migrationRun.migrated_record_attachments ?? 0} copied, ${migrationRun.skipped_record_attachments ?? 0} already present, ${migrationRun.skipped_record_attachments_missing_parent_mapping ?? 0} missing parent mapping, ${migrationRun.skipped_record_attachments_unsupported ?? 0} unsupported, ${migrationRun.failed_record_attachments ?? 0} failed`}
+              />
+            ) : null}
             <SettingsRow
               label="Vehicle mappings"
               value={`${vehicleMigrationMappingCount}`}
@@ -640,6 +700,10 @@ export default function SettingsScreen() {
             <SettingsRow
               label="Reminder mappings"
               value={`${maintenanceReminderMigrationMappingCount}`}
+            />
+            <SettingsRow
+              label="Attachment mappings"
+              value={`${attachmentMigrationMappingCount}`}
             />
             <SettingsRow
               label="Vehicles"
@@ -678,6 +742,16 @@ export default function SettingsScreen() {
 
             <View className="rounded-card border border-ledger-line bg-ledger-background p-3">
               <Text className="text-sm leading-5 text-ledger-muted">
+                Attachment migration also requires
+                packages/db/sql/003_record_attachments_storage_rls.sql for the
+                private Storage bucket and Storage RLS policies. Cloud
+                attachment metadata uses public.record_attachments RLS and the
+                same user_id + local_id duplicate prevention check.
+              </Text>
+            </View>
+
+            <View className="rounded-card border border-ledger-line bg-ledger-background p-3">
+              <Text className="text-sm leading-5 text-ledger-muted">
                 Run vehicle migration first. The odometer step copies odometer
                 entries only and uses vehicle mappings to attach each reading to
                 the right cloud vehicle. Service record migration can run after
@@ -685,8 +759,8 @@ export default function SettingsScreen() {
                 after vehicle mappings exist. Reminder migration can run after
                 vehicle mappings exist; odometer, service, and repair migration
                 are recommended first so mileage-based status has the best cloud
-                odometer context. Attachments stay local until a later migration
-                slice.
+                odometer context. Attachments can run after their service or
+                repair parent records have migration mappings.
               </Text>
             </View>
 
@@ -788,8 +862,8 @@ export default function SettingsScreen() {
                   <Text className="text-sm leading-5 text-ledger-muted">
                     This step copies service records only and uses vehicle
                     mappings to attach them to cloud vehicles. Repair records,
-                    reminders, and attachments stay local until later migration
-                    slices.
+                    reminders, and attachments are handled by separate
+                    migration actions.
                   </Text>
                 </View>
                 <Pressable
@@ -840,7 +914,7 @@ export default function SettingsScreen() {
                   <Text className="text-sm leading-5 text-ledger-muted">
                     This step copies repair records only and uses vehicle
                     mappings to attach them to cloud vehicles. Reminders and
-                    attachments stay local until later migration slices.
+                    attachments are handled by separate migration actions.
                   </Text>
                 </View>
                 <Pressable
@@ -892,7 +966,7 @@ export default function SettingsScreen() {
                     This step copies maintenance reminders only and uses vehicle
                     mappings to attach them to cloud vehicles. Completed
                     reminders stay completed. Local notification IDs stay local,
-                    and attachments still wait for a later migration slice.
+                    and attachments are handled by a separate migration action.
                   </Text>
                 </View>
                 <Pressable
@@ -934,6 +1008,75 @@ export default function SettingsScreen() {
                   {maintenanceReminderMigrationResult.failedCount} failed. No
                   attachments were migrated, local notification scheduling was
                   not copied to cloud reminders, and local guest data was not
+                  deleted.
+                </Text>
+              </View>
+            ) : null}
+
+            {serviceRecordMigrationMappingCount +
+              repairRecordMigrationMappingCount >
+            0 ? (
+              <View className="gap-3">
+                <View className="rounded-card border border-ledger-line bg-ledger-background p-3">
+                  <Text className="text-sm leading-5 text-ledger-muted">
+                    This step copies service and repair attachments only. Files
+                    upload to the private Supabase record-attachments bucket,
+                    then cloud metadata is created with the original local ID.
+                    Local files and local attachment metadata remain on this
+                    device. Missing local files are reported so they can be
+                    reattached manually if needed.
+                  </Text>
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  className={`rounded-card px-4 py-3 ${
+                    isMigratingAttachments ||
+                    guestMigrationSummary.counts.attachments === 0
+                      ? "bg-ledger-primary opacity-60"
+                      : "bg-ledger-primary"
+                  }`}
+                  disabled={
+                    isMigratingAttachments ||
+                    guestMigrationSummary.counts.attachments === 0
+                  }
+                  onPress={() => {
+                    void migrateAttachmentsToCurrentAccount();
+                  }}
+                >
+                  <Text className="text-center text-base font-bold text-white">
+                    {isMigratingAttachments
+                      ? "Migrating attachments..."
+                      : "Migrate attachments to account"}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : guestMigrationSummary.counts.attachments > 0 ? (
+              <View className="rounded-card border border-ledger-line bg-ledger-background p-3">
+                <Text className="text-sm leading-5 text-ledger-muted">
+                  Attachment migration becomes available after service-record or
+                  repair-record migration creates parent mappings for this
+                  account.
+                </Text>
+              </View>
+            ) : null}
+
+            {attachmentMigrationResult ? (
+              <View className="rounded-card border border-ledger-line bg-ledger-background p-3">
+                <Text className="text-sm leading-5 text-ledger-muted">
+                  Attachment-only migration:{" "}
+                  {attachmentMigrationResult.migratedCount} copied,{" "}
+                  {attachmentMigrationResult.skippedAlreadyMigratedCount}{" "}
+                  already present,{" "}
+                  {
+                    attachmentMigrationResult.skippedMissingParentMappingCount
+                  }{" "}
+                  skipped for missing parent mapping,{" "}
+                  {attachmentMigrationResult.skippedUnsupportedCount}{" "}
+                  unsupported, {attachmentMigrationResult.failedUploadCount}{" "}
+                  upload failed,{" "}
+                  {attachmentMigrationResult.failedMetadataCount} metadata
+                  failed, {attachmentMigrationResult.failedCleanupCount} cleanup
+                  failed. Local guest attachment data and files were not
                   deleted.
                 </Text>
               </View>
