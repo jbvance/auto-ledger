@@ -2,6 +2,8 @@ import { router, type Href } from "expo-router";
 import { useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -57,7 +59,16 @@ export default function SignInScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-ledger-background">
-      <ScrollView contentContainerClassName="gap-5 px-6 py-6">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        className="flex-1"
+      >
+        <ScrollView
+          automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
+          contentContainerClassName="gap-5 px-6 py-6 pb-32"
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+        >
         <View className="gap-2 pt-4">
           <Text className="text-sm font-bold uppercase text-ledger-primary">
             Optional account
@@ -136,7 +147,8 @@ export default function SignInScreen() {
             </Pressable>
           </View>
         )}
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
