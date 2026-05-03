@@ -4,7 +4,7 @@ Build AutoLedger in phases.
 
 Do not ask Codex to “build the whole app” in one request. Ask it to complete one phase or one slice of a phase at a time.
 
-Current status note: This roadmap remains useful as a planning reference, but development has not followed the original phase order exactly. Local reminders, local attachments for service/repair records, and local CSV export were completed before Supabase auth, cloud sync, and Supabase Storage. Supabase Auth foundation, cloud schema/RLS, mobile cloud vehicle CRUD, mobile cloud odometer CRUD, mobile cloud service record CRUD, mobile cloud repair record CRUD, and focused guest-to-account migration for vehicles, odometer entries, service records, and repair records now exist, but broader cloud record sync and full migration are still deferred. Treat `docs/current-status.md` as the source of truth for what is currently working.
+Current status note: This roadmap remains useful as a planning reference, but development has not followed the original phase order exactly. Local reminders, local attachments for service/repair records, and local CSV export were completed before Supabase auth, cloud sync, and Supabase Storage. Supabase Auth foundation, cloud schema/RLS, mobile cloud vehicle CRUD, mobile cloud odometer CRUD, mobile cloud service record CRUD, mobile cloud repair record CRUD, mobile cloud maintenance reminder CRUD, cloud service/repair attachments, and focused guest-to-account migration for vehicles, odometer entries, service records, repair records, maintenance reminders, and service/repair attachments now exist, but broader automatic cloud record sync and full migration/retry UX are still deferred. Treat `docs/current-status.md` as the source of truth for what is currently working.
 
 ---
 

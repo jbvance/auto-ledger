@@ -109,7 +109,7 @@ const odometerRun = {
   migrated_repair_records: 0,
   migrated_service_records: 0,
   migrated_vehicles: 0,
-  migration_scope: "odometer_entries",
+  migration_scope: "odometer_entries" as const,
   skipped_odometer_entries: 0,
   skipped_odometer_entries_missing_vehicle_mapping: 0,
   skipped_repair_records: 0,
@@ -363,5 +363,99 @@ describe("guest odometer migration", () => {
         status: "completed",
       }),
     );
+  });
+
+  it("marks the run failed when every odometer entry is skipped for missing vehicle mappings", async () => {
+    mockedGetVehicleMigrationMappings.mockResolvedValue([]);
+
+    const result = await migrateGuestOdometerEntriesToCloud("user_1");
+
+    expect(result).toMatchObject({
+      failedCount: 0,
+      migratedCount: 0,
+      skippedMissingVehicleMappingCount: 1,
+      totalOdometerEntries: 1,
+    });
+    expect(mockFrom).not.toHaveBeenCalled();
+    expect(mockedRecalculateCloudVehicleOdometer).not.toHaveBeenCalled();
+    expect(mockedUpdateOdometerMigrationRunStatus).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        counts: expect.objectContaining({
+          skippedOdometerEntriesMissingVehicleMapping: 1,
+        }),
+        errorMessage: expect.stringContaining(
+          "skipped because vehicle migration mapping was missing",
+        ),
+        status: "failed",
+      }),
+    );
+    expect(result.run.status).toBe("failed");
+  });
+
+  it("marks the run completed with errors when only some entries are skipped for missing vehicle mappings", async () => {
+    const skippedEntry: OdometerEntry = {
+      ...entry,
+      id: "local_odo_pk_2",
+      local_id: "guest_odo_2",
+      reading: 42500,
+      vehicle_id: "local_vehicle_2",
+    };
+
+    mockedListAllOdometerEntries.mockResolvedValue([entry, skippedEntry]);
+    mockedGetVehicle.mockImplementation(async (vehicleId: string) => ({
+      archived_at: null,
+      color: null,
+      created_at: now,
+      current_odometer: 42000,
+      id: vehicleId,
+      initial_odometer: 10000,
+      license_plate: null,
+      license_state: null,
+      local_id: vehicleId,
+      make: "Toyota",
+      model: "RAV4",
+      nickname: "Family car",
+      notes: null,
+      odometer_unit: "mi",
+      purchase_date: null,
+      purchase_odometer: null,
+      sync_status: "local_only",
+      trim: null,
+      updated_at: now,
+      vehicle_type: "suv",
+      vin: null,
+      year: 2021,
+    }));
+    mockFrom
+      .mockReturnValueOnce(
+        createSelectBuilder({
+          row: { id: "cloud_vehicle_1", odometer_unit: "mi" },
+        }),
+      )
+      .mockReturnValueOnce(createSelectBuilder({ row: null }))
+      .mockReturnValueOnce(createInsertBuilder({}));
+
+    const result = await migrateGuestOdometerEntriesToCloud("user_1");
+
+    expect(result).toMatchObject({
+      failedCount: 0,
+      migratedCount: 1,
+      skippedMissingVehicleMappingCount: 1,
+      totalOdometerEntries: 2,
+    });
+    expect(mockedRecalculateCloudVehicleOdometer).toHaveBeenCalledTimes(1);
+    expect(mockedUpdateOdometerMigrationRunStatus).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        counts: expect.objectContaining({
+          migratedOdometerEntries: 1,
+          skippedOdometerEntriesMissingVehicleMapping: 1,
+        }),
+        errorMessage: expect.stringContaining(
+          "skipped because vehicle migration mapping was missing",
+        ),
+        status: "completed_with_errors",
+      }),
+    );
+    expect(result.run.status).toBe("completed_with_errors");
   });
 });

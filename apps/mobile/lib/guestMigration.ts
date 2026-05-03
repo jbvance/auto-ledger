@@ -49,6 +49,18 @@ export type MigrationEntityType =
   | "service_record"
   | "vehicle";
 
+export const migrationRunScopes = [
+  "full",
+  "vehicles",
+  "odometer_entries",
+  "service_records",
+  "repair_records",
+  "maintenance_reminders",
+  "record_attachments",
+] as const;
+
+export type MigrationRunScope = (typeof migrationRunScopes)[number];
+
 export type MigrationRun = {
   account_id: string;
   completed_at: string | null;
@@ -72,7 +84,7 @@ export type MigrationRun = {
   migrated_vehicles: number;
   skipped_maintenance_reminders?: number;
   skipped_maintenance_reminders_missing_vehicle_mapping?: number;
-  migration_scope: string;
+  migration_scope: MigrationRunScope;
   skipped_odometer_entries: number;
   skipped_odometer_entries_missing_vehicle_mapping: number;
   skipped_record_attachments?: number;
@@ -173,9 +185,35 @@ export type MigrationRunRecordAttachmentCounts = {
   totalRecordAttachments: number;
 };
 
+export const isSyncedMigrationMapping = (
+  mapping: Pick<MigrationEntityMapping, "cloud_id" | "status">,
+) => mapping.status === "synced" && Boolean(mapping.cloud_id?.trim());
+
+export const countSyncedMigrationMappings = (
+  mappings: Array<Pick<MigrationEntityMapping, "cloud_id" | "status">>,
+) => mappings.filter(isSyncedMigrationMapping).length;
+
+export type LatestMigrationRunsByScope = Record<
+  MigrationRunScope,
+  MigrationRun | null
+>;
+
 type CountRow = {
   count: number;
 };
+
+const emptyLatestMigrationRunsByScope = (): LatestMigrationRunsByScope => ({
+  full: null,
+  maintenance_reminders: null,
+  odometer_entries: null,
+  record_attachments: null,
+  repair_records: null,
+  service_records: null,
+  vehicles: null,
+});
+
+const isMigrationRunScope = (scope: string): scope is MigrationRunScope =>
+  migrationRunScopes.includes(scope as MigrationRunScope);
 
 const countRows = async (query: string) => {
   const db = await getGuestDatabase();
@@ -297,6 +335,53 @@ export const getLatestMigrationRunForAccount = async (
   );
 
   return row ?? null;
+};
+
+export const getLatestMigrationRunForAccountByScope = async ({
+  accountId,
+  scope,
+}: {
+  accountId: string;
+  scope: MigrationRunScope;
+}): Promise<MigrationRun | null> => {
+  const db = await getGuestDatabase();
+  const row = await db.getFirstAsync<MigrationRun>(
+    `SELECT *
+     FROM migration_runs
+     WHERE account_id = ?
+       AND migration_scope = ?
+     ORDER BY updated_at DESC, created_at DESC
+     LIMIT 1`,
+    accountId,
+    scope,
+  );
+
+  return row ?? null;
+};
+
+export const getLatestMigrationRunsByScopeForAccount = async (
+  accountId: string,
+): Promise<LatestMigrationRunsByScope> => {
+  const db = await getGuestDatabase();
+  const rows = await db.getAllAsync<MigrationRun>(
+    `SELECT *
+     FROM migration_runs
+     WHERE account_id = ?
+     ORDER BY updated_at DESC, created_at DESC`,
+    accountId,
+  );
+  const latestByScope = emptyLatestMigrationRunsByScope();
+
+  for (const row of rows) {
+    if (
+      isMigrationRunScope(row.migration_scope) &&
+      latestByScope[row.migration_scope] === null
+    ) {
+      latestByScope[row.migration_scope] = row;
+    }
+  }
+
+  return latestByScope;
 };
 
 export const getOrCreateInitialMigrationRun = async (

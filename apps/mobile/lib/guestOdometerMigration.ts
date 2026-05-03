@@ -418,16 +418,25 @@ export const migrateGuestOdometerEntryToCloud = async (
 
 const getOdometerMigrationRunStatus = ({
   failedOdometerEntries,
+  skippedOdometerEntriesMissingVehicleMapping,
   totalOdometerEntries,
 }: Pick<
   MigrationRunOdometerCounts,
-  "failedOdometerEntries" | "totalOdometerEntries"
+  | "failedOdometerEntries"
+  | "skippedOdometerEntriesMissingVehicleMapping"
+  | "totalOdometerEntries"
 >) => {
-  if (failedOdometerEntries === 0) {
+  if (
+    failedOdometerEntries === 0 &&
+    skippedOdometerEntriesMissingVehicleMapping === 0
+  ) {
     return "completed";
   }
 
-  if (failedOdometerEntries === totalOdometerEntries) {
+  if (
+    failedOdometerEntries + skippedOdometerEntriesMissingVehicleMapping ===
+    totalOdometerEntries
+  ) {
     return "failed";
   }
 

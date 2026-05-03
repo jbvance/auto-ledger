@@ -123,7 +123,7 @@ const reminderRun = {
   migrated_repair_records: 0,
   migrated_service_records: 0,
   migrated_vehicles: 0,
-  migration_scope: "maintenance_reminders",
+  migration_scope: "maintenance_reminders" as const,
   skipped_maintenance_reminders: 0,
   skipped_maintenance_reminders_missing_vehicle_mapping: 0,
   skipped_odometer_entries: 0,

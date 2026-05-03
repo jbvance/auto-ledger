@@ -1,6 +1,9 @@
 import { getGuestDatabase } from "./database";
 import {
   buildGuestMigrationSummary,
+  countSyncedMigrationMappings,
+  getLatestMigrationRunForAccountByScope,
+  getLatestMigrationRunsByScopeForAccount,
   getMaintenanceReminderMigrationMappings,
   getRepairRecordMigrationMappings,
   getServiceRecordMigrationMappings,
@@ -11,6 +14,7 @@ import {
   upsertRepairRecordMigrationMapping,
   upsertServiceRecordMigrationMapping,
   upsertVehicleMigrationMapping,
+  type MigrationRun,
 } from "./guestMigration";
 
 jest.mock("./database", () => ({
@@ -97,6 +101,40 @@ const createMockDatabase = (counts: Partial<Record<CountKey, number>> = {}) => {
     runAsync: jest.fn(async () => undefined),
   };
 };
+
+const createMigrationRunRow = (
+  overrides: Partial<MigrationRun> = {},
+): MigrationRun => ({
+  account_id: "user_1",
+  completed_at: "2026-05-02T00:01:00.000Z",
+  created_at: "2026-05-02T00:00:00.000Z",
+  error_message: null,
+  failed_odometer_entries: 0,
+  failed_repair_records: 0,
+  failed_service_records: 0,
+  failed_vehicles: 0,
+  id: "run_1",
+  migrated_odometer_entries: 0,
+  migrated_repair_records: 0,
+  migrated_service_records: 0,
+  migrated_vehicles: 1,
+  migration_scope: "vehicles",
+  skipped_odometer_entries: 0,
+  skipped_odometer_entries_missing_vehicle_mapping: 0,
+  skipped_repair_records: 0,
+  skipped_repair_records_missing_vehicle_mapping: 0,
+  skipped_service_records: 0,
+  skipped_service_records_missing_vehicle_mapping: 0,
+  skipped_vehicles: 0,
+  started_at: "2026-05-02T00:00:00.000Z",
+  status: "completed",
+  total_odometer_entries: 0,
+  total_repair_records: 0,
+  total_service_records: 0,
+  total_vehicles: 1,
+  updated_at: "2026-05-02T00:01:00.000Z",
+  ...overrides,
+});
 
 const mockedGetGuestDatabase = jest.mocked(getGuestDatabase);
 
@@ -218,6 +256,98 @@ describe("guest migration status storage", () => {
     );
   });
 
+  it("loads the latest migration run for one scope", async () => {
+    const db = createMockDatabase();
+    const scopedRun = createMigrationRunRow({
+      id: "latest_service_run",
+      migration_scope: "service_records",
+    });
+    (db.getFirstAsync as jest.Mock).mockResolvedValue(scopedRun);
+    mockedGetGuestDatabase.mockResolvedValue(db as never);
+
+    const run = await getLatestMigrationRunForAccountByScope({
+      accountId: "user_1",
+      scope: "service_records",
+    });
+
+    expect(run).toMatchObject({
+      id: "latest_service_run",
+      migration_scope: "service_records",
+    });
+    expect(db.getFirstAsync).toHaveBeenCalledWith(
+      expect.stringContaining("migration_scope = ?"),
+      "user_1",
+      "service_records",
+    );
+  });
+
+  it("returns null when a scope has no migration run", async () => {
+    const db = createMockDatabase();
+    (db.getFirstAsync as jest.Mock).mockResolvedValue(null);
+    mockedGetGuestDatabase.mockResolvedValue(db as never);
+
+    const run = await getLatestMigrationRunForAccountByScope({
+      accountId: "user_1",
+      scope: "record_attachments",
+    });
+
+    expect(run).toBeNull();
+    expect(db.getFirstAsync).toHaveBeenCalledWith(
+      expect.stringContaining("migration_scope = ?"),
+      "user_1",
+      "record_attachments",
+    );
+  });
+
+  it("loads the latest migration run for each scope", async () => {
+    const db = createMockDatabase();
+    db.getAllAsync.mockResolvedValue([
+      createMigrationRunRow({
+        id: "new_vehicle_run",
+        migration_scope: "vehicles",
+        updated_at: "2026-05-02T00:03:00.000Z",
+      }),
+      createMigrationRunRow({
+        id: "service_run",
+        migration_scope: "service_records",
+        updated_at: "2026-05-02T00:02:00.000Z",
+      }),
+      createMigrationRunRow({
+        id: "old_vehicle_run",
+        migration_scope: "vehicles",
+        updated_at: "2026-05-02T00:01:00.000Z",
+      }),
+      {
+        ...createMigrationRunRow({
+          id: "unknown_scope_run",
+        }),
+        migration_scope: "legacy_scope",
+      },
+    ]);
+    mockedGetGuestDatabase.mockResolvedValue(db as never);
+
+    const runsByScope =
+      await getLatestMigrationRunsByScopeForAccount("user_1");
+
+    expect(runsByScope.vehicles?.id).toBe("new_vehicle_run");
+    expect(runsByScope.service_records?.id).toBe("service_run");
+    expect(runsByScope.repair_records).toBeNull();
+    expect(runsByScope.record_attachments).toBeNull();
+    expect(Object.keys(runsByScope)).toEqual([
+      "full",
+      "maintenance_reminders",
+      "odometer_entries",
+      "record_attachments",
+      "repair_records",
+      "service_records",
+      "vehicles",
+    ]);
+    expect(db.getAllAsync).toHaveBeenCalledWith(
+      expect.stringContaining("FROM migration_runs"),
+      "user_1",
+    );
+  });
+
   it("upserts a vehicle migration mapping without duplicating local IDs", async () => {
     const db = createMockDatabase();
     mockedGetGuestDatabase.mockResolvedValue(db as never);
@@ -248,6 +378,45 @@ describe("guest migration status storage", () => {
         "synced",
       ]),
     );
+  });
+
+  it("counts only synced mappings with cloud IDs as migration-ready", () => {
+    const count = countSyncedMigrationMappings([
+      {
+        cloud_id: "cloud_vehicle_1",
+        status: "synced",
+      },
+      {
+        cloud_id: null,
+        status: "synced",
+      },
+      {
+        cloud_id: "cloud_vehicle_failed",
+        status: "failed",
+      },
+      {
+        cloud_id: "cloud_vehicle_skipped",
+        status: "skipped",
+      },
+      {
+        cloud_id: "cloud_vehicle_running",
+        status: "running",
+      },
+      {
+        cloud_id: "cloud_vehicle_completed",
+        status: "completed",
+      },
+      {
+        cloud_id: "cloud_vehicle_completed_with_errors",
+        status: "completed_with_errors",
+      },
+      {
+        cloud_id: "   ",
+        status: "synced",
+      },
+    ]);
+
+    expect(count).toBe(1);
   });
 
   it("loads vehicle migration mappings for an account", async () => {

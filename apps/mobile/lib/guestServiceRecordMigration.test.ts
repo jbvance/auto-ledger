@@ -120,7 +120,7 @@ const serviceRun = {
   migrated_repair_records: 0,
   migrated_service_records: 0,
   migrated_vehicles: 0,
-  migration_scope: "service_records",
+  migration_scope: "service_records" as const,
   skipped_odometer_entries: 0,
   skipped_odometer_entries_missing_vehicle_mapping: 0,
   skipped_repair_records: 0,

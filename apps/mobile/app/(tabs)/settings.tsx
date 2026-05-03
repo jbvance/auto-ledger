@@ -16,6 +16,7 @@ import {
 } from "../../lib/maintenanceReminders";
 import { useAuth } from "../../lib/auth";
 import {
+  countSyncedMigrationMappings,
   getGuestMigrationSummary,
   getMaintenanceReminderMigrationMappings,
   getVehicleMigrationMappings,
@@ -119,23 +120,25 @@ export default function SettingsScreen() {
   const [vehicleMigrationResult, setVehicleMigrationResult] =
     useState<GuestVehicleMigrationResult | null>(null);
   const [
-    serviceRecordMigrationMappingCount,
-    setServiceRecordMigrationMappingCount,
+    syncedServiceRecordMigrationMappingCount,
+    setSyncedServiceRecordMigrationMappingCount,
   ] = useState(0);
   const [
-    repairRecordMigrationMappingCount,
-    setRepairRecordMigrationMappingCount,
+    syncedRepairRecordMigrationMappingCount,
+    setSyncedRepairRecordMigrationMappingCount,
   ] = useState(0);
   const [
-    maintenanceReminderMigrationMappingCount,
-    setMaintenanceReminderMigrationMappingCount,
+    syncedMaintenanceReminderMigrationMappingCount,
+    setSyncedMaintenanceReminderMigrationMappingCount,
   ] = useState(0);
   const [
-    attachmentMigrationMappingCount,
-    setAttachmentMigrationMappingCount,
+    syncedAttachmentMigrationMappingCount,
+    setSyncedAttachmentMigrationMappingCount,
   ] = useState(0);
-  const [vehicleMigrationMappingCount, setVehicleMigrationMappingCount] =
-    useState(0);
+  const [
+    syncedVehicleMigrationMappingCount,
+    setSyncedVehicleMigrationMappingCount,
+  ] = useState(0);
   const [permissionState, setPermissionState] =
     useState<LocalNotificationPermissionState>(emptyPermissionState);
   const [settings, setSettings] = useState<ReminderNotificationSettings | null>(
@@ -182,17 +185,21 @@ export default function SettingsScreen() {
     setSettings(nextSettings);
     setGuestMigrationSummary(nextMigrationSummary);
     setMigrationRun(nextMigrationRun);
-    setServiceRecordMigrationMappingCount(
-      nextServiceRecordMigrationMappings.length,
+    setSyncedServiceRecordMigrationMappingCount(
+      countSyncedMigrationMappings(nextServiceRecordMigrationMappings),
     );
-    setRepairRecordMigrationMappingCount(
-      nextRepairRecordMigrationMappings.length,
+    setSyncedRepairRecordMigrationMappingCount(
+      countSyncedMigrationMappings(nextRepairRecordMigrationMappings),
     );
-    setMaintenanceReminderMigrationMappingCount(
-      nextMaintenanceReminderMigrationMappings.length,
+    setSyncedMaintenanceReminderMigrationMappingCount(
+      countSyncedMigrationMappings(nextMaintenanceReminderMigrationMappings),
     );
-    setAttachmentMigrationMappingCount(nextAttachmentMigrationMappings.length);
-    setVehicleMigrationMappingCount(nextVehicleMigrationMappings.length);
+    setSyncedAttachmentMigrationMappingCount(
+      countSyncedMigrationMappings(nextAttachmentMigrationMappings),
+    );
+    setSyncedVehicleMigrationMappingCount(
+      countSyncedMigrationMappings(nextVehicleMigrationMappings),
+    );
     setPermissionState(nextPermissionState);
     setIsLoading(false);
   }, [user?.id]);
@@ -319,7 +326,7 @@ export default function SettingsScreen() {
 
       setVehicleMigrationResult(result);
       setMigrationRun(result.run);
-      setVehicleMigrationMappingCount(
+      setSyncedVehicleMigrationMappingCount(
         result.results.filter((item) => item.cloudId).length,
       );
       setAccountFeedback(
@@ -382,7 +389,7 @@ export default function SettingsScreen() {
 
       setServiceRecordMigrationResult(result);
       setMigrationRun(result.run);
-      setServiceRecordMigrationMappingCount(
+      setSyncedServiceRecordMigrationMappingCount(
         result.results.filter((item) => item.cloudId).length,
       );
       setAccountFeedback(
@@ -415,7 +422,7 @@ export default function SettingsScreen() {
 
       setRepairRecordMigrationResult(result);
       setMigrationRun(result.run);
-      setRepairRecordMigrationMappingCount(
+      setSyncedRepairRecordMigrationMappingCount(
         result.results.filter((item) => item.cloudId).length,
       );
       setAccountFeedback(
@@ -448,7 +455,7 @@ export default function SettingsScreen() {
 
       setMaintenanceReminderMigrationResult(result);
       setMigrationRun(result.run);
-      setMaintenanceReminderMigrationMappingCount(
+      setSyncedMaintenanceReminderMigrationMappingCount(
         result.results.filter((item) => item.cloudId).length,
       );
       setAccountFeedback(
@@ -485,7 +492,7 @@ export default function SettingsScreen() {
 
       setAttachmentMigrationResult(result);
       setMigrationRun(result.run);
-      setAttachmentMigrationMappingCount(
+      setSyncedAttachmentMigrationMappingCount(
         result.results.filter((item) => item.cloudId).length,
       );
       setAccountFeedback(
@@ -686,24 +693,24 @@ export default function SettingsScreen() {
               />
             ) : null}
             <SettingsRow
-              label="Vehicle mappings"
-              value={`${vehicleMigrationMappingCount}`}
+              label="Synced vehicle mappings"
+              value={`${syncedVehicleMigrationMappingCount}`}
             />
             <SettingsRow
-              label="Service mappings"
-              value={`${serviceRecordMigrationMappingCount}`}
+              label="Synced service mappings"
+              value={`${syncedServiceRecordMigrationMappingCount}`}
             />
             <SettingsRow
-              label="Repair mappings"
-              value={`${repairRecordMigrationMappingCount}`}
+              label="Synced repair mappings"
+              value={`${syncedRepairRecordMigrationMappingCount}`}
             />
             <SettingsRow
-              label="Reminder mappings"
-              value={`${maintenanceReminderMigrationMappingCount}`}
+              label="Synced reminder mappings"
+              value={`${syncedMaintenanceReminderMigrationMappingCount}`}
             />
             <SettingsRow
-              label="Attachment mappings"
-              value={`${attachmentMigrationMappingCount}`}
+              label="Synced attachment mappings"
+              value={`${syncedAttachmentMigrationMappingCount}`}
             />
             <SettingsRow
               label="Vehicles"
@@ -753,14 +760,15 @@ export default function SettingsScreen() {
             <View className="rounded-card border border-ledger-line bg-ledger-background p-3">
               <Text className="text-sm leading-5 text-ledger-muted">
                 Run vehicle migration first. The odometer step copies odometer
-                entries only and uses vehicle mappings to attach each reading to
-                the right cloud vehicle. Service record migration can run after
-                vehicle mappings exist. Repair record migration can also run
-                after vehicle mappings exist. Reminder migration can run after
-                vehicle mappings exist; odometer, service, and repair migration
-                are recommended first so mileage-based status has the best cloud
-                odometer context. Attachments can run after their service or
-                repair parent records have migration mappings.
+                entries only and uses synced vehicle mappings to attach each
+                reading to the right cloud vehicle. Service record migration can
+                run after synced vehicle mappings exist. Repair record migration
+                can also run after synced vehicle mappings exist. Reminder
+                migration can run after synced vehicle mappings exist; odometer,
+                service, and repair migration are recommended first so
+                mileage-based status has the best cloud odometer context.
+                Attachments can run after their service or repair parent
+                records have synced migration mappings.
               </Text>
             </View>
 
@@ -809,7 +817,7 @@ export default function SettingsScreen() {
               </View>
             ) : null}
 
-            {vehicleMigrationMappingCount > 0 ? (
+            {syncedVehicleMigrationMappingCount > 0 ? (
               <Pressable
                 accessibilityRole="button"
                 className={`rounded-card px-4 py-3 ${
@@ -836,7 +844,7 @@ export default function SettingsScreen() {
               <View className="rounded-card border border-ledger-line bg-ledger-background p-3">
                 <Text className="text-sm leading-5 text-ledger-muted">
                   Odometer migration becomes available after vehicle migration
-                  creates vehicle mappings for this account.
+                  creates synced vehicle mappings for this account.
                 </Text>
               </View>
             )}
@@ -856,13 +864,13 @@ export default function SettingsScreen() {
               </View>
             ) : null}
 
-            {vehicleMigrationMappingCount > 0 ? (
+            {syncedVehicleMigrationMappingCount > 0 ? (
               <View className="gap-3">
                 <View className="rounded-card border border-ledger-line bg-ledger-background p-3">
                   <Text className="text-sm leading-5 text-ledger-muted">
                     This step copies service records only and uses vehicle
-                    mappings to attach them to cloud vehicles. Repair records,
-                    reminders, and attachments are handled by separate
+                    synced mappings to attach them to cloud vehicles. Repair
+                    records, reminders, and attachments are handled by separate
                     migration actions.
                   </Text>
                 </View>
@@ -908,13 +916,13 @@ export default function SettingsScreen() {
               </View>
             ) : null}
 
-            {vehicleMigrationMappingCount > 0 ? (
+            {syncedVehicleMigrationMappingCount > 0 ? (
               <View className="gap-3">
                 <View className="rounded-card border border-ledger-line bg-ledger-background p-3">
                   <Text className="text-sm leading-5 text-ledger-muted">
                     This step copies repair records only and uses vehicle
-                    mappings to attach them to cloud vehicles. Reminders and
-                    attachments are handled by separate migration actions.
+                    synced mappings to attach them to cloud vehicles. Reminders
+                    and attachments are handled by separate migration actions.
                   </Text>
                 </View>
                 <Pressable
@@ -959,12 +967,12 @@ export default function SettingsScreen() {
               </View>
             ) : null}
 
-            {vehicleMigrationMappingCount > 0 ? (
+            {syncedVehicleMigrationMappingCount > 0 ? (
               <View className="gap-3">
                 <View className="rounded-card border border-ledger-line bg-ledger-background p-3">
                   <Text className="text-sm leading-5 text-ledger-muted">
                     This step copies maintenance reminders only and uses vehicle
-                    mappings to attach them to cloud vehicles. Completed
+                    synced mappings to attach them to cloud vehicles. Completed
                     reminders stay completed. Local notification IDs stay local,
                     and attachments are handled by a separate migration action.
                   </Text>
@@ -1013,8 +1021,8 @@ export default function SettingsScreen() {
               </View>
             ) : null}
 
-            {serviceRecordMigrationMappingCount +
-              repairRecordMigrationMappingCount >
+            {syncedServiceRecordMigrationMappingCount +
+              syncedRepairRecordMigrationMappingCount >
             0 ? (
               <View className="gap-3">
                 <View className="rounded-card border border-ledger-line bg-ledger-background p-3">
@@ -1054,8 +1062,8 @@ export default function SettingsScreen() {
               <View className="rounded-card border border-ledger-line bg-ledger-background p-3">
                 <Text className="text-sm leading-5 text-ledger-muted">
                   Attachment migration becomes available after service-record or
-                  repair-record migration creates parent mappings for this
-                  account.
+                  repair-record migration creates synced parent mappings for
+                  this account.
                 </Text>
               </View>
             ) : null}
