@@ -31,9 +31,12 @@ export type GuestMigrationSummary = {
 };
 
 export type MigrationRunStatus =
+  | "completed"
+  | "completed_with_errors"
   | "failed"
   | "not_started"
   | "pending"
+  | "running"
   | "skipped"
   | "synced";
 
@@ -50,9 +53,14 @@ export type MigrationRun = {
   completed_at: string | null;
   created_at: string;
   error_message: string | null;
+  failed_vehicles: number;
   id: string;
+  migrated_vehicles: number;
+  migration_scope: string;
   started_at: string;
   status: MigrationRunStatus;
+  skipped_vehicles: number;
+  total_vehicles: number;
   updated_at: string;
 };
 
@@ -67,6 +75,22 @@ export type MigrationEntityMapping = {
   run_id: string | null;
   status: MigrationRunStatus;
   updated_at: string;
+};
+
+export type VehicleMigrationMappingInput = {
+  accountId: string;
+  cloudId: string | null;
+  errorMessage?: string | null;
+  localId: string;
+  runId?: string | null;
+  status: MigrationRunStatus;
+};
+
+export type MigrationRunVehicleCounts = {
+  failedVehicles: number;
+  migratedVehicles: number;
+  skippedVehicles: number;
+  totalVehicles: number;
 };
 
 type CountRow = {
@@ -209,9 +233,14 @@ export const getOrCreateInitialMigrationRun = async (
     completed_at: null,
     created_at: now,
     error_message: null,
+    failed_vehicles: 0,
     id: createLocalId("migration_run"),
+    migrated_vehicles: 0,
+    migration_scope: "full",
     started_at: now,
     status: "not_started",
+    skipped_vehicles: 0,
+    total_vehicles: 0,
     updated_at: now,
   };
 
@@ -219,19 +248,29 @@ export const getOrCreateInitialMigrationRun = async (
     `INSERT INTO migration_runs (
       id,
       account_id,
+      migration_scope,
       started_at,
       completed_at,
       status,
+      total_vehicles,
+      migrated_vehicles,
+      skipped_vehicles,
+      failed_vehicles,
       error_message,
       created_at,
       updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       run.id,
       run.account_id,
+      run.migration_scope,
       run.started_at,
       run.completed_at,
       run.status,
+      run.total_vehicles,
+      run.migrated_vehicles,
+      run.skipped_vehicles,
+      run.failed_vehicles,
       run.error_message,
       run.created_at,
       run.updated_at,
@@ -239,6 +278,107 @@ export const getOrCreateInitialMigrationRun = async (
   );
 
   return run;
+};
+
+export const createVehicleMigrationRun = async ({
+  accountId,
+  totalVehicles,
+}: {
+  accountId: string;
+  totalVehicles: number;
+}): Promise<MigrationRun> => {
+  const db = await getGuestDatabase();
+  const now = new Date().toISOString();
+  const run: MigrationRun = {
+    account_id: accountId,
+    completed_at: null,
+    created_at: now,
+    error_message: null,
+    failed_vehicles: 0,
+    id: createLocalId("migration_run"),
+    migrated_vehicles: 0,
+    migration_scope: "vehicles",
+    skipped_vehicles: 0,
+    started_at: now,
+    status: "running",
+    total_vehicles: totalVehicles,
+    updated_at: now,
+  };
+
+  await db.runAsync(
+    `INSERT INTO migration_runs (
+      id,
+      account_id,
+      migration_scope,
+      started_at,
+      completed_at,
+      status,
+      total_vehicles,
+      migrated_vehicles,
+      skipped_vehicles,
+      failed_vehicles,
+      error_message,
+      created_at,
+      updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      run.id,
+      run.account_id,
+      run.migration_scope,
+      run.started_at,
+      run.completed_at,
+      run.status,
+      run.total_vehicles,
+      run.migrated_vehicles,
+      run.skipped_vehicles,
+      run.failed_vehicles,
+      run.error_message,
+      run.created_at,
+      run.updated_at,
+    ],
+  );
+
+  return run;
+};
+
+export const updateMigrationRunStatus = async ({
+  completedAt = null,
+  counts,
+  errorMessage = null,
+  runId,
+  status,
+}: {
+  completedAt?: string | null;
+  counts: MigrationRunVehicleCounts;
+  errorMessage?: string | null;
+  runId: string;
+  status: MigrationRunStatus;
+}): Promise<void> => {
+  const db = await getGuestDatabase();
+
+  await db.runAsync(
+    `UPDATE migration_runs
+     SET completed_at = ?,
+         status = ?,
+         total_vehicles = ?,
+         migrated_vehicles = ?,
+         skipped_vehicles = ?,
+         failed_vehicles = ?,
+         error_message = ?,
+         updated_at = ?
+     WHERE id = ?`,
+    [
+      completedAt,
+      status,
+      counts.totalVehicles,
+      counts.migratedVehicles,
+      counts.skippedVehicles,
+      counts.failedVehicles,
+      errorMessage,
+      new Date().toISOString(),
+      runId,
+    ],
+  );
 };
 
 export const getMigrationEntityMapping = async ({
@@ -264,4 +404,85 @@ export const getMigrationEntityMapping = async ({
   );
 
   return row ?? null;
+};
+
+export const getVehicleMigrationMappings = async (
+  accountId: string,
+): Promise<MigrationEntityMapping[]> => {
+  const db = await getGuestDatabase();
+  const rows = await db.getAllAsync<MigrationEntityMapping>(
+    `SELECT *
+     FROM migration_entity_mappings
+     WHERE account_id = ?
+       AND entity_type = 'vehicle'
+     ORDER BY updated_at DESC, created_at DESC`,
+    accountId,
+  );
+
+  return rows;
+};
+
+export const upsertVehicleMigrationMapping = async ({
+  accountId,
+  cloudId,
+  errorMessage = null,
+  localId,
+  runId = null,
+  status,
+}: VehicleMigrationMappingInput): Promise<MigrationEntityMapping> => {
+  const existing = await getMigrationEntityMapping({
+    accountId,
+    entityType: "vehicle",
+    localId,
+  });
+  const db = await getGuestDatabase();
+  const now = new Date().toISOString();
+  const mapping: MigrationEntityMapping = {
+    account_id: accountId,
+    cloud_id: cloudId,
+    created_at: existing?.created_at ?? now,
+    entity_type: "vehicle",
+    error_message: errorMessage,
+    id: existing?.id ?? createLocalId("migration_mapping"),
+    local_id: localId,
+    run_id: runId,
+    status,
+    updated_at: now,
+  };
+
+  await db.runAsync(
+    `INSERT INTO migration_entity_mappings (
+      id,
+      run_id,
+      account_id,
+      entity_type,
+      local_id,
+      cloud_id,
+      status,
+      error_message,
+      created_at,
+      updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(account_id, entity_type, local_id)
+    DO UPDATE SET
+      run_id = excluded.run_id,
+      cloud_id = excluded.cloud_id,
+      status = excluded.status,
+      error_message = excluded.error_message,
+      updated_at = excluded.updated_at`,
+    [
+      mapping.id,
+      mapping.run_id,
+      mapping.account_id,
+      mapping.entity_type,
+      mapping.local_id,
+      mapping.cloud_id,
+      mapping.status,
+      mapping.error_message,
+      mapping.created_at,
+      mapping.updated_at,
+    ],
+  );
+
+  return mapping;
 };

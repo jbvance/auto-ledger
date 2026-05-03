@@ -13,7 +13,7 @@ Vitest package tests for shared domain and validation logic plus Jest Expo
 mobile tests for focused user-visible behavior. A lightweight Maestro mobile
 E2E smoke scaffold and `docs/testing.md` are also present.
 
-Current development track: Local guest MVP features, optional Supabase Auth foundation, Supabase cloud data schema/RLS foundation, mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD, mobile cloud service record CRUD, mobile cloud repair record CRUD, mobile cloud maintenance reminder CRUD, cloud service/repair record attachments, and mobile navigation polish are complete; broader app-side cloud sync is next.
+Current development track: Local guest MVP features, optional Supabase Auth foundation, Supabase cloud data schema/RLS foundation, mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD, mobile cloud service record CRUD, mobile cloud repair record CRUD, mobile cloud maintenance reminder CRUD, cloud service/repair record attachments, guest-to-account vehicle-only migration, and mobile navigation polish are complete; broader app-side cloud sync is next.
 
 The app is still local guest-mode first. Users can manage vehicles, odometer entries, service records, repair records, reminders, local attachments, and local CSV export without creating an account.
 
@@ -31,9 +31,11 @@ Local photo attachments can be previewed inside AutoLedger from an attachment de
 
 Cloud attachment support has been added for authenticated service and repair records. Files are uploaded to a private `record-attachments` Supabase Storage bucket in user-scoped paths, and metadata is stored in `public.record_attachments`.
 
-Guest-to-account migration readiness planning has been completed. Migration is not implemented yet, and the plan lives at `docs/guest-to-account-migration-plan.md`.
+Guest-to-account migration readiness planning has been completed, and the plan lives at `docs/guest-to-account-migration-plan.md`.
 
-Guest-to-account migration Slice 1 has been added for local readiness only. The mobile app now has local-only migration run and entity mapping tables, a read-only guest migration summary helper, a signed-in Settings readiness section, and non-destructive sign-in/sign-up notices when local guest data exists. No guest records are uploaded, migrated, deleted, or marked as synced yet.
+Guest-to-account migration Slice 1 has been added for local readiness. The mobile app now has local-only migration run and entity mapping tables, a read-only guest migration summary helper, a signed-in Settings readiness section, and non-destructive sign-in/sign-up notices when local guest data exists.
+
+Guest-to-account migration Slice 2 has been added for vehicles only. Signed-in users can copy local guest vehicles, including archived vehicles, into their Supabase account from Settings. Vehicle migration preserves each local vehicle `local_id`, records local `local_id -> cloud UUID` mappings, uses `user_id + local_id` duplicate prevention, and keeps all local guest data on the device. Odometer entries, service records, repair records, maintenance reminders, and attachments are not migrated yet.
 
 Local CSV export support has been added for guest-mode data. Export creates one combined CSV file locally and opens the device share sheet when available.
 
@@ -93,6 +95,8 @@ The mobile app currently supports local guest-mode:
 - Signed-in mobile dashboard upcoming reminders include active cloud maintenance reminders for active cloud vehicles
 - Signed-in mobile users with existing local guest records see that cloud sync for those records is coming soon
 - Signed-in mobile users with existing local guest records can view a read-only Local Data / Migration Readiness summary in Settings
+- Signed-in mobile users can run vehicle-only guest-to-account migration from Settings after reviewing the `004_verify_local_id_unique_constraints.sql` prerequisite
+- Vehicle-only guest-to-account migration includes active and archived local vehicles, preserves local vehicle `local_id` values, and creates local vehicle migration mappings without deleting local guest vehicles
 - Export local guest data to a combined CSV file from Settings
 - CSV export includes vehicles, odometer entries, service records, repair records, maintenance reminders, and attachment metadata
 
@@ -113,7 +117,7 @@ The mobile app currently supports local guest-mode:
 - Run `packages/db/sql/001_profiles_auth_foundation.sql` in the Supabase SQL editor to create the `public.profiles` table, profile trigger, authenticated table grants, and RLS policies.
 - Run `packages/db/sql/002_cloud_data_schema_rls.sql` in the Supabase SQL editor after the profiles SQL to create cloud data tables, indexes, triggers, relationships, authenticated table grants, and RLS policies.
 - Run `packages/db/sql/003_record_attachments_storage_rls.sql` in the Supabase SQL editor after the cloud data schema to create the private `record-attachments` Storage bucket and user-scoped Storage RLS policies.
-- Review/run `packages/db/sql/004_verify_local_id_unique_constraints.sql` before enabling actual guest-to-account upload migration. It is a read-only prerequisite check for the `user_id + local_id` unique constraints used to prevent duplicate migrated rows.
+- Review/run `packages/db/sql/004_verify_local_id_unique_constraints.sql` before using guest-to-account vehicle migration. It is a read-only prerequisite check for the `user_id + local_id` unique constraints used to prevent duplicate migrated rows.
 - If the mobile app shows a Supabase "permission denied" warning for vehicles, rerun `packages/db/sql/002_cloud_data_schema_rls.sql` so the authenticated table grants are applied.
 - If cloud attachment upload/open/delete shows a bucket or permission warning, rerun `packages/db/sql/003_record_attachments_storage_rls.sql` so the private bucket and Storage RLS policies are installed.
 - See `docs/supabase-cloud-schema.md` for setup notes and simple SQL sanity checks.
@@ -121,10 +125,10 @@ The mobile app currently supports local guest-mode:
 ## Current Cloud Limitations
 
 - Account creation is optional and currently unlocks cloud vehicle CRUD, cloud odometer entry CRUD, cloud service record CRUD, cloud repair record CRUD, cloud maintenance reminder CRUD, and cloud service/repair attachment support.
-- Local guest records are not uploaded after sign-in or sign-up.
-- Guest-to-account migration is not implemented.
-- Guest-to-account migration planning is complete in `docs/guest-to-account-migration-plan.md`, and Slice 1 readiness/status detection is implemented locally.
-- The current readiness slice creates local migration status/mapping storage and local guest data summaries only; it does not upload data to Supabase or mark guest records as migrated.
+- Local guest records are not uploaded automatically after sign-in or sign-up.
+- Full guest-to-account migration is not implemented. Vehicle-only guest-to-account migration exists, but odometer entries, service records, repair records, maintenance reminders, and attachments are still local-only until later migration slices.
+- Guest-to-account migration planning is complete in `docs/guest-to-account-migration-plan.md`, Slice 1 readiness/status detection is implemented locally, and Slice 2 vehicle-only upload is implemented.
+- Vehicle-only migration creates/repairs local `migration_entity_mappings` rows for vehicles. It does not delete local guest data, mutate local vehicle rows, migrate child records, or mark child records as migrated.
 - Cloud vendor tables exist as SQL setup, but app-side cloud vendor CRUD is not implemented.
 - Cloud service records use simple `vendor_name` text for now; structured `vendor_id` support is still deferred.
 - Cloud repair records use simple `vendor_name` text for now; structured `vendor_id` support is still deferred.
@@ -188,7 +192,8 @@ After running `packages/db/sql/001_profiles_auth_foundation.sql` and `packages/d
 Do not assume these exist yet:
 
 - Broader cloud record sync beyond vehicles, odometer entries, service records, repair records, maintenance reminders, and service/repair attachments
-- Guest-to-account migration
+- Full guest-to-account migration beyond vehicles
+- Guest-to-account child record migration
 - Guest-to-account attachment migration
 - Vehicle-level cloud file attachments
 - Cloud push notifications
@@ -203,12 +208,12 @@ Do not assume these exist yet:
 
 ## Recommended Next Feature
 
-The next recommended feature track is guest-to-account migration design and the next focused cloud sync/export slice, while preserving guest mode as the default local experience.
+The next recommended feature track is guest-to-account child record migration and the next focused cloud sync/export slice, while preserving guest mode as the default local experience.
 
 Good candidates:
 
 - Expand focused tests around shared validation, odometer/history logic, attachment validation, reminder status logic, CSV export logic, and future migration logic
 - Generate Supabase database TypeScript types from the live project after running the SQL
-- Prepare guest-to-account migration design before implementing sync
+- Implement the next guest-to-account migration slice for odometer/service/repair/reminder records using the vehicle mapping table
 
 Do not implement households, fuel tracking, VIN lookup, OCR, payments/subscriptions, PDF export, fleet/business tooling, or an auto shop portal unless specifically requested.

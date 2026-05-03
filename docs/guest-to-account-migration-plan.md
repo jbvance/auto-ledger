@@ -1,14 +1,17 @@
 # Guest-to-Account Migration Readiness Plan
 
 This document audits the current repo readiness for migrating local guest data
-to an authenticated Supabase account. Slice 1 readiness/status detection is now
-implemented locally, but actual migration is not implemented yet. The current
-slice does not upload local data, delete local records, or migrate any records.
+to an authenticated Supabase account. Slice 1 readiness/status detection and
+Slice 2 vehicle-only migration are now implemented locally. Full migration is
+not implemented yet: odometer entries, service records, repair records,
+maintenance reminders, and attachments are still deferred. Vehicle-only
+migration does not delete local data or migrate child records.
 
 ## 1. Current Readiness Summary
 
-The repo is mostly ready at the data model level, but it is not yet ready at the
-app workflow level.
+The repo is ready for vehicle-only migration and mostly ready at the data model
+level for later child-record slices. It is not yet ready for full guest-to-account
+migration.
 
 Ready:
 
@@ -29,7 +32,13 @@ Ready:
 - Local-only `migration_runs` and `migration_entity_mappings` SQLite tables now
   exist for future migration status and ID mapping.
 - Signed-in users with local guest data now see non-destructive sign-in/sign-up
-  notices and a read-only Settings readiness section.
+  notices and a Settings readiness section with an active vehicle-only migration
+  action.
+- `apps/mobile/lib/guestVehicleMigration.ts` migrates local guest vehicles only,
+  preserves local `local_id`, includes archived vehicles, preserves
+  `archived_at`, and writes vehicle mapping rows.
+- Vehicle-only migration uses select-by-`user_id`-and-`local_id` before insert
+  and repairs missing mapping rows if the cloud vehicle already exists.
 - Supabase cloud tables exist in `packages/db/sql/002_cloud_data_schema_rls.sql`
   for all target entities, including `local_id`, `sync_status`, owner-scoped
   foreign keys, and `unique (user_id, local_id)` constraints.
@@ -51,9 +60,11 @@ Not ready:
   `getCloudVehicleForOdometer`, which filters out archived vehicles. Migration
   may need to migrate child records for archived local vehicles, so migration
   should not rely on those helpers as-is.
-- The durable local status/mapping tables exist, but actual migration code does
-  not write completed cloud UUID mappings yet.
-- There is no active migration prompt/progress UI and no upload/retry workflow.
+- The durable local status/mapping tables exist, and vehicle-only migration now
+  writes completed vehicle cloud UUID mappings. Child-record mappings are not
+  written yet.
+- There is no full migration prompt/progress UI and no child-record upload/retry
+  workflow yet. The current Settings action is intentionally vehicle-only.
 - Cloud attachment upload currently uses a generated attachment local ID and
   `upsert: false`, so it is not idempotent for retrying migrated local
   attachments.
@@ -282,7 +293,7 @@ Slice 1: migration audit/status detection only - complete
 - Show only non-actionable sign-in/sign-up notices and a read-only Settings
   readiness section. No upload action is enabled.
 
-Slice 2: migrate vehicles only
+Slice 2: migrate vehicles only - complete
 
 - Add dedicated vehicle migration upsert helper preserving local IDs and
   archived state.
@@ -324,8 +335,8 @@ Cloud schema:
   path segment.
 - `packages/db/sql/004_verify_local_id_unique_constraints.sql` is now available
   as a read-only verification query for the cloud `user_id + local_id` unique
-  constraints. Review/run it before enabling actual upload migration. If any
-  row reports `missing`, add the missing unique constraint before Slice 2.
+  constraints. Review/run it before using vehicle migration. If any row reports
+  `missing`, add the missing unique constraint before testing migration.
 
 Local schema:
 
@@ -334,9 +345,9 @@ Local schema:
 - Local migration state stores `account_id` so one device can distinguish
   readiness state for different signed-in accounts.
 - The mapping table can store cloud UUID mappings for all future migrated entity
-  types, but Slice 1 only creates/readies the structure.
-- A migration run table exists with start/end timestamps, status, and optional
-  error message.
+  types. Slice 2 currently writes mappings only for `entity_type = 'vehicle'`.
+- A migration run table exists with start/end timestamps, status, optional error
+  message, vehicle-only scope, and vehicle run counts.
 
 Suggested local-only tables:
 
@@ -344,9 +355,14 @@ Suggested local-only tables:
 migration_runs
 - id
 - account_id
+- migration_scope
 - status
 - started_at
 - completed_at
+- total_vehicles
+- migrated_vehicles
+- skipped_vehicles
+- failed_vehicles
 - error_message
 - created_at
 - updated_at
@@ -376,7 +392,7 @@ RLS considerations:
 Unit tests:
 
 - ID mapping creates and reuses `local_id -> cloud_id` mappings.
-- Migration ordering returns vehicles before child records and attachments last.
+- Vehicle-only migration preserves local `local_id` and archived state.
 - Duplicate prevention treats existing `user_id + local_id` cloud rows as
   already migrated.
 - Partial failure skips dependent records when a vehicle fails.
@@ -389,6 +405,7 @@ Unit tests:
 Integration-style tests with mocked Supabase/FileSystem:
 
 - Vehicle upsert retry does not create duplicates.
+- Vehicle-only migration does not read or upload child records.
 - Child record migration uses cloud vehicle UUIDs, not local SQLite IDs.
 - Attachment migration uses cloud parent IDs in Storage paths.
 - Existing Storage object or metadata retry is handled deterministically.
@@ -402,9 +419,13 @@ Manual Expo Go checklist:
 - Sign up for a new account and verify the migration prompt appears.
 - Choose "Not now" and confirm no data is uploaded and guest data still works.
 - Choose "Review first" and verify counts match local records.
-- Run "Sync now" with a clean account and verify cloud data appears after app
-  restart.
-- Run migration again and verify no duplicate cloud rows are created.
+- Review/run `packages/db/sql/004_verify_local_id_unique_constraints.sql`.
+- Run "Migrate vehicles to account" with a clean account and verify cloud
+  vehicles appear after app restart.
+- Run vehicle migration again and verify no duplicate cloud vehicle rows are
+  created.
+- Confirm odometer entries, service records, repair records, reminders, and
+  attachments were not migrated yet.
 - Turn off network during child record or attachment migration and verify retry
   resumes without deleting local data.
 - Delete or make one local attachment file inaccessible and verify the
@@ -414,8 +435,10 @@ Manual Expo Go checklist:
 ## Key Risks Discovered
 
 - Current cloud CRUD helpers are not migration-safe because they generate new
-  local IDs and omit complete local row metadata.
-- Migration needs a durable local mapping/status table before any upload code.
+  local IDs and omit complete local row metadata. Vehicle migration uses a
+  dedicated helper instead.
+- Durable local mapping/status tables exist and are now used for vehicle
+  migration. Later child-record migration must reuse the vehicle mapping table.
 - Attachment retry needs careful idempotency because file upload and metadata
   insert are two separate operations.
 - Archived local vehicles need special handling because some cloud helper
@@ -425,6 +448,8 @@ Manual Expo Go checklist:
 
 ## Next Safest Slice
 
-The next safest implementation slice is Slice 1: add migration audit/status
-detection only. It should summarize local guest data, validate dependencies, and
-prepare local migration status storage without uploading anything to Supabase.
+The next safest implementation slice is Slice 3: migrate odometer, service,
+repair, and reminder records using the vehicle mapping table. It should preserve
+local IDs, skip records whose vehicle mapping failed, avoid copying local
+notification IDs to cloud reminders, and continue retaining all local guest
+data.

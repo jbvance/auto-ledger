@@ -1,8 +1,10 @@
 import { getGuestDatabase } from "./database";
 import {
   buildGuestMigrationSummary,
+  getVehicleMigrationMappings,
   getGuestMigrationSummary,
   getOrCreateInitialMigrationRun,
+  upsertVehicleMigrationMapping,
 } from "./guestMigration";
 
 jest.mock("./database", () => ({
@@ -77,6 +79,7 @@ const createMockDatabase = (counts: Partial<Record<CountKey, number>> = {}) => {
   const nextCounts = { ...emptyCounts, ...counts };
 
   return {
+    getAllAsync: jest.fn(async (): Promise<unknown[]> => []),
     getFirstAsync: jest.fn(async (query: string) => {
       const key = queryKeyFor(query);
 
@@ -203,6 +206,65 @@ describe("guest migration status storage", () => {
         null,
         "not_started",
       ]),
+    );
+  });
+
+  it("upserts a vehicle migration mapping without duplicating local IDs", async () => {
+    const db = createMockDatabase();
+    mockedGetGuestDatabase.mockResolvedValue(db as never);
+
+    const mapping = await upsertVehicleMigrationMapping({
+      accountId: "user_1",
+      cloudId: "cloud_vehicle_1",
+      localId: "local_vehicle_1",
+      runId: "run_1",
+      status: "synced",
+    });
+
+    expect(mapping).toMatchObject({
+      account_id: "user_1",
+      cloud_id: "cloud_vehicle_1",
+      entity_type: "vehicle",
+      local_id: "local_vehicle_1",
+      run_id: "run_1",
+      status: "synced",
+    });
+    expect(db.runAsync).toHaveBeenCalledWith(
+      expect.stringContaining("ON CONFLICT(account_id, entity_type, local_id)"),
+      expect.arrayContaining([
+        "user_1",
+        "vehicle",
+        "local_vehicle_1",
+        "cloud_vehicle_1",
+        "synced",
+      ]),
+    );
+  });
+
+  it("loads vehicle migration mappings for an account", async () => {
+    const db = createMockDatabase();
+    db.getAllAsync.mockResolvedValue([
+      {
+        account_id: "user_1",
+        cloud_id: "cloud_vehicle_1",
+        created_at: "2026-05-02T00:00:00.000Z",
+        entity_type: "vehicle",
+        error_message: null,
+        id: "mapping_1",
+        local_id: "local_vehicle_1",
+        run_id: "run_1",
+        status: "synced",
+        updated_at: "2026-05-02T00:00:00.000Z",
+      },
+    ]);
+    mockedGetGuestDatabase.mockResolvedValue(db as never);
+
+    const mappings = await getVehicleMigrationMappings("user_1");
+
+    expect(mappings).toHaveLength(1);
+    expect(db.getAllAsync).toHaveBeenCalledWith(
+      expect.stringContaining("entity_type = 'vehicle'"),
+      "user_1",
     );
   });
 });

@@ -202,9 +202,14 @@ const initializeGuestDatabase = async (db: SQLite.SQLiteDatabase) => {
       CREATE TABLE IF NOT EXISTS migration_runs (
         id TEXT PRIMARY KEY NOT NULL,
         account_id TEXT NOT NULL,
+        migration_scope TEXT NOT NULL DEFAULT 'full',
         started_at TEXT NOT NULL,
         completed_at TEXT,
         status TEXT NOT NULL,
+        total_vehicles INTEGER NOT NULL DEFAULT 0,
+        migrated_vehicles INTEGER NOT NULL DEFAULT 0,
+        skipped_vehicles INTEGER NOT NULL DEFAULT 0,
+        failed_vehicles INTEGER NOT NULL DEFAULT 0,
         error_message TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
@@ -243,6 +248,41 @@ const initializeGuestDatabase = async (db: SQLite.SQLiteDatabase) => {
         UPDATE vehicles
         SET initial_odometer = current_odometer
         WHERE initial_odometer = 0;
+      `);
+  }
+
+  if (!(await columnExists(db, "migration_runs", "migration_scope"))) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN migration_scope TEXT NOT NULL DEFAULT 'full';
+      `);
+  }
+
+  if (!(await columnExists(db, "migration_runs", "total_vehicles"))) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN total_vehicles INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (!(await columnExists(db, "migration_runs", "migrated_vehicles"))) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN migrated_vehicles INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (!(await columnExists(db, "migration_runs", "skipped_vehicles"))) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN skipped_vehicles INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (!(await columnExists(db, "migration_runs", "failed_vehicles"))) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN failed_vehicles INTEGER NOT NULL DEFAULT 0;
       `);
   }
 

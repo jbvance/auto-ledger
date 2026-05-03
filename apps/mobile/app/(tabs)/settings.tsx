@@ -22,6 +22,10 @@ import {
   type MigrationRun,
 } from "../../lib/guestMigration";
 import {
+  migrateGuestVehiclesToCloud,
+  type GuestVehicleMigrationResult,
+} from "../../lib/guestVehicleMigration";
+import {
   getReminderNotificationSettings,
   updateReminderNotificationSettings,
   type ReminderNotificationSettings,
@@ -65,8 +69,11 @@ export default function SettingsScreen() {
   const [guestMigrationSummary, setGuestMigrationSummary] =
     useState<GuestMigrationSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMigratingVehicles, setIsMigratingVehicles] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [migrationRun, setMigrationRun] = useState<MigrationRun | null>(null);
+  const [vehicleMigrationResult, setVehicleMigrationResult] =
+    useState<GuestVehicleMigrationResult | null>(null);
   const [permissionState, setPermissionState] =
     useState<LocalNotificationPermissionState>(emptyPermissionState);
   const [settings, setSettings] = useState<ReminderNotificationSettings | null>(
@@ -206,6 +213,36 @@ export default function SettingsScreen() {
     setIsSaving(false);
   };
 
+  const migrateVehiclesToCurrentAccount = async () => {
+    if (!user) {
+      return;
+    }
+
+    setAccountFeedback(null);
+    setIsMigratingVehicles(true);
+
+    try {
+      const result = await migrateGuestVehiclesToCloud(user.id);
+
+      setVehicleMigrationResult(result);
+      setMigrationRun(result.run);
+      setAccountFeedback(
+        result.failedCount > 0
+          ? `Vehicle migration finished with ${result.failedCount} issue${result.failedCount === 1 ? "" : "s"}. Local guest data was not changed.`
+          : "Vehicle migration finished. Local guest data remains on this device.",
+      );
+      await loadSettings();
+    } catch (error: unknown) {
+      setAccountFeedback(
+        error instanceof Error
+          ? error.message
+          : "Unable to migrate vehicles. Local guest data was not changed.",
+      );
+    } finally {
+      setIsMigratingVehicles(false);
+    }
+  };
+
   if (isLoading || !settings) {
     return (
       <SafeAreaView className="flex-1 bg-ledger-background">
@@ -337,11 +374,24 @@ export default function SettingsScreen() {
               </Text>
             </View>
 
-            <SettingsRow label="Status" value="Migration not enabled yet" />
+            <SettingsRow
+              label="Status"
+              value="Vehicle-only migration available"
+            />
             <SettingsRow
               label="Readiness"
-              value={migrationRun ? "Not started" : "Ready to review later"}
+              value={
+                migrationRun
+                  ? formatMigrationRunStatus(migrationRun.status)
+                  : "Ready to review later"
+              }
             />
+            {migrationRun?.migration_scope === "vehicles" ? (
+              <SettingsRow
+                label="Vehicle run"
+                value={`${migrationRun.migrated_vehicles} copied, ${migrationRun.skipped_vehicles} already present, ${migrationRun.failed_vehicles} failed`}
+              />
+            ) : null}
             <SettingsRow
               label="Vehicles"
               value={`${guestMigrationSummary.counts.activeVehicles} active, ${guestMigrationSummary.counts.archivedVehicles} archived`}
@@ -367,6 +417,24 @@ export default function SettingsScreen() {
               value={`${guestMigrationSummary.counts.attachments}`}
             />
 
+            <View className="rounded-card border border-ledger-line bg-ledger-background p-3">
+              <Text className="text-sm leading-5 text-ledger-muted">
+                Before running migration, review
+                packages/db/sql/004_verify_local_id_unique_constraints.sql in
+                your live Supabase project. Vehicle migration relies on the
+                `user_id + local_id` unique constraint to prevent duplicates.
+              </Text>
+            </View>
+
+            <View className="rounded-card border border-ledger-line bg-ledger-background p-3">
+              <Text className="text-sm leading-5 text-ledger-muted">
+                This step copies vehicles only. Odometer entries, service
+                records, repair records, reminders, and attachments stay local
+                until later migration slices. Local records will remain on this
+                device.
+              </Text>
+            </View>
+
             {guestMigrationSummary.warnings.map((warning) => (
               <View
                 className="rounded-card border border-ledger-line bg-ledger-background p-3"
@@ -380,13 +448,37 @@ export default function SettingsScreen() {
 
             <Pressable
               accessibilityRole="button"
-              className="rounded-card border border-ledger-line bg-ledger-background px-4 py-3 opacity-60"
-              disabled
+              className={`rounded-card px-4 py-3 ${
+                isMigratingVehicles ||
+                guestMigrationSummary.counts.totalVehicles === 0
+                  ? "bg-ledger-primary opacity-60"
+                  : "bg-ledger-primary"
+              }`}
+              disabled={
+                isMigratingVehicles ||
+                guestMigrationSummary.counts.totalVehicles === 0
+              }
+              onPress={() => {
+                void migrateVehiclesToCurrentAccount();
+              }}
             >
-              <Text className="text-center text-base font-bold text-ledger-muted">
-                Migration coming soon
+              <Text className="text-center text-base font-bold text-white">
+                {isMigratingVehicles
+                  ? "Migrating vehicles..."
+                  : "Migrate vehicles to account"}
               </Text>
             </Pressable>
+
+            {vehicleMigrationResult ? (
+              <View className="rounded-card border border-ledger-line bg-ledger-background p-3">
+                <Text className="text-sm leading-5 text-ledger-muted">
+                  Vehicle-only migration: {vehicleMigrationResult.migratedCount}{" "}
+                  copied, {vehicleMigrationResult.skippedCount} already present,{" "}
+                  {vehicleMigrationResult.failedCount} failed. No child records
+                  were migrated, and local guest data was not deleted.
+                </Text>
+              </View>
+            ) : null}
           </View>
         ) : null}
 
@@ -507,6 +599,21 @@ export default function SettingsScreen() {
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+function formatMigrationRunStatus(status: MigrationRun["status"]) {
+  const labels: Record<MigrationRun["status"], string> = {
+    completed: "Vehicle migration completed",
+    completed_with_errors: "Vehicle migration completed with issues",
+    failed: "Vehicle migration failed",
+    not_started: "Not started",
+    pending: "Pending",
+    running: "Vehicle migration running",
+    skipped: "Skipped",
+    synced: "Synced",
+  };
+
+  return labels[status];
 }
 
 function SettingsRow({ label, value }: { label: string; value: string }) {
