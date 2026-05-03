@@ -7,6 +7,7 @@ import {
   type ServiceRecordCategory,
   type Vehicle,
 } from "@autoledger/shared";
+import { Save, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
@@ -163,9 +164,10 @@ export function ServiceRecordForm({
       <div className="mt-6 flex flex-wrap gap-3">
         <SubmitButton label={submitLabel} />
         <Link
-          className="rounded-lg border border-[var(--line)] bg-[var(--background)] px-4 py-3 text-sm font-bold text-[var(--foreground)]"
+          className="inline-flex items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--background)] px-4 py-3 text-sm font-bold text-[var(--foreground)]"
           href={cancelHref}
         >
+          <X aria-hidden="true" className="size-4" />
           Cancel
         </Link>
       </div>
@@ -192,10 +194,11 @@ export function ServiceRecordDeleteForm({
     return (
       <div className="flex flex-col gap-2">
         <button
-          className="cursor-pointer rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800"
+          className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800"
           onClick={() => setIsConfirming(true)}
           type="button"
         >
+          <Trash2 aria-hidden="true" className="size-4" />
           Delete Service Record
         </button>
         {state.error ? (
@@ -224,10 +227,11 @@ export function ServiceRecordDeleteForm({
           <DeleteSubmitButton />
         </form>
         <button
-          className="cursor-pointer rounded-lg border border-red-200 bg-white px-4 py-3 text-sm font-bold text-red-800"
+          className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-3 text-sm font-bold text-red-800"
           onClick={() => setIsConfirming(false)}
           type="button"
         >
+          <X aria-hidden="true" className="size-4" />
           Cancel
         </button>
       </div>
@@ -315,10 +319,11 @@ function SubmitButton({ label }: { label: string }) {
 
   return (
     <button
-      className="cursor-pointer rounded-lg bg-[var(--primary)] px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-70"
+      className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-70"
       disabled={pending}
       type="submit"
     >
+      <Save aria-hidden="true" className="size-4" />
       {pending ? "Saving..." : label}
     </button>
   );
@@ -329,10 +334,11 @@ function DeleteSubmitButton() {
 
   return (
     <button
-      className="cursor-pointer rounded-lg border border-red-200 bg-white px-4 py-3 text-sm font-bold text-red-800 disabled:cursor-not-allowed disabled:opacity-70"
+      className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-3 text-sm font-bold text-red-800 disabled:cursor-not-allowed disabled:opacity-70"
       disabled={pending}
       type="submit"
     >
+      <Trash2 aria-hidden="true" className="size-4" />
       {pending ? "Deleting..." : "Delete"}
     </button>
   );

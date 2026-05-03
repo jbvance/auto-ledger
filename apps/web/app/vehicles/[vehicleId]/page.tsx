@@ -20,6 +20,7 @@ import {
   type Vehicle,
   type VehicleHistoryItem,
 } from "@autoledger/shared";
+import { Eye, Pencil, Plus } from "lucide-react";
 import Link from "next/link";
 
 import {
@@ -159,7 +160,8 @@ export default async function VehicleDetailPage({
           vehicle={detail.vehicle}
         />
         <RecordSection
-          canMutate={false}
+          addHref={`/vehicles/${detail.vehicle.id}/repair-records/new`}
+          canMutate={!detail.vehicle.archived_at}
           emptyMessage="No cloud repair records yet."
           records={detail.repairRecords}
           type="repair"
@@ -186,9 +188,10 @@ function VehicleActions({ vehicle }: { vehicle: Vehicle }) {
       ) : (
         <>
           <Link
-            className="rounded-lg bg-[var(--primary)] px-4 py-3 text-center text-sm font-bold text-white"
+            className="inline-flex items-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-3 text-center text-sm font-bold text-white"
             href={`/vehicles/${vehicle.id}/edit`}
           >
+            <Pencil aria-hidden="true" className="size-4" />
             Edit Vehicle
           </Link>
           <VehicleArchiveRestoreForm
@@ -328,9 +331,10 @@ function OdometerSection({
         </div>
         {canMutate ? (
           <Link
-            className="rounded-lg bg-[var(--primary)] px-4 py-3 text-center text-sm font-bold text-white"
+            className="inline-flex items-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-3 text-center text-sm font-bold text-white"
             href={`/vehicles/${vehicle.id}/odometer/new`}
           >
+            <Plus aria-hidden="true" className="size-4" />
             Add Odometer Entry
           </Link>
         ) : null}
@@ -342,9 +346,10 @@ function OdometerSection({
           </p>
           {canMutate ? (
             <Link
-              className="mt-3 inline-flex rounded-lg border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm font-bold text-[var(--foreground)]"
+              className="mt-3 inline-flex items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm font-bold text-[var(--foreground)]"
               href={`/vehicles/${vehicle.id}/odometer/new`}
             >
+              <Plus aria-hidden="true" className="size-4" />
               Add Odometer Entry
             </Link>
           ) : null}
@@ -368,9 +373,10 @@ function OdometerSection({
                 </div>
                 {canMutate ? (
                   <Link
-                    className="rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-center text-sm font-bold text-[var(--foreground)]"
+                    className="inline-flex items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-center text-sm font-bold text-[var(--foreground)]"
                     href={`/vehicles/${vehicle.id}/odometer/${entry.id}/edit`}
                   >
+                    <Pencil aria-hidden="true" className="size-4" />
                     Edit
                   </Link>
                 ) : null}
@@ -465,6 +471,8 @@ function RecordSection({
       odometer_reading?: null | number;
       title: string;
       vendor_name?: null | string;
+      warranty_until_date?: null | string;
+      warranty_until_odometer?: null | number;
     } & ({ repair_date: string } | { service_date: string })
   >;
   type: "repair" | "service";
@@ -483,15 +491,16 @@ function RecordSection({
           <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
             {type === "service"
               ? "Routine cloud maintenance records for this vehicle."
-              : "Display-only cloud repair records for this vehicle."}
+              : "Non-routine cloud repair records for this vehicle."}
           </p>
         </div>
-        {type === "service" && canMutate && addHref ? (
+        {canMutate && addHref ? (
           <Link
-            className="rounded-lg bg-[var(--primary)] px-4 py-3 text-center text-sm font-bold text-white"
+            className="inline-flex items-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-3 text-center text-sm font-bold text-white"
             href={addHref}
           >
-            Add Service Record
+            <Plus aria-hidden="true" className="size-4" />
+            {type === "service" ? "Add Service Record" : "Add Repair Record"}
           </Link>
         ) : null}
       </div>
@@ -500,12 +509,13 @@ function RecordSection({
           <p className="text-sm leading-6 text-[var(--muted)]">
             {emptyMessage}
           </p>
-          {type === "service" && canMutate && addHref ? (
+          {canMutate && addHref ? (
             <Link
-              className="mt-3 inline-flex rounded-lg border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm font-bold text-[var(--foreground)]"
+              className="mt-3 inline-flex items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm font-bold text-[var(--foreground)]"
               href={addHref}
             >
-              Add Service Record
+              <Plus aria-hidden="true" className="size-4" />
+              {type === "service" ? "Add Service Record" : "Add Repair Record"}
             </Link>
           ) : null}
         </div>
@@ -519,7 +529,7 @@ function RecordSection({
             const detailHref =
               type === "service"
                 ? `/vehicles/${vehicle.id}/service-records/${record.id}`
-                : undefined;
+                : `/vehicles/${vehicle.id}/repair-records/${record.id}`;
             const categoryLabel =
               type === "service"
                 ? serviceRecordCategoryLabels[
@@ -552,9 +562,10 @@ function RecordSection({
                   </div>
                   {detailHref ? (
                     <Link
-                      className="rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-center text-sm font-bold text-[var(--foreground)]"
+                      className="inline-flex items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-center text-sm font-bold text-[var(--foreground)]"
                       href={detailHref}
                     >
+                      <Eye aria-hidden="true" className="size-4" />
                       View Details
                     </Link>
                   ) : null}
@@ -580,6 +591,23 @@ function RecordSection({
                   )}
                   {record.vendor_name ? (
                     <SmallBadge>{record.vendor_name}</SmallBadge>
+                  ) : null}
+                  {"warranty_until_date" in record &&
+                  record.warranty_until_date ? (
+                    <SmallBadge>
+                      Warranty {formatDisplayDate(record.warranty_until_date)}
+                    </SmallBadge>
+                  ) : null}
+                  {"warranty_until_odometer" in record &&
+                  record.warranty_until_odometer !== null &&
+                  record.warranty_until_odometer !== undefined ? (
+                    <SmallBadge>
+                      Warranty{" "}
+                      {formatOdometer(
+                        record.warranty_until_odometer,
+                        vehicle.odometer_unit,
+                      )}
+                    </SmallBadge>
                   ) : null}
                 </div>
                 {record.description || record.notes ? (

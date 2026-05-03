@@ -38,6 +38,16 @@ views. Web cloud service record writes update/recalculate the cloud vehicle
 `current_odometer` from cloud odometer, service, and repair rows only. Web
 remains cloud-account-only and does not read or mutate local mobile guest data.
 
+Web Slice 5 is complete. Signed-in web users can create cloud repair records at
+`/vehicles/[vehicleId]/repair-records/new`, view cloud repair record detail at
+`/vehicles/[vehicleId]/repair-records/[repairRecordId]`, edit and delete cloud
+repair records at
+`/vehicles/[vehicleId]/repair-records/[repairRecordId]/edit`, and see those
+records on vehicle detail pages and in existing cloud history/recent activity
+views. Web cloud repair record writes update/recalculate the cloud vehicle
+`current_odometer` from cloud odometer, service, and repair rows only. Web
+remains cloud-account-only and does not read or mutate local mobile guest data.
+
 The mobile app runs successfully through Expo and has been tested in Expo Go.
 
 An initial testing foundation has been added. Root test scripts now cover
@@ -45,7 +55,7 @@ Vitest package tests for shared domain and validation logic plus Jest Expo
 mobile tests for focused user-visible behavior. A lightweight Maestro mobile
 E2E smoke scaffold and `docs/testing.md` are also present.
 
-Current development track: Local guest MVP features, optional Supabase Auth foundation, Supabase cloud data schema/RLS foundation, mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD, mobile cloud service record CRUD, mobile cloud repair record CRUD, mobile cloud maintenance reminder CRUD, cloud service/repair record attachments, guest-to-account vehicle migration, guest-to-account odometer-entry migration, guest-to-account service-record migration, guest-to-account repair-record migration, guest-to-account maintenance-reminder migration, guest-to-account service/repair attachment migration, final guest-to-account migration review/status/retry UX, mobile navigation polish, web authenticated cloud dashboard/vehicle read-only views, web cloud vehicle create/edit/archive/restore, web cloud odometer entry create/edit/delete, and web cloud service record create/view/edit/delete are complete; broader app-side cloud sync and broader web repair/reminder/attachment write flows are next.
+Current development track: Local guest MVP features, optional Supabase Auth foundation, Supabase cloud data schema/RLS foundation, mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD, mobile cloud service record CRUD, mobile cloud repair record CRUD, mobile cloud maintenance reminder CRUD, cloud service/repair record attachments, guest-to-account vehicle migration, guest-to-account odometer-entry migration, guest-to-account service-record migration, guest-to-account repair-record migration, guest-to-account maintenance-reminder migration, guest-to-account service/repair attachment migration, final guest-to-account migration review/status/retry UX, mobile navigation polish, web authenticated cloud dashboard/vehicle read-only views, web cloud vehicle create/edit/archive/restore, web cloud odometer entry create/edit/delete, web cloud service record create/view/edit/delete, and web cloud repair record create/view/edit/delete are complete; broader app-side cloud sync and broader web reminder/attachment write flows are next.
 
 The app is still local guest-mode first. Users can manage vehicles, odometer entries, service records, repair records, reminders, local attachments, and local CSV export without creating an account.
 
@@ -177,6 +187,12 @@ The mobile app currently supports local guest-mode:
   `/vehicles/[vehicleId]/service-records/[serviceRecordId]`
 - Web cloud service record edit/delete route at
   `/vehicles/[vehicleId]/service-records/[serviceRecordId]/edit`
+- Web cloud repair record create route at
+  `/vehicles/[vehicleId]/repair-records/new`
+- Web cloud repair record detail route at
+  `/vehicles/[vehicleId]/repair-records/[repairRecordId]`
+- Web cloud repair record edit/delete route at
+  `/vehicles/[vehicleId]/repair-records/[repairRecordId]/edit`
 - Supabase session refresh proxy for Next.js App Router
 - Protected web account pages show a clear sign-in prompt when no session exists
 - Web account views are cloud-account-only and do not read local mobile guest data
@@ -195,9 +211,13 @@ The mobile app currently supports local guest-mode:
   for active cloud vehicles saved to Supabase
 - Web cloud service record writes update/recalculate cloud vehicle
   `current_odometer` without using local mobile guest data
-- Web create/edit/delete flows for repair records, reminders, attachments,
-  exports, and guest-to-account migration are still deferred
-- Mobile behavior was not changed by the web service record slice
+- Signed-in web users can create, view, edit, and delete cloud repair records
+  for active cloud vehicles saved to Supabase
+- Web cloud repair record writes update/recalculate cloud vehicle
+  `current_odometer` without using local mobile guest data
+- Web create/edit/delete flows for reminders, attachments, exports, and
+  guest-to-account migration are still deferred
+- Mobile behavior was not changed by the web repair record slice
 
 ## Supabase Setup Required
 
@@ -215,7 +235,7 @@ The mobile app currently supports local guest-mode:
 
 ## Current Cloud Limitations
 
-- Account creation is optional and currently unlocks cloud vehicle CRUD, cloud odometer entry CRUD, cloud service record CRUD, cloud repair record CRUD, cloud maintenance reminder CRUD, and cloud service/repair attachment support on mobile, plus cloud dashboard/vehicle visibility, cloud vehicle create/edit/archive/restore, cloud odometer entry create/edit/delete, and cloud service record create/view/edit/delete on web.
+- Account creation is optional and currently unlocks cloud vehicle CRUD, cloud odometer entry CRUD, cloud service record CRUD, cloud repair record CRUD, cloud maintenance reminder CRUD, and cloud service/repair attachment support on mobile, plus cloud dashboard/vehicle visibility, cloud vehicle create/edit/archive/restore, cloud odometer entry create/edit/delete, cloud service record create/view/edit/delete, and cloud repair record create/view/edit/delete on web.
 - Local guest records are not uploaded automatically after sign-in or sign-up.
 - Full automatic guest-to-account sync is not implemented. Vehicle-only, odometer-only, service-record-only, repair-record-only, maintenance-reminder-only, and service/repair attachment-only guest-to-account migration exist as focused manual Settings actions, with a Cloud Migration review/status/retry screen for managing those steps.
 - Guest-to-account migration planning is complete in `docs/guest-to-account-migration-plan.md`, Slice 1 readiness/status detection is implemented locally, Slice 2 vehicle-only upload is implemented, Slice 3 odometer-only upload is implemented, Slice 4 service-record-only upload is implemented, Slice 5 repair-record-only upload is implemented, Slice 6 maintenance-reminder-only upload is implemented, Slice 7 attachment-only upload is implemented, and Slice 8 review/status/retry UX is implemented.
@@ -232,9 +252,10 @@ The mobile app currently supports local guest-mode:
 - Cloud maintenance reminder status is calculated in-app from the cloud reminder due fields and the cloud vehicle `current_odometer`.
 - Cloud attachments are implemented only for cloud service and repair records. Vehicle-level cloud documents are not implemented.
 - Web cloud vehicle create/edit/archive/restore, web cloud odometer entry
-  create/edit/delete, and web cloud service record create/view/edit/delete are
-  implemented for signed-in users. Web cloud repair, reminder, attachment,
-  export, and guest-to-account migration write flows are still deferred.
+  create/edit/delete, web cloud service record create/view/edit/delete, and web
+  cloud repair record create/view/edit/delete are implemented for signed-in
+  users. Web cloud reminder, attachment, export, and guest-to-account migration
+  write flows are still deferred.
 
 ## Cloud Vehicle RLS Manual Verification
 
@@ -311,7 +332,6 @@ The next recommended feature track is a focused web cloud records slice or a car
 
 Good candidates:
 
-- Add authenticated web cloud repair record create/edit/delete for cloud vehicles.
 - Add authenticated web cloud maintenance reminder create/edit/complete/delete for cloud vehicles.
 - Generate Supabase database TypeScript types from the live project after running the SQL.
 - Continue focused tests around shared validation, odometer/history logic, attachment validation, reminder status logic, CSV export logic, and migration logic.

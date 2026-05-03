@@ -2,7 +2,7 @@ import {
   formatCostAmount,
   formatDisplayDate,
   formatOdometer,
-  serviceRecordCategoryLabels,
+  repairRecordCategoryLabels,
 } from "@autoledger/shared";
 import { Pencil } from "lucide-react";
 import Link from "next/link";
@@ -12,34 +12,34 @@ import {
   AccountErrorPanel,
   AccountPageShell,
 } from "../../../../../components/AccountPageChrome";
-import { ServiceRecordDeleteForm } from "../../../../../components/ServiceRecordForm";
-import { getWebCloudServiceRecord } from "../../../../../lib/cloud/serviceRecordMutations";
+import { RepairRecordDeleteForm } from "../../../../../components/RepairRecordForm";
+import { getWebCloudRepairRecord } from "../../../../../lib/cloud/repairRecordMutations";
 import {
   getWebCloudAuthState,
   loadWebCloudVehicleDetail,
 } from "../../../../../lib/cloud/serverData";
-import { deleteServiceRecordAction } from "../../../serviceRecordActions";
+import { deleteRepairRecordAction } from "../../../repairRecordActions";
 
-type ServiceRecordDetailPageProps = {
+type RepairRecordDetailPageProps = {
   params: Promise<{
-    serviceRecordId: string;
+    repairRecordId: string;
     vehicleId: string;
   }>;
 };
 
-export default async function ServiceRecordDetailPage({
+export default async function RepairRecordDetailPage({
   params,
-}: ServiceRecordDetailPageProps) {
-  const { serviceRecordId, vehicleId } = await params;
+}: RepairRecordDetailPageProps) {
+  const { repairRecordId, vehicleId } = await params;
   const authState = await getWebCloudAuthState();
 
   if (authState.status !== "authenticated") {
     return (
       <AccountPageShell>
         <AccountAuthPrompt
-          defaultMessage="Service record pages show cloud account data only. Sign in to view this cloud service record."
+          defaultMessage="Repair record pages show cloud account data only. Sign in to view this cloud repair record."
           message={authState.errorMessage}
-          title="Sign in to view this service record"
+          title="Sign in to view this repair record"
         />
       </AccountPageShell>
     );
@@ -48,18 +48,17 @@ export default async function ServiceRecordDetailPage({
   const userEmail = authState.user.email ?? null;
   let detail: Awaited<ReturnType<typeof loadWebCloudVehicleDetail>> | null =
     null;
-  let serviceRecord: Awaited<ReturnType<typeof getWebCloudServiceRecord>> =
-    null;
+  let repairRecord: Awaited<ReturnType<typeof getWebCloudRepairRecord>> = null;
   let loadError: null | string = null;
 
   try {
-    [detail, serviceRecord] = await Promise.all([
+    [detail, repairRecord] = await Promise.all([
       loadWebCloudVehicleDetail({
         userId: authState.user.id,
         vehicleId,
       }),
-      getWebCloudServiceRecord({
-        serviceRecordId,
+      getWebCloudRepairRecord({
+        repairRecordId,
         userId: authState.user.id,
         vehicleId,
       }),
@@ -68,7 +67,7 @@ export default async function ServiceRecordDetailPage({
     loadError =
       error instanceof Error
         ? error.message
-        : "Unable to load this cloud service record.";
+        : "Unable to load this cloud repair record.";
   }
 
   if (loadError) {
@@ -76,17 +75,13 @@ export default async function ServiceRecordDetailPage({
       <AccountPageShell userEmail={userEmail}>
         <AccountErrorPanel
           message={loadError}
-          title="Service record unavailable"
+          title="Repair record unavailable"
         />
       </AccountPageShell>
     );
   }
 
-  if (
-    !detail ||
-    !serviceRecord ||
-    serviceRecord.vehicle_id !== detail.vehicle.id
-  ) {
+  if (!detail || !repairRecord || repairRecord.vehicle_id !== detail.vehicle.id) {
     return (
       <AccountPageShell userEmail={userEmail}>
         <NotFoundPanel vehicleId={vehicleId} />
@@ -115,35 +110,35 @@ export default async function ServiceRecordDetailPage({
           </Link>
           <span className="text-sm text-[var(--muted)]">/</span>
           <span className="text-sm font-semibold text-[var(--muted)]">
-            Service record
+            Repair record
           </span>
         </div>
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-sm font-bold uppercase text-[var(--primary)]">
-              Cloud service
+              Cloud repair
             </p>
             <h1 className="mt-2 text-4xl font-bold leading-tight">
-              {serviceRecord.title}
+              {repairRecord.title}
             </h1>
             <p className="mt-2 text-base leading-7 text-[var(--muted)]">
-              {serviceRecordCategoryLabels[serviceRecord.category]} -{" "}
-              {formatDisplayDate(serviceRecord.service_date)}
+              {repairRecordCategoryLabels[repairRecord.category]} -{" "}
+              {formatDisplayDate(repairRecord.repair_date)}
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
             {canMutate ? (
               <Link
                 className="inline-flex items-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-3 text-center text-sm font-bold text-white"
-                href={`/vehicles/${detail.vehicle.id}/service-records/${serviceRecord.id}/edit`}
+                href={`/vehicles/${detail.vehicle.id}/repair-records/${repairRecord.id}/edit`}
               >
                 <Pencil aria-hidden="true" className="size-4" />
-                Edit Service Record
+                Edit Repair Record
               </Link>
             ) : null}
             <Link
               className="rounded-lg border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-center text-sm font-bold text-[var(--foreground)]"
-              href={`/vehicles/${detail.vehicle.id}#service-records`}
+              href={`/vehicles/${detail.vehicle.id}#repair-records`}
             >
               Back to Vehicle
             </Link>
@@ -153,37 +148,51 @@ export default async function ServiceRecordDetailPage({
 
       <section className="grid gap-4 lg:grid-cols-[1fr_0.7fr]">
         <section className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5">
-          <h2 className="text-xl font-bold">Service Details</h2>
+          <h2 className="text-xl font-bold">Repair Details</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <Detail label="Category">
-              {serviceRecordCategoryLabels[serviceRecord.category]}
+              {repairRecordCategoryLabels[repairRecord.category]}
             </Detail>
-            <Detail label="Service date">
-              {formatDisplayDate(serviceRecord.service_date)}
+            <Detail label="Repair date">
+              {formatDisplayDate(repairRecord.repair_date)}
             </Detail>
             <Detail label="Odometer reading">
-              {serviceRecord.odometer_reading === null ||
-              serviceRecord.odometer_reading === undefined
+              {repairRecord.odometer_reading === null ||
+              repairRecord.odometer_reading === undefined
                 ? "Not set"
                 : formatOdometer(
-                    serviceRecord.odometer_reading,
+                    repairRecord.odometer_reading,
                     detail.vehicle.odometer_unit,
                   )}
             </Detail>
             <Detail label="Cost">
               {formatCostAmount(
-                serviceRecord.cost_amount,
-                serviceRecord.cost_currency,
+                repairRecord.cost_amount,
+                repairRecord.cost_currency,
               )}
             </Detail>
             <Detail label="Vendor / shop">
-              {serviceRecord.vendor_name ?? "Not set"}
+              {repairRecord.vendor_name ?? "Not set"}
+            </Detail>
+            <Detail label="Warranty date">
+              {repairRecord.warranty_until_date
+                ? formatDisplayDate(repairRecord.warranty_until_date)
+                : "Not set"}
+            </Detail>
+            <Detail label="Warranty odometer">
+              {repairRecord.warranty_until_odometer === null ||
+              repairRecord.warranty_until_odometer === undefined
+                ? "Not set"
+                : formatOdometer(
+                    repairRecord.warranty_until_odometer,
+                    detail.vehicle.odometer_unit,
+                  )}
             </Detail>
             <Detail label="Created">
-              {new Date(serviceRecord.created_at).toLocaleString("en-US")}
+              {new Date(repairRecord.created_at).toLocaleString("en-US")}
             </Detail>
             <Detail label="Updated">
-              {new Date(serviceRecord.updated_at).toLocaleString("en-US")}
+              {new Date(repairRecord.updated_at).toLocaleString("en-US")}
             </Detail>
           </div>
         </section>
@@ -196,15 +205,15 @@ export default async function ServiceRecordDetailPage({
           </p>
           {canMutate ? (
             <div className="mt-4">
-              <ServiceRecordDeleteForm
-                action={deleteServiceRecordAction}
-                serviceRecordId={serviceRecord.id}
+              <RepairRecordDeleteForm
+                action={deleteRepairRecordAction}
+                repairRecordId={repairRecord.id}
                 vehicleId={detail.vehicle.id}
               />
             </div>
           ) : (
             <p className="mt-4 rounded-lg bg-[var(--background)] p-3 text-sm leading-6 text-[var(--muted)]">
-              Restore this cloud vehicle before editing or deleting service
+              Restore this cloud vehicle before editing or deleting repair
               records.
             </p>
           )}
@@ -212,8 +221,8 @@ export default async function ServiceRecordDetailPage({
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
-        <TextPanel label="Description" value={serviceRecord.description} />
-        <TextPanel label="Notes" value={serviceRecord.notes} />
+        <TextPanel label="Description" value={repairRecord.description} />
+        <TextPanel label="Notes" value={repairRecord.notes} />
       </section>
     </AccountPageShell>
   );
@@ -250,9 +259,9 @@ function TextPanel({ label, value }: { label: string; value?: null | string }) {
 function NotFoundPanel({ vehicleId }: { vehicleId: string }) {
   return (
     <section className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-6">
-      <h1 className="text-3xl font-bold">Service record not found</h1>
+      <h1 className="text-3xl font-bold">Repair record not found</h1>
       <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-        This cloud service record may have been deleted, or it may belong to
+        This cloud repair record may have been deleted, or it may belong to
         another account.
       </p>
       <Link
