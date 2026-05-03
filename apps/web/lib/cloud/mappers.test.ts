@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  mapCloudOdometerEntryRow,
   mapCloudRepairRecordRow,
   mapCloudServiceRecordRow,
   mapCloudVehicleRow,
+  type CloudOdometerEntryRow,
   type CloudRepairRecordRow,
   type CloudServiceRecordRow,
   type CloudVehicleRow,
@@ -43,6 +45,29 @@ describe("web cloud mappers", () => {
     expect(vehicle.odometer_unit).toBe("mi");
     expect(vehicle.vehicle_type).toBe("suv");
     expect(vehicle.sync_status).toBe("synced");
+  });
+
+  it("maps cloud odometer entry enum strings into shared odometer types", () => {
+    const row: CloudOdometerEntryRow = {
+      created_at: "2026-01-01T00:00:00.000Z",
+      id: "odo-1",
+      local_id: "cloud_odo_1",
+      notes: null,
+      odometer_unit: "mi",
+      reading: 43000,
+      reading_date: "2026-01-02",
+      source_type: "manual",
+      sync_status: "synced",
+      updated_at: "2026-01-02T00:00:00.000Z",
+      user_id: "user-1",
+      vehicle_id: "vehicle-1",
+    };
+
+    expect(mapCloudOdometerEntryRow(row)).toMatchObject({
+      odometer_unit: "mi",
+      source_type: "manual",
+      sync_status: "synced",
+    });
   });
 
   it("normalizes numeric cloud service costs", () => {

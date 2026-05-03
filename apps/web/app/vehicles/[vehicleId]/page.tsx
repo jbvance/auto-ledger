@@ -15,6 +15,7 @@ import {
   serviceRecordCategoryLabels,
   vehicleTypeLabels,
   type MaintenanceReminder,
+  type OdometerEntry,
   type RecordAttachment,
   type Vehicle,
   type VehicleHistoryItem,
@@ -305,34 +306,72 @@ function OdometerSection({
   entries,
   vehicle,
 }: {
-  entries: Array<{
-    id: string;
-    notes?: null | string;
-    reading: number;
-    reading_date: string;
-    source_type: keyof typeof odometerSourceTypeLabels;
-  }>;
+  entries: OdometerEntry[];
   vehicle: Vehicle;
 }) {
+  const canMutate = !vehicle.archived_at;
+
   return (
-    <section className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5">
-      <h2 className="text-xl font-bold">Odometer Entries</h2>
+    <section
+      className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5"
+      id="odometer-entries"
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="text-xl font-bold">Odometer Entries</h2>
+          <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
+            Manual cloud mileage readings for this vehicle.
+          </p>
+        </div>
+        {canMutate ? (
+          <Link
+            className="rounded-lg bg-[var(--primary)] px-4 py-3 text-center text-sm font-bold text-white"
+            href={`/vehicles/${vehicle.id}/odometer/new`}
+          >
+            Add Odometer Entry
+          </Link>
+        ) : null}
+      </div>
       {entries.length === 0 ? (
-        <EmptyText>No cloud odometer entries yet.</EmptyText>
+        <div className="mt-4 rounded-lg bg-[var(--background)] p-3">
+          <p className="text-sm leading-6 text-[var(--muted)]">
+            No cloud odometer entries yet.
+          </p>
+          {canMutate ? (
+            <Link
+              className="mt-3 inline-flex rounded-lg border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm font-bold text-[var(--foreground)]"
+              href={`/vehicles/${vehicle.id}/odometer/new`}
+            >
+              Add Odometer Entry
+            </Link>
+          ) : null}
+        </div>
       ) : (
         <div className="mt-4 flex flex-col gap-3">
-          {entries.slice(0, 8).map((entry) => (
+          {entries.map((entry) => (
             <div
               className="rounded-lg border border-[var(--line)] bg-[var(--background)] p-3"
               key={entry.id}
             >
-              <p className="font-bold">
-                {formatOdometer(entry.reading, vehicle.odometer_unit)}
-              </p>
-              <p className="mt-1 text-sm text-[var(--muted)]">
-                {formatDisplayDate(entry.reading_date)} -{" "}
-                {odometerSourceTypeLabels[entry.source_type]}
-              </p>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="font-bold">
+                    {formatOdometer(entry.reading, entry.odometer_unit)}
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--muted)]">
+                    {formatDisplayDate(entry.reading_date)} -{" "}
+                    {odometerSourceTypeLabels[entry.source_type]}
+                  </p>
+                </div>
+                {canMutate ? (
+                  <Link
+                    className="rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-center text-sm font-bold text-[var(--foreground)]"
+                    href={`/vehicles/${vehicle.id}/odometer/${entry.id}/edit`}
+                  >
+                    Edit
+                  </Link>
+                ) : null}
+              </div>
               {entry.notes ? (
                 <p className="mt-2 text-sm leading-5 text-[var(--muted)]">
                   {entry.notes}
