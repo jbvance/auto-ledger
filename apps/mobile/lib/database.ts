@@ -210,6 +210,11 @@ const initializeGuestDatabase = async (db: SQLite.SQLiteDatabase) => {
         migrated_vehicles INTEGER NOT NULL DEFAULT 0,
         skipped_vehicles INTEGER NOT NULL DEFAULT 0,
         failed_vehicles INTEGER NOT NULL DEFAULT 0,
+        total_odometer_entries INTEGER NOT NULL DEFAULT 0,
+        migrated_odometer_entries INTEGER NOT NULL DEFAULT 0,
+        skipped_odometer_entries INTEGER NOT NULL DEFAULT 0,
+        skipped_odometer_entries_missing_vehicle_mapping INTEGER NOT NULL DEFAULT 0,
+        failed_odometer_entries INTEGER NOT NULL DEFAULT 0,
         error_message TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
@@ -283,6 +288,61 @@ const initializeGuestDatabase = async (db: SQLite.SQLiteDatabase) => {
     await db.execAsync(`
         ALTER TABLE migration_runs
         ADD COLUMN failed_vehicles INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (!(await columnExists(db, "migration_runs", "total_odometer_entries"))) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN total_odometer_entries INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (
+    !(await columnExists(
+      db,
+      "migration_runs",
+      "migrated_odometer_entries",
+    ))
+  ) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN migrated_odometer_entries INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (
+    !(await columnExists(
+      db,
+      "migration_runs",
+      "skipped_odometer_entries",
+    ))
+  ) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN skipped_odometer_entries INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (
+    !(await columnExists(
+      db,
+      "migration_runs",
+      "skipped_odometer_entries_missing_vehicle_mapping",
+    ))
+  ) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN skipped_odometer_entries_missing_vehicle_mapping INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (
+    !(await columnExists(db, "migration_runs", "failed_odometer_entries"))
+  ) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN failed_odometer_entries INTEGER NOT NULL DEFAULT 0;
       `);
   }
 

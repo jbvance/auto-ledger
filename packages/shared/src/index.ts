@@ -5,7 +5,7 @@ export const currentDevelopmentTrack = {
   label:
     "Local guest MVP plus cloud vehicle, records, reminders, and service/repair attachments",
   description:
-    "Local guest MVP features, optional account auth foundation, cloud schema/RLS foundation, mobile cloud vehicle/record/reminder CRUD, and cloud service/repair attachments are complete; guest-to-account migration remains pending.",
+    "Local guest MVP features, optional account auth foundation, cloud schema/RLS foundation, mobile cloud vehicle/record/reminder CRUD, cloud service/repair attachments, and vehicle/odometer guest-to-account migration are complete; broader migration remains pending.",
 } as const;
 
 export const vehicleTypeValues = [

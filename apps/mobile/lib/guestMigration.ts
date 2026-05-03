@@ -53,13 +53,18 @@ export type MigrationRun = {
   completed_at: string | null;
   created_at: string;
   error_message: string | null;
+  failed_odometer_entries: number;
   failed_vehicles: number;
   id: string;
+  migrated_odometer_entries: number;
   migrated_vehicles: number;
   migration_scope: string;
+  skipped_odometer_entries: number;
+  skipped_odometer_entries_missing_vehicle_mapping: number;
   started_at: string;
   status: MigrationRunStatus;
   skipped_vehicles: number;
+  total_odometer_entries: number;
   total_vehicles: number;
   updated_at: string;
 };
@@ -77,20 +82,34 @@ export type MigrationEntityMapping = {
   updated_at: string;
 };
 
-export type VehicleMigrationMappingInput = {
+export type MigrationEntityMappingInput = {
   accountId: string;
   cloudId: string | null;
+  entityType: MigrationEntityType;
   errorMessage?: string | null;
   localId: string;
   runId?: string | null;
   status: MigrationRunStatus;
 };
 
+export type VehicleMigrationMappingInput = Omit<
+  MigrationEntityMappingInput,
+  "entityType"
+>;
+
 export type MigrationRunVehicleCounts = {
   failedVehicles: number;
   migratedVehicles: number;
   skippedVehicles: number;
   totalVehicles: number;
+};
+
+export type MigrationRunOdometerCounts = {
+  failedOdometerEntries: number;
+  migratedOdometerEntries: number;
+  skippedOdometerEntries: number;
+  skippedOdometerEntriesMissingVehicleMapping: number;
+  totalOdometerEntries: number;
 };
 
 type CountRow = {
@@ -131,7 +150,7 @@ export const buildGuestMigrationSummary = ({
     warnings.push({
       code: "account_required",
       message:
-        "Sign in before a future migration tool can review local records for cloud upload.",
+        "Sign in before migration tools can review local records for cloud upload.",
     });
   }
 
@@ -233,13 +252,18 @@ export const getOrCreateInitialMigrationRun = async (
     completed_at: null,
     created_at: now,
     error_message: null,
+    failed_odometer_entries: 0,
     failed_vehicles: 0,
     id: createLocalId("migration_run"),
+    migrated_odometer_entries: 0,
     migrated_vehicles: 0,
     migration_scope: "full",
+    skipped_odometer_entries: 0,
+    skipped_odometer_entries_missing_vehicle_mapping: 0,
     started_at: now,
     status: "not_started",
     skipped_vehicles: 0,
+    total_odometer_entries: 0,
     total_vehicles: 0,
     updated_at: now,
   };
@@ -256,10 +280,15 @@ export const getOrCreateInitialMigrationRun = async (
       migrated_vehicles,
       skipped_vehicles,
       failed_vehicles,
+      total_odometer_entries,
+      migrated_odometer_entries,
+      skipped_odometer_entries,
+      skipped_odometer_entries_missing_vehicle_mapping,
+      failed_odometer_entries,
       error_message,
       created_at,
       updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       run.id,
       run.account_id,
@@ -271,6 +300,11 @@ export const getOrCreateInitialMigrationRun = async (
       run.migrated_vehicles,
       run.skipped_vehicles,
       run.failed_vehicles,
+      run.total_odometer_entries,
+      run.migrated_odometer_entries,
+      run.skipped_odometer_entries,
+      run.skipped_odometer_entries_missing_vehicle_mapping,
+      run.failed_odometer_entries,
       run.error_message,
       run.created_at,
       run.updated_at,
@@ -294,13 +328,18 @@ export const createVehicleMigrationRun = async ({
     completed_at: null,
     created_at: now,
     error_message: null,
+    failed_odometer_entries: 0,
     failed_vehicles: 0,
     id: createLocalId("migration_run"),
+    migrated_odometer_entries: 0,
     migrated_vehicles: 0,
     migration_scope: "vehicles",
+    skipped_odometer_entries: 0,
+    skipped_odometer_entries_missing_vehicle_mapping: 0,
     skipped_vehicles: 0,
     started_at: now,
     status: "running",
+    total_odometer_entries: 0,
     total_vehicles: totalVehicles,
     updated_at: now,
   };
@@ -332,6 +371,82 @@ export const createVehicleMigrationRun = async ({
       run.migrated_vehicles,
       run.skipped_vehicles,
       run.failed_vehicles,
+      run.error_message,
+      run.created_at,
+      run.updated_at,
+    ],
+  );
+
+  return run;
+};
+
+export const createOdometerMigrationRun = async ({
+  accountId,
+  totalOdometerEntries,
+}: {
+  accountId: string;
+  totalOdometerEntries: number;
+}): Promise<MigrationRun> => {
+  const db = await getGuestDatabase();
+  const now = new Date().toISOString();
+  const run: MigrationRun = {
+    account_id: accountId,
+    completed_at: null,
+    created_at: now,
+    error_message: null,
+    failed_odometer_entries: 0,
+    failed_vehicles: 0,
+    id: createLocalId("migration_run"),
+    migrated_odometer_entries: 0,
+    migrated_vehicles: 0,
+    migration_scope: "odometer_entries",
+    skipped_odometer_entries: 0,
+    skipped_odometer_entries_missing_vehicle_mapping: 0,
+    skipped_vehicles: 0,
+    started_at: now,
+    status: "running",
+    total_odometer_entries: totalOdometerEntries,
+    total_vehicles: 0,
+    updated_at: now,
+  };
+
+  await db.runAsync(
+    `INSERT INTO migration_runs (
+      id,
+      account_id,
+      migration_scope,
+      started_at,
+      completed_at,
+      status,
+      total_vehicles,
+      migrated_vehicles,
+      skipped_vehicles,
+      failed_vehicles,
+      total_odometer_entries,
+      migrated_odometer_entries,
+      skipped_odometer_entries,
+      skipped_odometer_entries_missing_vehicle_mapping,
+      failed_odometer_entries,
+      error_message,
+      created_at,
+      updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      run.id,
+      run.account_id,
+      run.migration_scope,
+      run.started_at,
+      run.completed_at,
+      run.status,
+      run.total_vehicles,
+      run.migrated_vehicles,
+      run.skipped_vehicles,
+      run.failed_vehicles,
+      run.total_odometer_entries,
+      run.migrated_odometer_entries,
+      run.skipped_odometer_entries,
+      run.skipped_odometer_entries_missing_vehicle_mapping,
+      run.failed_odometer_entries,
       run.error_message,
       run.created_at,
       run.updated_at,
@@ -381,6 +496,48 @@ export const updateMigrationRunStatus = async ({
   );
 };
 
+export const updateOdometerMigrationRunStatus = async ({
+  completedAt = null,
+  counts,
+  errorMessage = null,
+  runId,
+  status,
+}: {
+  completedAt?: string | null;
+  counts: MigrationRunOdometerCounts;
+  errorMessage?: string | null;
+  runId: string;
+  status: MigrationRunStatus;
+}): Promise<void> => {
+  const db = await getGuestDatabase();
+
+  await db.runAsync(
+    `UPDATE migration_runs
+     SET completed_at = ?,
+         status = ?,
+         total_odometer_entries = ?,
+         migrated_odometer_entries = ?,
+         skipped_odometer_entries = ?,
+         skipped_odometer_entries_missing_vehicle_mapping = ?,
+         failed_odometer_entries = ?,
+         error_message = ?,
+         updated_at = ?
+     WHERE id = ?`,
+    [
+      completedAt,
+      status,
+      counts.totalOdometerEntries,
+      counts.migratedOdometerEntries,
+      counts.skippedOdometerEntries,
+      counts.skippedOdometerEntriesMissingVehicleMapping,
+      counts.failedOdometerEntries,
+      errorMessage,
+      new Date().toISOString(),
+      runId,
+    ],
+  );
+};
+
 export const getMigrationEntityMapping = async ({
   accountId,
   entityType,
@@ -422,17 +579,34 @@ export const getVehicleMigrationMappings = async (
   return rows;
 };
 
-export const upsertVehicleMigrationMapping = async ({
+export const getOdometerMigrationMappings = async (
+  accountId: string,
+): Promise<MigrationEntityMapping[]> => {
+  const db = await getGuestDatabase();
+  const rows = await db.getAllAsync<MigrationEntityMapping>(
+    `SELECT *
+     FROM migration_entity_mappings
+     WHERE account_id = ?
+       AND entity_type = 'odometer_entry'
+     ORDER BY updated_at DESC, created_at DESC`,
+    accountId,
+  );
+
+  return rows;
+};
+
+export const upsertMigrationEntityMapping = async ({
   accountId,
   cloudId,
+  entityType,
   errorMessage = null,
   localId,
   runId = null,
   status,
-}: VehicleMigrationMappingInput): Promise<MigrationEntityMapping> => {
+}: MigrationEntityMappingInput): Promise<MigrationEntityMapping> => {
   const existing = await getMigrationEntityMapping({
     accountId,
-    entityType: "vehicle",
+    entityType,
     localId,
   });
   const db = await getGuestDatabase();
@@ -441,7 +615,7 @@ export const upsertVehicleMigrationMapping = async ({
     account_id: accountId,
     cloud_id: cloudId,
     created_at: existing?.created_at ?? now,
-    entity_type: "vehicle",
+    entity_type: entityType,
     error_message: errorMessage,
     id: existing?.id ?? createLocalId("migration_mapping"),
     local_id: localId,
@@ -486,3 +660,19 @@ export const upsertVehicleMigrationMapping = async ({
 
   return mapping;
 };
+
+export const upsertVehicleMigrationMapping = async (
+  input: VehicleMigrationMappingInput,
+): Promise<MigrationEntityMapping> =>
+  upsertMigrationEntityMapping({
+    ...input,
+    entityType: "vehicle",
+  });
+
+export const upsertOdometerMigrationMapping = async (
+  input: VehicleMigrationMappingInput,
+): Promise<MigrationEntityMapping> =>
+  upsertMigrationEntityMapping({
+    ...input,
+    entityType: "odometer_entry",
+  });

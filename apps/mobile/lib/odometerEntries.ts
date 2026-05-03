@@ -46,6 +46,16 @@ export const listOdometerEntries = async (
   return rows.map(mapOdometerEntryRow);
 };
 
+export const listAllOdometerEntries = async (): Promise<OdometerEntry[]> => {
+  const db = await getGuestDatabase();
+  const rows = await db.getAllAsync<OdometerEntryRow>(
+    `SELECT * FROM odometer_entries
+     ORDER BY reading_date DESC, created_at DESC`,
+  );
+
+  return rows.map(mapOdometerEntryRow);
+};
+
 export const getOdometerEntry = async (
   id: string,
 ): Promise<OdometerEntry | null> => {

@@ -47,17 +47,22 @@ const requireSupabase = () => {
 export const getCloudVehicleForOdometer = async (
   vehicleId: string,
   userId: string,
+  options: { includeArchived?: boolean } = {},
 ): Promise<CloudVehicleOdometerRow | null> => {
   const client = requireSupabase();
-  const { data, error } = await client
+  let query = client
     .from("vehicles")
     .select(
       "id, current_odometer, initial_odometer, odometer_unit, purchase_odometer",
     )
     .eq("id", vehicleId)
-    .eq("user_id", userId)
-    .is("archived_at", null)
-    .maybeSingle();
+    .eq("user_id", userId);
+
+  if (!options.includeArchived) {
+    query = query.is("archived_at", null);
+  }
+
+  const { data, error } = await query.maybeSingle();
 
   if (error) {
     throw new Error(
@@ -154,10 +159,12 @@ const getHighestCloudRepairRecordReading = async (
 export const recalculateCloudVehicleOdometer = async (
   vehicleId: string,
   userId: string,
-  options: { preserveCurrent?: boolean } = {},
+  options: { includeArchived?: boolean; preserveCurrent?: boolean } = {},
 ) => {
   const client = requireSupabase();
-  const vehicle = await getCloudVehicleForOdometer(vehicleId, userId);
+  const vehicle = await getCloudVehicleForOdometer(vehicleId, userId, {
+    includeArchived: options.includeArchived,
+  });
 
   if (!vehicle) {
     return;
@@ -182,12 +189,17 @@ export const recalculateCloudVehicleOdometer = async (
     serviceRecordReadings: [highestServiceRecordReading],
   });
 
-  const { error } = await client
+  let query = client
     .from("vehicles")
     .update({ current_odometer: recalculatedOdometer })
     .eq("id", vehicleId)
-    .eq("user_id", userId)
-    .is("archived_at", null);
+    .eq("user_id", userId);
+
+  if (!options.includeArchived) {
+    query = query.is("archived_at", null);
+  }
+
+  const { error } = await query;
 
   if (error) {
     throw new Error(

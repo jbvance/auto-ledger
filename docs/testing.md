@@ -75,6 +75,12 @@ development build app id when a dev build exists.
 - Cloud record attachment Storage path generation.
 - Guest migration readiness summary counts and local not-started migration run
   storage helpers.
+- Vehicle-only migration duplicate prevention, local ID preservation, archived
+  vehicle handling, mapping creation, and partial failure behavior with mocked
+  Supabase.
+- Odometer-only migration local ID preservation, vehicle mapping usage, missing
+  vehicle mapping skips, mapping repair on rerun, and cloud vehicle odometer
+  recalculation with mocked Supabase.
 - Shared odometer recalculation logic used by local and cloud record updates.
 - Formatting and unified history ordering helpers.
 - Zod validation for vehicles, odometer entries, service records, repair
@@ -90,8 +96,9 @@ development build app id when a dev build exists.
 - Supabase RLS behavior.
 - Notification delivery behavior on real iOS/Android devices.
 - Attachment picker/file-copy behavior on real devices.
-- Actual guest-to-account upload migration and cloud CSV export because those
-  features are not implemented yet.
+- Live guest-to-account upload migration against a real Supabase project.
+- Guest-to-account service, repair, reminder, and attachment migration.
+- Cloud CSV export.
 - Live Supabase Storage upload/open/delete integration for cloud attachments.
 - Supabase cloud maintenance reminder CRUD integration against a live Supabase
   project.
