@@ -63,7 +63,7 @@ const formatCloudRepairRecordError = (
     error.code === "23503" ||
     error.message.toLowerCase().includes("record_attachments")
   ) {
-    return `${action}. This repair record may have cloud attachments. Web attachment deletion is deferred, so remove attachments from mobile first or keep the record for now.`;
+    return `${action}. This repair record may still have cloud attachments. Delete its attachments from the repair record detail page, then try again.`;
   }
 
   return `${action}. ${error.message}`;

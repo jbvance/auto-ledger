@@ -9,7 +9,11 @@ import {
   type PropsWithChildren,
 } from "react";
 
-import { supabase } from "./supabase";
+import {
+  clearStoredSupabaseSession,
+  isInvalidRefreshTokenError,
+  supabase,
+} from "./supabase";
 
 type AuthContextValue = {
   isConfigured: boolean;
@@ -45,12 +49,41 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     let isMounted = true;
 
-    void supabase.auth.getSession().then(({ data }) => {
-      if (isMounted) {
-        setSession(data.session);
-        setIsLoading(false);
-      }
-    });
+    void supabase.auth
+      .getSession()
+      .then(async ({ data, error }) => {
+        if (error && isInvalidRefreshTokenError(error)) {
+          await clearStoredSupabaseSession();
+
+          if (isMounted) {
+            setSession(null);
+            setIsLoading(false);
+          }
+
+          return;
+        }
+
+        if (error) {
+          console.warn("Unable to load Supabase auth session.", error);
+        }
+
+        if (isMounted) {
+          setSession(data.session);
+          setIsLoading(false);
+        }
+      })
+      .catch(async (error: unknown) => {
+        if (isInvalidRefreshTokenError(error)) {
+          await clearStoredSupabaseSession();
+        } else {
+          console.warn("Unable to load Supabase auth session.", error);
+        }
+
+        if (isMounted) {
+          setSession(null);
+          setIsLoading(false);
+        }
+      });
 
     const {
       data: { subscription },

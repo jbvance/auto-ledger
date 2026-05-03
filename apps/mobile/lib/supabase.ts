@@ -26,13 +26,38 @@ export const supabase = isSupabaseConfigured
     })
   : null;
 
+export const isInvalidRefreshTokenError = (error: unknown) =>
+  error instanceof Error &&
+  error.message.toLowerCase().includes("invalid refresh token");
+
+export const clearStoredSupabaseSession = async () => {
+  if (!supabase) {
+    return;
+  }
+
+  try {
+    await supabase.auth.signOut({ scope: "local" });
+  } catch (error: unknown) {
+    console.warn("Unable to clear stale Supabase auth session.", error);
+  }
+};
+
+const handleAuthRefreshError = async (error: unknown) => {
+  if (isInvalidRefreshTokenError(error)) {
+    await clearStoredSupabaseSession();
+    return;
+  }
+
+  console.warn("Unable to refresh Supabase auth session.", error);
+};
+
 if (supabase) {
   AppState.addEventListener("change", (state) => {
     if (state === "active") {
-      void supabase.auth.startAutoRefresh();
+      void supabase.auth.startAutoRefresh().catch(handleAuthRefreshError);
       return;
     }
 
-    void supabase.auth.stopAutoRefresh();
+    void supabase.auth.stopAutoRefresh().catch(handleAuthRefreshError);
   });
 }

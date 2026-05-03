@@ -207,8 +207,8 @@ export function ServiceRecordDeleteForm({
       <p className="text-sm font-bold text-red-900">Delete service record?</p>
       <p className="mt-1 text-sm leading-5 text-red-800">
         This removes only this cloud service record. The parent vehicle stays in
-        your account. Cloud attachment deletion is deferred in this web slice,
-        so records with attachments may need attachment cleanup later.
+        your account. Delete any attachments on this record first, then delete
+        the record.
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
         <form action={formAction}>

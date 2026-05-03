@@ -12,6 +12,7 @@ import {
   AccountErrorPanel,
   AccountPageShell,
 } from "../../../../../components/AccountPageChrome";
+import { RecordAttachmentUploadForm } from "../../../../../components/RecordAttachmentActions";
 import { RecordAttachmentSection } from "../../../../../components/RecordAttachmentList";
 import { RepairRecordDeleteForm } from "../../../../../components/RepairRecordForm";
 import { listWebCloudAttachmentsForRepairRecord } from "../../../../../lib/cloud/recordAttachmentData";
@@ -21,6 +22,10 @@ import {
   loadWebCloudVehicleDetail,
 } from "../../../../../lib/cloud/serverData";
 import { deleteRepairRecordAction } from "../../../repairRecordActions";
+import {
+  deleteRepairRecordAttachmentAction,
+  uploadRepairRecordAttachmentAction,
+} from "../../../recordAttachmentActions";
 
 type RepairRecordDetailPageProps = {
   params: Promise<{
@@ -237,10 +242,24 @@ export default async function RepairRecordDetailPage({
 
       <RecordAttachmentSection
         attachments={attachments}
+        deleteAction={canMutate ? deleteRepairRecordAttachmentAction : undefined}
         description="Private cloud receipts and documents attached to this repair record."
         getAttachmentHref={(attachment) =>
           `/vehicles/${detail.vehicle.id}/repair-records/${repairRecord.id}/attachments/${attachment.id}/open`
         }
+        recordId={repairRecord.id}
+        recordType="repair"
+        uploadForm={
+          canMutate ? (
+            <RecordAttachmentUploadForm
+              action={uploadRepairRecordAttachmentAction}
+              recordId={repairRecord.id}
+              recordType="repair"
+              vehicleId={detail.vehicle.id}
+            />
+          ) : undefined
+        }
+        vehicleId={detail.vehicle.id}
       />
     </AccountPageShell>
   );

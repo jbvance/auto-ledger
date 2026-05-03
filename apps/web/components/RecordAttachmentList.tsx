@@ -6,12 +6,25 @@ import {
 } from "@autoledger/shared";
 import { ExternalLink, FileText } from "lucide-react";
 
+import { RecordAttachmentDeleteForm } from "./RecordAttachmentActions";
+import type { RecordAttachmentDeleteActionState } from "../app/vehicles/recordAttachmentActions";
+
+type DeleteAction = (
+  previousState: RecordAttachmentDeleteActionState,
+  formData: FormData,
+) => Promise<RecordAttachmentDeleteActionState>;
+
 export type RecordAttachmentSectionProps = {
   attachments: RecordAttachment[];
+  deleteAction?: DeleteAction;
   description: string;
   emptyMessage?: string;
   getAttachmentHref: (attachment: RecordAttachment) => string;
+  recordId?: string;
+  recordType?: "repair" | "service";
   title?: string;
+  uploadForm?: React.ReactNode;
+  vehicleId?: string;
 };
 
 export const getWebRecordAttachmentDisplayMetadata = (
@@ -26,17 +39,25 @@ export const getWebRecordAttachmentDisplayMetadata = (
 
 export function RecordAttachmentSection({
   attachments,
+  deleteAction,
   description,
   emptyMessage = "No receipts or documents attached yet.",
   getAttachmentHref,
+  recordId,
+  recordType,
   title = "Attachments",
+  uploadForm,
+  vehicleId,
 }: RecordAttachmentSectionProps) {
+  const canDelete = Boolean(deleteAction && recordId && recordType && vehicleId);
+
   return (
     <section className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5">
       <h2 className="text-xl font-bold">{title}</h2>
       <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
         {description}
       </p>
+      {uploadForm}
       {attachments.length === 0 ? (
         <div className="mt-4 rounded-lg bg-[var(--background)] p-3">
           <p className="text-sm leading-6 text-[var(--muted)]">
@@ -48,8 +69,12 @@ export function RecordAttachmentSection({
           {attachments.map((attachment) => (
             <RecordAttachmentRow
               attachment={attachment}
+              deleteAction={canDelete ? deleteAction : undefined}
               href={getAttachmentHref(attachment)}
               key={attachment.id}
+              recordId={recordId}
+              recordType={recordType}
+              vehicleId={vehicleId}
             />
           ))}
         </div>
@@ -60,12 +85,21 @@ export function RecordAttachmentSection({
 
 function RecordAttachmentRow({
   attachment,
+  deleteAction,
   href,
+  recordId,
+  recordType,
+  vehicleId,
 }: {
   attachment: RecordAttachment;
+  deleteAction?: DeleteAction;
   href: string;
+  recordId?: string;
+  recordType?: "repair" | "service";
+  vehicleId?: string;
 }) {
   const metadata = getWebRecordAttachmentDisplayMetadata(attachment);
+  const canDelete = Boolean(deleteAction && recordId && recordType && vehicleId);
 
   return (
     <article className="flex flex-col gap-3 rounded-lg border border-[var(--line)] bg-[var(--background)] p-3 sm:flex-row sm:items-start sm:justify-between">
@@ -86,15 +120,26 @@ function RecordAttachmentRow({
           </p>
         </div>
       </div>
-      <a
-        className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm font-bold text-[var(--foreground)] transition hover:text-[var(--primary)]"
-        href={href}
-        rel="noreferrer"
-        target="_blank"
-      >
-        <ExternalLink aria-hidden="true" className="size-4" />
-        Open
-      </a>
+      <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+        <a
+          className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm font-bold text-[var(--foreground)] transition hover:text-[var(--primary)]"
+          href={href}
+          rel="noreferrer"
+          target="_blank"
+        >
+          <ExternalLink aria-hidden="true" className="size-4" />
+          Open
+        </a>
+        {canDelete ? (
+          <RecordAttachmentDeleteForm
+            action={deleteAction as DeleteAction}
+            attachmentId={attachment.id}
+            recordId={recordId as string}
+            recordType={recordType as "repair" | "service"}
+            vehicleId={vehicleId as string}
+          />
+        ) : null}
+      </div>
     </article>
   );
 }

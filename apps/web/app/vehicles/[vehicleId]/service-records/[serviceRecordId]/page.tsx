@@ -12,6 +12,7 @@ import {
   AccountErrorPanel,
   AccountPageShell,
 } from "../../../../../components/AccountPageChrome";
+import { RecordAttachmentUploadForm } from "../../../../../components/RecordAttachmentActions";
 import { RecordAttachmentSection } from "../../../../../components/RecordAttachmentList";
 import { listWebCloudAttachmentsForServiceRecord } from "../../../../../lib/cloud/recordAttachmentData";
 import { ServiceRecordDeleteForm } from "../../../../../components/ServiceRecordForm";
@@ -21,6 +22,10 @@ import {
   loadWebCloudVehicleDetail,
 } from "../../../../../lib/cloud/serverData";
 import { deleteServiceRecordAction } from "../../../serviceRecordActions";
+import {
+  deleteServiceRecordAttachmentAction,
+  uploadServiceRecordAttachmentAction,
+} from "../../../recordAttachmentActions";
 
 type ServiceRecordDetailPageProps = {
   params: Promise<{
@@ -228,10 +233,24 @@ export default async function ServiceRecordDetailPage({
 
       <RecordAttachmentSection
         attachments={attachments}
+        deleteAction={canMutate ? deleteServiceRecordAttachmentAction : undefined}
         description="Private cloud receipts and documents attached to this service record."
         getAttachmentHref={(attachment) =>
           `/vehicles/${detail.vehicle.id}/service-records/${serviceRecord.id}/attachments/${attachment.id}/open`
         }
+        recordId={serviceRecord.id}
+        recordType="service"
+        uploadForm={
+          canMutate ? (
+            <RecordAttachmentUploadForm
+              action={uploadServiceRecordAttachmentAction}
+              recordId={serviceRecord.id}
+              recordType="service"
+              vehicleId={detail.vehicle.id}
+            />
+          ) : undefined
+        }
+        vehicleId={detail.vehicle.id}
       />
     </AccountPageShell>
   );

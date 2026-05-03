@@ -1,7 +1,14 @@
 import {
+  getRecordAttachmentStoragePath,
+  recordAttachmentFileSizeLimitLabels,
+  recordAttachmentFileSizeLimits,
   recordAttachmentStorageBucket,
   type RecordAttachment,
+  type RecordAttachmentFileType,
+  type RecordAttachmentInput,
+  type RecordAttachmentRecordType,
 } from "@autoledger/shared";
+import { recordAttachmentSchema } from "@autoledger/validation";
 
 import { createClient } from "../supabase/server";
 import {
@@ -17,6 +24,12 @@ type SupabaseErrorLike = {
 
 type AttachmentParentType = "repair" | "service";
 
+type AttachmentParent = {
+  id: string;
+  user_id: string;
+  vehicle_id: string;
+};
+
 type AttachmentParentInput = {
   parentType: AttachmentParentType;
   recordId: string;
@@ -31,6 +44,43 @@ type AttachmentLookupInput = {
   userId: string;
   vehicleId: string;
 };
+
+type WebCloudRecordAttachmentPayload = {
+  file_name: string;
+  file_size_bytes: number;
+  file_type: RecordAttachmentFileType;
+  local_id: string;
+  local_uri: null;
+  mime_type: string;
+  ocr_status: RecordAttachment["ocr_status"];
+  repair_record_id: string | null;
+  service_record_id: string | null;
+  storage_bucket: string;
+  storage_path: string;
+  sync_status: RecordAttachment["sync_status"];
+  user_id: string;
+  vehicle_id: string;
+};
+
+type ValidatedWebAttachmentFile = {
+  arrayBuffer: () => Promise<ArrayBuffer>;
+  fileName: string;
+  fileSizeBytes: number;
+  fileType: RecordAttachmentFileType;
+  mimeType: string;
+};
+
+export const webCloudAttachmentAllowedMimeTypes = [
+  "application/pdf",
+  "image/gif",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+] as const;
+
+const allowedWebCloudAttachmentMimeTypes = new Set<string>(
+  webCloudAttachmentAllowedMimeTypes,
+);
 
 const formatCloudRecordAttachmentError = (
   action: string,
@@ -69,13 +119,13 @@ const getAttachmentParent = async ({
   recordId,
   userId,
   vehicleId,
-}: AttachmentParentInput) => {
+}: AttachmentParentInput): Promise<AttachmentParent | null> => {
   const supabase = await createClient();
   const table =
     parentType === "service" ? "service_records" : "repair_records";
   const { data, error } = await supabase
     .from(table)
-    .select("id")
+    .select("id, user_id, vehicle_id")
     .eq("id", recordId)
     .eq("vehicle_id", vehicleId)
     .eq("user_id", userId)
@@ -89,6 +139,270 @@ const getAttachmentParent = async ({
   );
 
   return data;
+};
+
+const getAttachmentFileTypeFromMimeType = (
+  mimeType: string,
+): RecordAttachmentFileType | null => {
+  if (mimeType === "application/pdf") {
+    return "pdf";
+  }
+
+  if (mimeType.startsWith("image/")) {
+    return "photo";
+  }
+
+  return null;
+};
+
+const getFallbackFileName = (fileType: RecordAttachmentFileType) =>
+  fileType === "pdf" ? "attachment.pdf" : "attachment.jpg";
+
+const normalizeUploadedFileName = ({
+  fileName,
+  fileType,
+}: {
+  fileName: string;
+  fileType: RecordAttachmentFileType;
+}) => {
+  const trimmed = fileName.trim();
+
+  return trimmed || getFallbackFileName(fileType);
+};
+
+const createWebCloudAttachmentLocalId = () => {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return `web_att_${crypto.randomUUID()}`;
+  }
+
+  return `web_att_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+};
+
+const toSupabaseFileBody = (buffer: ArrayBuffer) => {
+  const bytes = new Uint8Array(buffer);
+
+  return bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength
+    ? bytes.buffer
+    : bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+};
+
+export const validateWebCloudAttachmentFile = (file: File | null | undefined) => {
+  if (!file || file.size === 0) {
+    throw new Error("Choose a photo or PDF to upload.");
+  }
+
+  const mimeType = file.type.trim().toLowerCase();
+  const fileType = getAttachmentFileTypeFromMimeType(mimeType);
+
+  if (!fileType || !allowedWebCloudAttachmentMimeTypes.has(mimeType)) {
+    throw new Error("Attach a JPEG, PNG, WebP, GIF, or PDF file.");
+  }
+
+  if (file.size > recordAttachmentFileSizeLimits[fileType]) {
+    throw new Error(
+      `${fileType === "photo" ? "Photo" : "PDF"} attachments must be ${recordAttachmentFileSizeLimitLabels[fileType]} or smaller.`,
+    );
+  }
+
+  const fileName = normalizeUploadedFileName({
+    fileName: file.name,
+    fileType,
+  });
+
+  return {
+    arrayBuffer: () => file.arrayBuffer(),
+    fileName,
+    fileSizeBytes: file.size,
+    fileType,
+    mimeType,
+  };
+};
+
+export const buildWebCloudRecordAttachmentPayload = ({
+  attachmentFile,
+  localId,
+  parentRecord,
+  recordType,
+}: {
+  attachmentFile: Pick<
+    ValidatedWebAttachmentFile,
+    "fileName" | "fileSizeBytes" | "fileType" | "mimeType"
+  >;
+  localId: string;
+  parentRecord: AttachmentParent;
+  recordType: RecordAttachmentRecordType;
+}): WebCloudRecordAttachmentPayload => {
+  const input: RecordAttachmentInput = {
+    file_name: attachmentFile.fileName,
+    file_size_bytes: attachmentFile.fileSizeBytes,
+    file_type: attachmentFile.fileType,
+    local_uri: `web-upload://${localId}`,
+    mime_type: attachmentFile.mimeType,
+    repair_record_id: recordType === "repair" ? parentRecord.id : undefined,
+    service_record_id: recordType === "service" ? parentRecord.id : undefined,
+    vehicle_id: parentRecord.vehicle_id,
+  };
+  const validation = recordAttachmentSchema.safeParse(input);
+
+  if (!validation.success) {
+    throw new Error(
+      validation.error.issues[0]?.message ??
+        "Attachment details could not be validated.",
+    );
+  }
+
+  const storagePath = getRecordAttachmentStoragePath({
+    attachmentId: localId,
+    fileName: validation.data.file_name,
+    recordId: parentRecord.id,
+    recordType,
+    userId: parentRecord.user_id,
+    vehicleId: parentRecord.vehicle_id,
+  });
+
+  return {
+    file_name: validation.data.file_name,
+    file_size_bytes: validation.data.file_size_bytes ?? attachmentFile.fileSizeBytes,
+    file_type: validation.data.file_type,
+    local_id: localId,
+    local_uri: null,
+    mime_type: validation.data.mime_type,
+    ocr_status: "not_started",
+    repair_record_id: recordType === "repair" ? parentRecord.id : null,
+    service_record_id: recordType === "service" ? parentRecord.id : null,
+    storage_bucket: recordAttachmentStorageBucket,
+    storage_path: storagePath,
+    sync_status: "synced",
+    user_id: parentRecord.user_id,
+    vehicle_id: parentRecord.vehicle_id,
+  };
+};
+
+export const insertWebCloudAttachmentMetadataWithUploadCleanup = async ({
+  payload,
+}: {
+  payload: WebCloudRecordAttachmentPayload;
+}) => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("record_attachments")
+    .insert(payload)
+    .select(recordAttachmentSelect)
+    .single();
+
+  if (!error) {
+    return mapCloudRecordAttachmentRow(data as CloudRecordAttachmentRow);
+  }
+
+  const errorMessage = formatCloudRecordAttachmentError(
+    "Attachment uploaded, but metadata could not be saved",
+    error,
+  );
+
+  const cleanupResult = await supabase.storage
+    .from(payload.storage_bucket)
+    .remove([payload.storage_path]);
+
+  if (cleanupResult.error) {
+    console.warn(
+      "Unable to clean up uploaded web attachment after metadata failure.",
+      cleanupResult.error,
+    );
+
+    throw new Error(
+      `${errorMessage} The uploaded file could not be cleaned up automatically. Please try again or remove it from Supabase Storage.`,
+    );
+  }
+
+  throw new Error(errorMessage);
+};
+
+const uploadWebAttachmentForParent = async ({
+  attachmentFile,
+  parentRecord,
+  recordType,
+}: {
+  attachmentFile: ValidatedWebAttachmentFile;
+  parentRecord: AttachmentParent;
+  recordType: RecordAttachmentRecordType;
+}) => {
+  const localId = createWebCloudAttachmentLocalId();
+  const payload = buildWebCloudRecordAttachmentPayload({
+    attachmentFile,
+    localId,
+    parentRecord,
+    recordType,
+  });
+  const body = toSupabaseFileBody(await attachmentFile.arrayBuffer());
+  const supabase = await createClient();
+  const uploadResult = await supabase.storage
+    .from(recordAttachmentStorageBucket)
+    .upload(payload.storage_path, body, {
+      contentType: payload.mime_type,
+      upsert: false,
+    });
+
+  throwIfError("Unable to upload attachment", uploadResult.error);
+
+  return insertWebCloudAttachmentMetadataWithUploadCleanup({ payload });
+};
+
+export const uploadWebCloudAttachmentForServiceRecord = async ({
+  file,
+  serviceRecordId,
+  userId,
+  vehicleId,
+}: {
+  file: File;
+  serviceRecordId: string;
+  userId: string;
+  vehicleId: string;
+}) => {
+  const parentRecord = await getAttachmentParent({
+    parentType: "service",
+    recordId: serviceRecordId,
+    userId,
+    vehicleId,
+  });
+
+  if (!parentRecord) {
+    return null;
+  }
+
+  return uploadWebAttachmentForParent({
+    attachmentFile: validateWebCloudAttachmentFile(file),
+    parentRecord,
+    recordType: "service",
+  });
+};
+
+export const uploadWebCloudAttachmentForRepairRecord = async ({
+  file,
+  repairRecordId,
+  userId,
+  vehicleId,
+}: {
+  file: File;
+  repairRecordId: string;
+  userId: string;
+  vehicleId: string;
+}) => {
+  const parentRecord = await getAttachmentParent({
+    parentType: "repair",
+    recordId: repairRecordId,
+    userId,
+    vehicleId,
+  });
+
+  if (!parentRecord) {
+    return null;
+  }
+
+  return uploadWebAttachmentForParent({
+    attachmentFile: validateWebCloudAttachmentFile(file),
+    parentRecord,
+    recordType: "repair",
+  });
 };
 
 const listWebCloudAttachmentsForParent = async ({
@@ -207,6 +521,46 @@ const getWebCloudAttachmentForSignedUrl = async ({
   return data
     ? mapCloudRecordAttachmentRow(data as CloudRecordAttachmentRow)
     : null;
+};
+
+export const deleteWebCloudAttachment = async (
+  input: AttachmentLookupInput,
+) => {
+  const attachment = await getWebCloudAttachmentForSignedUrl(input);
+
+  if (!attachment) {
+    return false;
+  }
+
+  const supabase = await createClient();
+
+  if (attachment.storage_path) {
+    const storageResult = await supabase.storage
+      .from(attachment.storage_bucket ?? recordAttachmentStorageBucket)
+      .remove([attachment.storage_path]);
+
+    throwIfError("Unable to delete the attachment file", storageResult.error);
+  }
+
+  let query = supabase
+    .from("record_attachments")
+    .delete()
+    .eq("id", input.attachmentId)
+    .eq("user_id", input.userId)
+    .eq("vehicle_id", input.vehicleId);
+
+  query = input.serviceRecordId
+    ? query.eq("service_record_id", input.serviceRecordId)
+    : query.eq("repair_record_id", input.repairRecordId ?? "");
+
+  const { error } = await query;
+
+  throwIfError(
+    "The file was removed, but attachment metadata could not be deleted",
+    error,
+  );
+
+  return true;
 };
 
 export const createSignedUrlForCloudAttachment = async (
