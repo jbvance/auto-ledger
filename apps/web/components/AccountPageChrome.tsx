@@ -29,6 +29,12 @@ export function AccountPageShell({
             >
               Vehicles
             </Link>
+            <Link
+              className="rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm font-bold text-[var(--foreground)]"
+              href="/settings/export"
+            >
+              Export
+            </Link>
             {userEmail ? (
               <>
                 <span className="hidden text-sm font-semibold text-[var(--muted)] md:inline">

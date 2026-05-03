@@ -89,6 +89,9 @@ development build app id when a dev build exists.
   validation, due date/mileage field normalization, complete/delete behavior,
   form value mapping, and vehicle detail urgency ordering with mocked Supabase
   responses.
+- Web cloud CSV export dataset recognition, empty header-only exports, shared
+  CSV escaping behavior for cloud rows, and attachment metadata export without
+  signed URLs or file binaries.
 - Cloud record attachment Storage path generation.
 - Guest attachment migration parent mapping resolution, preserved attachment
   local IDs, mapping creation, missing parent mapping skips, unsupported
@@ -135,7 +138,6 @@ development build app id when a dev build exists.
 - Notification delivery behavior on real iOS/Android devices.
 - Attachment picker/file-copy behavior on real devices.
 - Live guest-to-account upload migration against a real Supabase project.
-- Cloud CSV export.
 - Live Supabase Storage upload/open/delete integration for cloud attachments.
 - Supabase cloud maintenance reminder CRUD integration against a live Supabase
   project.

@@ -66,9 +66,17 @@ Web Slice 8 is complete. Signed-in web users can upload cloud photo/PDF
 attachments from service and repair record detail pages, delete existing cloud
 service/repair attachments, and continue opening private files through
 short-lived Supabase Storage signed URLs. Web attachment edit/rename, OCR,
-export, guest migration, vehicle-level documents, and local guest attachment
-flows remain deferred. Mobile behavior was not changed by this web attachment
+guest migration, vehicle-level documents, and local guest attachment flows
+remain deferred. Mobile behavior was not changed by this web attachment
 upload/delete slice.
+
+Web Slice 9 is complete. Signed-in web users can export cloud account data from
+`/settings/export` as separate CSV files for vehicles, odometer entries,
+service records, repair records, maintenance reminders, and attachment
+metadata. The export is cloud-account-only, uses the signed-in Supabase session
+with RLS, does not read local mobile guest data, does not export attachment file
+binaries or signed URLs, and does not implement PDF export. Mobile behavior was
+not changed by this web cloud CSV export slice.
 
 The mobile app runs successfully through Expo and has been tested in Expo Go.
 
@@ -77,7 +85,7 @@ Vitest package tests for shared domain and validation logic plus Jest Expo
 mobile tests for focused user-visible behavior. A lightweight Maestro mobile
 E2E smoke scaffold and `docs/testing.md` are also present.
 
-Current development track: Local guest MVP features, optional Supabase Auth foundation, Supabase cloud data schema/RLS foundation, mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD, mobile cloud service record CRUD, mobile cloud repair record CRUD, mobile cloud maintenance reminder CRUD, cloud service/repair record attachments, guest-to-account vehicle migration, guest-to-account odometer-entry migration, guest-to-account service-record migration, guest-to-account repair-record migration, guest-to-account maintenance-reminder migration, guest-to-account service/repair attachment migration, final guest-to-account migration review/status/retry UX, mobile navigation polish, web authenticated cloud dashboard/vehicle read-only views, web cloud vehicle create/edit/archive/restore, web cloud odometer entry create/edit/delete, web cloud service record create/view/edit/delete, web cloud repair record create/view/edit/delete, web cloud maintenance reminder create/view/edit/complete/delete, and web cloud service/repair attachment viewing/upload/delete are complete; broader app-side cloud sync and broader web attachment edit/export flows are next.
+Current development track: Local guest MVP features, optional Supabase Auth foundation, Supabase cloud data schema/RLS foundation, mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD, mobile cloud service record CRUD, mobile cloud repair record CRUD, mobile cloud maintenance reminder CRUD, cloud service/repair record attachments, guest-to-account vehicle migration, guest-to-account odometer-entry migration, guest-to-account service-record migration, guest-to-account repair-record migration, guest-to-account maintenance-reminder migration, guest-to-account service/repair attachment migration, final guest-to-account migration review/status/retry UX, mobile navigation polish, web authenticated cloud dashboard/vehicle read-only views, web cloud vehicle create/edit/archive/restore, web cloud odometer entry create/edit/delete, web cloud service record create/view/edit/delete, web cloud repair record create/view/edit/delete, web cloud maintenance reminder create/view/edit/complete/delete, web cloud service/repair attachment viewing/upload/delete, and web cloud CSV export are complete; broader app-side cloud sync and broader web attachment edit flows are next.
 
 The app is still local guest-mode first. Users can manage vehicles, odometer entries, service records, repair records, reminders, local attachments, and local CSV export without creating an account.
 
@@ -225,6 +233,7 @@ The mobile app currently supports local guest-mode:
   `/vehicles/[vehicleId]/service-records/[serviceRecordId]/attachments/[attachmentId]/open`
 - Web cloud repair record attachment open route at
   `/vehicles/[vehicleId]/repair-records/[repairRecordId]/attachments/[attachmentId]/open`
+- Web cloud account CSV export route at `/settings/export`
 - Supabase session refresh proxy for Next.js App Router
 - Protected web account pages show a clear sign-in prompt when no session exists
 - Web account views are cloud-account-only and do not read local mobile guest data
@@ -258,7 +267,12 @@ The mobile app currently supports local guest-mode:
   cloud service and repair record detail pages. Uploads use the private
   `record-attachments` Supabase Storage bucket and create
   `public.record_attachments` metadata only after Storage upload succeeds.
-- Web attachment edit/rename, export, and guest-to-account migration write
+- Signed-in web users can export separate CSV files for cloud vehicles,
+  odometer entries, service records, repair records, maintenance reminders, and
+  attachment metadata from `/settings/export`. Web CSV export uses signed-in
+  cloud account data only; local mobile guest data, attachment file binaries,
+  and private signed attachment URLs are not exported.
+- Web attachment edit/rename and guest-to-account migration write
   flows are still deferred
 - Web does not schedule local reminder notifications or cloud push
   notifications
@@ -300,10 +314,10 @@ The mobile app currently supports local guest-mode:
 - Web cloud vehicle create/edit/archive/restore, web cloud odometer entry
   create/edit/delete, web cloud service record create/view/edit/delete, web
   cloud repair record create/view/edit/delete, web cloud maintenance reminder
-  create/view/edit/complete/delete, and web cloud service/repair attachment
-  viewing/upload/delete are implemented for signed-in users. Web cloud
-  attachment edit/rename, export, and guest-to-account migration write flows
-  are still deferred.
+  create/view/edit/complete/delete, web cloud service/repair attachment
+  viewing/upload/delete, and web cloud CSV export are implemented for signed-in
+  users. Web cloud attachment edit/rename and guest-to-account migration write
+  flows are still deferred.
 
 ## Cloud Vehicle RLS Manual Verification
 
@@ -358,11 +372,13 @@ After running `packages/db/sql/001_profiles_auth_foundation.sql` and `packages/d
 
 ## Current CSV Export Limitations
 
-- CSV export is local guest-mode only.
-- Export creates one combined CSV file with a dataset column instead of a zip archive of separate CSV files.
-- The export file is written locally and handed to the device share sheet when sharing is available.
-- Attachment export includes local guest metadata and local file URIs only. It does not bundle attachment files and does not export cloud attachments yet.
-- PDF export, cloud CSV export, and server-side export are not implemented.
+- Mobile CSV export is local guest-mode only.
+- Mobile export creates one combined CSV file with a dataset column instead of a zip archive of separate CSV files.
+- The mobile export file is written locally and handed to the device share sheet when sharing is available.
+- Web CSV export is cloud-account-only and available to signed-in users at `/settings/export`.
+- Web export downloads separate CSV files for cloud vehicles, odometer entries, service records, repair records, maintenance reminders, and attachment metadata.
+- Attachment CSV export includes metadata only. It does not bundle attachment files and does not include private signed URLs.
+- PDF export and server-side scheduled/export job flows are not implemented.
 
 ## Not Implemented Yet
 
@@ -390,6 +406,6 @@ Good candidates:
 
 - Generate Supabase database TypeScript types from the live project after running the SQL.
 - Continue focused tests around shared validation, odometer/history logic, attachment validation, reminder status logic, CSV export logic, and migration logic.
-- Plan a focused web export or attachment edit/rename slice.
+- Plan a focused web attachment edit/rename slice.
 
 Do not implement households, fuel tracking, VIN lookup, OCR, payments/subscriptions, PDF export, fleet/business tooling, or an auto shop portal unless specifically requested.
