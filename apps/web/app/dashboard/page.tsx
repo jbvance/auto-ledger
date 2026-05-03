@@ -12,7 +12,11 @@ import {
 } from "@autoledger/shared";
 import Link from "next/link";
 
-import { SignOutButton } from "../../components/SignOutButton";
+import {
+  AccountAuthPrompt,
+  AccountErrorPanel,
+  AccountPageShell,
+} from "../../components/AccountPageChrome";
 import {
   getWebCloudAuthState,
   loadWebCloudDashboardData,
@@ -24,9 +28,13 @@ export default async function DashboardPage() {
 
   if (authState.status !== "authenticated") {
     return (
-      <PageShell>
-        <AuthPrompt message={authState.errorMessage} />
-      </PageShell>
+      <AccountPageShell>
+        <AccountAuthPrompt
+          defaultMessage="The web dashboard shows cloud account data only. Sign in to continue."
+          message={authState.errorMessage}
+          title="Sign in to view your dashboard"
+        />
+      </AccountPageShell>
     );
   }
 
@@ -46,16 +54,17 @@ export default async function DashboardPage() {
 
   if (loadError || !dashboard) {
     return (
-      <PageShell userEmail={userEmail}>
-        <ErrorPanel
+      <AccountPageShell userEmail={userEmail}>
+        <AccountErrorPanel
           message={loadError ?? "Unable to load the cloud dashboard."}
+          title="Dashboard unavailable"
         />
-      </PageShell>
+      </AccountPageShell>
     );
   }
 
   return (
-    <PageShell userEmail={userEmail}>
+    <AccountPageShell userEmail={userEmail}>
       <section className="flex flex-col gap-3 border-b border-[var(--line)] pb-5">
         <p className="text-sm font-bold uppercase text-[var(--primary)]">
           Account dashboard
@@ -115,7 +124,7 @@ export default async function DashboardPage() {
       </section>
 
       <RecentActivitySection items={dashboard.recentActivity} />
-    </PageShell>
+    </AccountPageShell>
   );
 }
 
@@ -313,83 +322,5 @@ function EmptyText({ children }: { children: React.ReactNode }) {
     <div className="mt-4 rounded-lg bg-[var(--background)] p-3">
       <p className="text-sm leading-6 text-[var(--muted)]">{children}</p>
     </div>
-  );
-}
-
-function AuthPrompt({ message }: { message: string | null }) {
-  return (
-    <section className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-6">
-      <h1 className="text-3xl font-bold">Sign in to view your dashboard</h1>
-      <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-        {message ??
-          "The web dashboard shows cloud account data only. Sign in to continue."}
-      </p>
-      <div className="mt-5 flex flex-wrap gap-3">
-        <Link
-          className="rounded-lg bg-[var(--primary)] px-4 py-3 text-sm font-bold text-white"
-          href="/login"
-        >
-          Sign in
-        </Link>
-        <Link
-          className="rounded-lg border border-[var(--line)] bg-[var(--background)] px-4 py-3 text-sm font-bold text-[var(--foreground)]"
-          href="/signup"
-        >
-          Create account
-        </Link>
-      </div>
-    </section>
-  );
-}
-
-function ErrorPanel({ message }: { message: string }) {
-  return (
-    <section className="rounded-lg border border-red-200 bg-[var(--surface)] p-6">
-      <h1 className="text-2xl font-bold">Dashboard unavailable</h1>
-      <p className="mt-3 text-sm leading-6 text-[var(--muted)]">{message}</p>
-    </section>
-  );
-}
-
-function PageShell({
-  children,
-  userEmail,
-}: {
-  children: React.ReactNode;
-  userEmail?: null | string;
-}) {
-  return (
-    <main className="min-h-screen bg-[var(--background)] px-5 py-6 text-[var(--foreground)]">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-        <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <Link className="text-xl font-bold" href="/">
-            AutoLedger
-          </Link>
-          <nav className="flex flex-wrap items-center gap-2">
-            <Link
-              className="rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm font-bold text-[var(--foreground)]"
-              href="/dashboard"
-            >
-              Dashboard
-            </Link>
-            <Link
-              className="rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm font-bold text-[var(--foreground)]"
-              href="/vehicles"
-            >
-              Vehicles
-            </Link>
-            {userEmail ? (
-              <>
-                <span className="hidden text-sm font-semibold text-[var(--muted)] md:inline">
-                  {userEmail}
-                </span>
-                <SignOutButton />
-              </>
-            ) : null}
-          </nav>
-        </header>
-        {children}
-      </div>
-    </main>
   );
 }

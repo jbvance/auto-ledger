@@ -4,7 +4,7 @@ Build AutoLedger in phases.
 
 Do not ask Codex to “build the whole app” in one request. Ask it to complete one phase or one slice of a phase at a time.
 
-Current status note: This roadmap remains useful as a planning reference, but development has not followed the original phase order exactly. Local reminders, local attachments for service/repair records, and local CSV export were completed before Supabase auth, cloud sync, and Supabase Storage. Supabase Auth foundation, cloud schema/RLS, mobile cloud vehicle CRUD, mobile cloud odometer CRUD, mobile cloud service record CRUD, mobile cloud repair record CRUD, mobile cloud maintenance reminder CRUD, cloud service/repair attachments, and focused guest-to-account migration for vehicles, odometer entries, service records, repair records, maintenance reminders, and service/repair attachments now exist, but broader automatic cloud record sync and full migration/retry UX are still deferred. Treat `docs/current-status.md` as the source of truth for what is currently working.
+Current status note: This roadmap remains useful as a planning reference, but development has not followed the original phase order exactly. Local reminders, local attachments for service/repair records, and local CSV export were completed before Supabase auth, cloud sync, and Supabase Storage. Supabase Auth foundation, cloud schema/RLS, mobile cloud vehicle CRUD, mobile cloud odometer CRUD, mobile cloud service record CRUD, mobile cloud repair record CRUD, mobile cloud maintenance reminder CRUD, cloud service/repair attachments, focused guest-to-account migration for vehicles, odometer entries, service records, repair records, maintenance reminders, and service/repair attachments, final migration review/status/retry UX, mobile navigation polish, and web authenticated cloud dashboard/vehicle read-only views now exist. Broader automatic cloud record sync and web write flows are still deferred. Treat `docs/current-status.md` as the source of truth for what is currently working.
 
 ---
 
@@ -223,6 +223,8 @@ Definition of done:
 ## Phase 8: Web Dashboard
 
 Goal: Provide the same core user features on web.
+
+Current slice note: web login/signup, authenticated cloud dashboard, cloud vehicle list, and cloud vehicle detail read-only views are complete. The next web slice should add cloud vehicle create/edit/archive/restore before expanding into broader web record, reminder, export, or settings write flows.
 
 Build:
 

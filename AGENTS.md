@@ -96,13 +96,13 @@ The data model may anticipate some future features, but the UI and workflows sho
 
 Build in focused slices. Do not attempt the whole product at once.
 
-Current development track: Local guest MVP features, optional Supabase Auth foundation, Supabase cloud schema/RLS foundation, mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD, and mobile cloud service record CRUD are complete; broader app-side cloud sync is next.
+Current development track: Local guest MVP features, optional Supabase Auth foundation, Supabase cloud schema/RLS foundation, mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD, mobile cloud service record CRUD, mobile cloud repair record CRUD, mobile cloud maintenance reminder CRUD, cloud service/repair attachments, focused guest-to-account migration, final migration review/status/retry UX, mobile navigation polish, and web authenticated cloud dashboard/vehicle read-only views are complete; web cloud vehicle write flows and broader app-side cloud sync are next.
 
-Working local guest features include vehicle management, odometer entries, service records, repair records, unified history/timeline, dashboard polish, core maintenance reminders, local reminder notification settings/code, local service/repair attachments, and local CSV export. Optional Supabase account sign-up/sign-in/sign-out exists. Signed-in mobile users can create/list/view/edit/archive/restore cloud vehicles and create/list/edit/delete cloud odometer entries and service records for those cloud vehicles.
+Working local guest features include vehicle management, odometer entries, service records, repair records, unified history/timeline, dashboard polish, core maintenance reminders, local reminder notification settings/code, local service/repair attachments, and local CSV export. Optional Supabase account sign-up/sign-in/sign-out exists. Signed-in mobile users can create/list/view/edit/archive/restore cloud vehicles; create/list/edit/delete cloud odometer entries, service records, repair records, and maintenance reminders; add/open/delete cloud service/repair attachments; and run focused guest-to-account migration from Settings. Web signed-in users can view read-only cloud dashboard, vehicle list, and vehicle detail pages.
 
 Treat `docs/current-status.md` as the source of truth for current implementation status.
 
-Do not implement broader cloud sync beyond the explicitly requested slice, guest-to-account migration, Supabase Storage/cloud attachments, or other future-facing features unless explicitly instructed.
+Do not implement broader automatic cloud sync, additional migration/storage slices, or other future-facing features unless explicitly instructed.
 
 ---
 

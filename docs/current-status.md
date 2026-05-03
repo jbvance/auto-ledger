@@ -258,12 +258,14 @@ Do not assume these exist yet:
 
 ## Recommended Next Feature
 
-The next recommended feature track is live Supabase migration verification, the next focused cloud sync/export slice, or a carefully designed future local cleanup flow, while preserving guest mode as the default local experience.
+The next recommended feature track is web cloud vehicle create/edit/archive/restore, while preserving guest mode as the default mobile experience and keeping web account views cloud-only.
 
 Good candidates:
 
-- Expand focused tests around shared validation, odometer/history logic, attachment validation, reminder status logic, CSV export logic, and future migration logic
-- Generate Supabase database TypeScript types from the live project after running the SQL
-- Expand focused tests and manual checks around attachment migration against a live Supabase project
+- Add authenticated web vehicle create and edit flows that reuse `packages/validation` vehicle validation and write only to Supabase cloud tables.
+- Add web archive and restore actions that mirror the existing mobile cloud vehicle behavior: edit/archive active vehicles, restore archived vehicles, and keep archived vehicles visible on the web vehicle list/detail views.
+- Add focused web tests for vehicle write payloads, missing/not-owned vehicle handling, validation failures, and archived vehicle guards.
+- Generate Supabase database TypeScript types from the live project after running the SQL.
+- Continue focused tests around shared validation, odometer/history logic, attachment validation, reminder status logic, CSV export logic, and migration logic.
 
 Do not implement households, fuel tracking, VIN lookup, OCR, payments/subscriptions, PDF export, fleet/business tooling, or an auto shop portal unless specifically requested.
