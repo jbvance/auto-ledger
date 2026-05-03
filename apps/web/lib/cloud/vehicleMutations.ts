@@ -2,7 +2,11 @@ import type { Vehicle, VehicleInput } from "@autoledger/shared";
 import { vehicleSchema } from "@autoledger/validation";
 
 import { createClient } from "../supabase/server";
-import { mapCloudVehicleRow, vehicleSelect, type CloudVehicleRow } from "./mappers";
+import {
+  mapCloudVehicleRow,
+  vehicleSelect,
+  type CloudVehicleRow,
+} from "./mappers";
 
 type SupabaseErrorLike = {
   code?: string;

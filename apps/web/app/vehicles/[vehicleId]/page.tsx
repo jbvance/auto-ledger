@@ -26,10 +26,12 @@ import {
   AccountErrorPanel,
   AccountPageShell,
 } from "../../../components/AccountPageChrome";
+import { VehicleArchiveRestoreForm } from "../../../components/VehicleArchiveRestoreForm";
 import {
   getWebCloudAuthState,
   loadWebCloudVehicleDetail,
 } from "../../../lib/cloud/serverData";
+import { archiveVehicleAction, restoreVehicleAction } from "../actions";
 
 type VehicleDetailPageProps = {
   params: Promise<{
@@ -117,12 +119,7 @@ export default async function VehicleDetailPage({
               {formatVehicleSubtitle(detail.vehicle)}
             </p>
           </div>
-          <Link
-            className="rounded-lg bg-[var(--primary)] px-4 py-3 text-center text-sm font-bold text-white"
-            href="/dashboard"
-          >
-            Dashboard
-          </Link>
+          <VehicleActions vehicle={detail.vehicle} />
         </div>
       </section>
 
@@ -168,6 +165,44 @@ export default async function VehicleDetailPage({
 
       <AttachmentSection attachments={detail.attachments} />
     </AccountPageShell>
+  );
+}
+
+function VehicleActions({ vehicle }: { vehicle: Vehicle }) {
+  const isArchived = Boolean(vehicle.archived_at);
+
+  return (
+    <div className="flex flex-wrap gap-3">
+      {isArchived ? (
+        <VehicleArchiveRestoreForm
+          action={restoreVehicleAction}
+          label="Restore Vehicle"
+          vehicleId={vehicle.id}
+        />
+      ) : (
+        <>
+          <Link
+            className="rounded-lg bg-[var(--primary)] px-4 py-3 text-center text-sm font-bold text-white"
+            href={`/vehicles/${vehicle.id}/edit`}
+          >
+            Edit Vehicle
+          </Link>
+          <VehicleArchiveRestoreForm
+            action={archiveVehicleAction}
+            confirmMessage="Archive this vehicle? Its records will stay in your account."
+            label="Archive Vehicle"
+            variant="danger"
+            vehicleId={vehicle.id}
+          />
+        </>
+      )}
+      <Link
+        className="rounded-lg border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-center text-sm font-bold text-[var(--foreground)]"
+        href="/vehicles"
+      >
+        Vehicles
+      </Link>
+    </div>
   );
 }
 

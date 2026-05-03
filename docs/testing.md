@@ -82,6 +82,9 @@ development build app id when a dev build exists.
 - Web cloud row mapping helpers for read-only account views.
 - Web cloud dashboard, vehicle list, and missing/not-owned vehicle detail data
   helpers with mocked Supabase responses.
+- Web cloud vehicle create/update payload mapping, validation errors,
+  missing/not-owned vehicle handling, archive/restore guards, and edit form
+  value mapping with mocked Supabase responses.
 - Cloud record attachment Storage path generation.
 - Guest attachment migration parent mapping resolution, preserved attachment
   local IDs, mapping creation, missing parent mapping skips, unsupported

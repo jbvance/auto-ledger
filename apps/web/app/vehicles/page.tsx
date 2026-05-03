@@ -12,10 +12,12 @@ import {
   AccountErrorPanel,
   AccountPageShell,
 } from "../../components/AccountPageChrome";
+import { VehicleArchiveRestoreForm } from "../../components/VehicleArchiveRestoreForm";
 import {
   getWebCloudAuthState,
   listWebCloudVehicles,
 } from "../../lib/cloud/serverData";
+import { restoreVehicleAction } from "./actions";
 
 export default async function VehiclesPage() {
   const authState = await getWebCloudAuthState();
@@ -57,6 +59,9 @@ export default async function VehiclesPage() {
     );
   }
 
+  const activeVehicles = vehicles.filter((vehicle) => !vehicle.archived_at);
+  const archivedVehicles = vehicles.filter((vehicle) => vehicle.archived_at);
+
   return (
     <AccountPageShell userEmail={userEmail}>
       <section className="flex flex-col gap-3 border-b border-[var(--line)] pb-5">
@@ -71,25 +76,65 @@ export default async function VehiclesPage() {
               guest records.
             </p>
           </div>
-          <Link
-            className="rounded-lg bg-[var(--primary)] px-4 py-3 text-center text-sm font-bold text-white"
-            href="/dashboard"
-          >
-            Dashboard
-          </Link>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              className="rounded-lg bg-[var(--primary)] px-4 py-3 text-center text-sm font-bold text-white"
+              href="/vehicles/new"
+            >
+              Add Vehicle
+            </Link>
+            <Link
+              className="rounded-lg border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-center text-sm font-bold text-[var(--foreground)]"
+              href="/dashboard"
+            >
+              Dashboard
+            </Link>
+          </div>
         </div>
       </section>
 
+      <VehicleSection
+        emptyState={<EmptyActiveVehicles />}
+        title="Active Vehicles"
+        vehicles={activeVehicles}
+      />
+
+      <VehicleSection
+        emptyState={<EmptyArchivedVehicles />}
+        title="Archived Vehicles"
+        vehicles={archivedVehicles}
+      />
+    </AccountPageShell>
+  );
+}
+
+function VehicleSection({
+  emptyState,
+  title,
+  vehicles,
+}: {
+  emptyState: React.ReactNode;
+  title: string;
+  vehicles: Vehicle[];
+}) {
+  return (
+    <section className="flex flex-col gap-4">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-2xl font-bold">{title}</h2>
+        <span className="rounded-md bg-[var(--surface)] px-2 py-1 text-xs font-bold uppercase text-[var(--muted)]">
+          {vehicles.length}
+        </span>
+      </div>
       {vehicles.length === 0 ? (
-        <EmptyVehicles />
+        emptyState
       ) : (
-        <section className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-2">
           {vehicles.map((vehicle) => (
             <VehicleCard key={vehicle.id} vehicle={vehicle} />
           ))}
-        </section>
+        </div>
       )}
-    </AccountPageShell>
+    </section>
   );
 }
 
@@ -97,13 +142,15 @@ function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
   const isArchived = Boolean(vehicle.archived_at);
 
   return (
-    <Link
-      className="flex flex-col gap-4 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5 text-[var(--foreground)] transition hover:border-[var(--primary)]"
-      href={`/vehicles/${vehicle.id}`}
-    >
+    <article className="flex flex-col gap-4 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold">{formatVehicleTitle(vehicle)}</h2>
+          <Link
+            className="text-xl font-bold text-[var(--foreground)] transition hover:text-[var(--primary)]"
+            href={`/vehicles/${vehicle.id}`}
+          >
+            {formatVehicleTitle(vehicle)}
+          </Link>
           <p className="mt-1 text-sm leading-5 text-[var(--muted)]">
             {formatVehicleSubtitle(vehicle)}
           </p>
@@ -124,7 +171,29 @@ function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
           {formatOdometer(vehicle.current_odometer, vehicle.odometer_unit)}
         </VehicleBadge>
       </div>
-    </Link>
+      <div className="flex flex-wrap gap-3">
+        <Link
+          className="rounded-lg border border-[var(--line)] bg-[var(--background)] px-4 py-3 text-sm font-bold text-[var(--foreground)]"
+          href={`/vehicles/${vehicle.id}`}
+        >
+          View Details
+        </Link>
+        {isArchived ? (
+          <VehicleArchiveRestoreForm
+            action={restoreVehicleAction}
+            label="Restore"
+            vehicleId={vehicle.id}
+          />
+        ) : (
+          <Link
+            className="rounded-lg border border-[var(--line)] bg-[var(--background)] px-4 py-3 text-sm font-bold text-[var(--foreground)]"
+            href={`/vehicles/${vehicle.id}/edit`}
+          >
+            Edit
+          </Link>
+        )}
+      </div>
+    </article>
   );
 }
 
@@ -136,13 +205,31 @@ function VehicleBadge({ children }: { children: React.ReactNode }) {
   );
 }
 
-function EmptyVehicles() {
+function EmptyActiveVehicles() {
   return (
     <section className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-6">
-      <h2 className="text-xl font-bold">No vehicles in your account yet.</h2>
+      <h3 className="text-xl font-bold">No active vehicles</h3>
       <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-        Add cloud vehicles from the mobile app for now. Web create and edit
-        flows are intentionally deferred in this slice.
+        Add a cloud vehicle from the web or mobile app to start tracking account
+        records.
+      </p>
+      <Link
+        className="mt-5 inline-flex rounded-lg bg-[var(--primary)] px-4 py-3 text-sm font-bold text-white"
+        href="/vehicles/new"
+      >
+        Add Vehicle
+      </Link>
+    </section>
+  );
+}
+
+function EmptyArchivedVehicles() {
+  return (
+    <section className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-6">
+      <h3 className="text-xl font-bold">No archived vehicles</h3>
+      <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+        Vehicles you archive stay in your account with their records and will
+        appear here.
       </p>
     </section>
   );
