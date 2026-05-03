@@ -17,11 +17,16 @@ import {
 import { useAuth } from "../../lib/auth";
 import {
   getGuestMigrationSummary,
+  getMaintenanceReminderMigrationMappings,
   getVehicleMigrationMappings,
   getOrCreateInitialMigrationRun,
   type GuestMigrationSummary,
   type MigrationRun,
 } from "../../lib/guestMigration";
+import {
+  migrateGuestMaintenanceRemindersToCloud,
+  type GuestMaintenanceReminderMigrationResult,
+} from "../../lib/guestMaintenanceReminderMigration";
 import {
   migrateGuestOdometerEntriesToCloud,
   type GuestOdometerMigrationResult,
@@ -84,6 +89,8 @@ export default function SettingsScreen() {
   const [guestMigrationSummary, setGuestMigrationSummary] =
     useState<GuestMigrationSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMigratingMaintenanceReminders, setIsMigratingMaintenanceReminders] =
+    useState(false);
   const [isMigratingOdometerEntries, setIsMigratingOdometerEntries] =
     useState(false);
   const [isMigratingRepairRecords, setIsMigratingRepairRecords] =
@@ -93,6 +100,8 @@ export default function SettingsScreen() {
   const [isMigratingVehicles, setIsMigratingVehicles] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [migrationRun, setMigrationRun] = useState<MigrationRun | null>(null);
+  const [maintenanceReminderMigrationResult, setMaintenanceReminderMigrationResult] =
+    useState<GuestMaintenanceReminderMigrationResult | null>(null);
   const [odometerMigrationResult, setOdometerMigrationResult] =
     useState<GuestOdometerMigrationResult | null>(null);
   const [repairRecordMigrationResult, setRepairRecordMigrationResult] =
@@ -108,6 +117,10 @@ export default function SettingsScreen() {
   const [
     repairRecordMigrationMappingCount,
     setRepairRecordMigrationMappingCount,
+  ] = useState(0);
+  const [
+    maintenanceReminderMigrationMappingCount,
+    setMaintenanceReminderMigrationMappingCount,
   ] = useState(0);
   const [vehicleMigrationMappingCount, setVehicleMigrationMappingCount] =
     useState(0);
@@ -145,6 +158,10 @@ export default function SettingsScreen() {
       accountId && nextMigrationSummary.hasGuestData
         ? await getRepairRecordMigrationMappings(accountId)
         : [];
+    const nextMaintenanceReminderMigrationMappings =
+      accountId && nextMigrationSummary.hasGuestData
+        ? await getMaintenanceReminderMigrationMappings(accountId)
+        : [];
 
     setSettings(nextSettings);
     setGuestMigrationSummary(nextMigrationSummary);
@@ -154,6 +171,9 @@ export default function SettingsScreen() {
     );
     setRepairRecordMigrationMappingCount(
       nextRepairRecordMigrationMappings.length,
+    );
+    setMaintenanceReminderMigrationMappingCount(
+      nextMaintenanceReminderMigrationMappings.length,
     );
     setVehicleMigrationMappingCount(nextVehicleMigrationMappings.length);
     setPermissionState(nextPermissionState);
@@ -398,6 +418,39 @@ export default function SettingsScreen() {
     }
   };
 
+  const migrateMaintenanceRemindersToCurrentAccount = async () => {
+    if (!user) {
+      return;
+    }
+
+    setAccountFeedback(null);
+    setIsMigratingMaintenanceReminders(true);
+
+    try {
+      const result = await migrateGuestMaintenanceRemindersToCloud(user.id);
+
+      setMaintenanceReminderMigrationResult(result);
+      setMigrationRun(result.run);
+      setMaintenanceReminderMigrationMappingCount(
+        result.results.filter((item) => item.cloudId).length,
+      );
+      setAccountFeedback(
+        result.failedCount > 0 || result.skippedMissingVehicleMappingCount > 0
+          ? `Reminder migration finished with ${result.failedCount + result.skippedMissingVehicleMappingCount} issue${result.failedCount + result.skippedMissingVehicleMappingCount === 1 ? "" : "s"}. Local guest data was not changed.`
+          : "Reminder migration finished. Local guest data remains on this device.",
+      );
+      await loadSettings();
+    } catch (error: unknown) {
+      setAccountFeedback(
+        error instanceof Error
+          ? error.message
+          : "Unable to migrate reminders. Local guest data was not changed.",
+      );
+    } finally {
+      setIsMigratingMaintenanceReminders(false);
+    }
+  };
+
   if (isLoading || !settings) {
     return (
       <SafeAreaView className="flex-1 bg-ledger-background">
@@ -532,7 +585,7 @@ export default function SettingsScreen() {
 
             <SettingsRow
               label="Status"
-              value="Vehicle, odometer, service, and repair migration available"
+              value="Vehicle, odometer, service, repair, and reminder migration available"
             />
             <SettingsRow
               label="Readiness"
@@ -566,6 +619,12 @@ export default function SettingsScreen() {
                 value={`${migrationRun.migrated_repair_records} copied, ${migrationRun.skipped_repair_records} already present, ${migrationRun.skipped_repair_records_missing_vehicle_mapping} missing vehicle mapping, ${migrationRun.failed_repair_records} failed`}
               />
             ) : null}
+            {migrationRun?.migration_scope === "maintenance_reminders" ? (
+              <SettingsRow
+                label="Reminder run"
+                value={`${migrationRun.migrated_maintenance_reminders ?? 0} copied, ${migrationRun.skipped_maintenance_reminders ?? 0} already present, ${migrationRun.skipped_maintenance_reminders_missing_vehicle_mapping ?? 0} missing vehicle mapping, ${migrationRun.failed_maintenance_reminders ?? 0} failed`}
+              />
+            ) : null}
             <SettingsRow
               label="Vehicle mappings"
               value={`${vehicleMigrationMappingCount}`}
@@ -577,6 +636,10 @@ export default function SettingsScreen() {
             <SettingsRow
               label="Repair mappings"
               value={`${repairRecordMigrationMappingCount}`}
+            />
+            <SettingsRow
+              label="Reminder mappings"
+              value={`${maintenanceReminderMigrationMappingCount}`}
             />
             <SettingsRow
               label="Vehicles"
@@ -607,9 +670,9 @@ export default function SettingsScreen() {
               <Text className="text-sm leading-5 text-ledger-muted">
                 Before running migration, review
                 packages/db/sql/004_verify_local_id_unique_constraints.sql in
-                your live Supabase project. Vehicle, odometer, and service
-                record migration, plus repair record migration, rely on `user_id
-                + local_id` unique constraints to prevent duplicates.
+                your live Supabase project. Vehicle, odometer, service, repair,
+                and reminder migration rely on `user_id + local_id` unique
+                constraints to prevent duplicates.
               </Text>
             </View>
 
@@ -619,8 +682,11 @@ export default function SettingsScreen() {
                 entries only and uses vehicle mappings to attach each reading to
                 the right cloud vehicle. Service record migration can run after
                 vehicle mappings exist. Repair record migration can also run
-                after vehicle mappings exist. Reminders and attachments stay
-                local until later migration slices.
+                after vehicle mappings exist. Reminder migration can run after
+                vehicle mappings exist; odometer, service, and repair migration
+                are recommended first so mileage-based status has the best cloud
+                odometer context. Attachments stay local until a later migration
+                slice.
               </Text>
             </View>
 
@@ -815,6 +881,60 @@ export default function SettingsScreen() {
                   {repairRecordMigrationResult.failedCount} failed. No reminder
                   or attachment records were migrated, and local guest data was
                   not deleted.
+                </Text>
+              </View>
+            ) : null}
+
+            {vehicleMigrationMappingCount > 0 ? (
+              <View className="gap-3">
+                <View className="rounded-card border border-ledger-line bg-ledger-background p-3">
+                  <Text className="text-sm leading-5 text-ledger-muted">
+                    This step copies maintenance reminders only and uses vehicle
+                    mappings to attach them to cloud vehicles. Completed
+                    reminders stay completed. Local notification IDs stay local,
+                    and attachments still wait for a later migration slice.
+                  </Text>
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  className={`rounded-card px-4 py-3 ${
+                    isMigratingMaintenanceReminders ||
+                    guestMigrationSummary.counts.maintenanceReminders === 0
+                      ? "bg-ledger-primary opacity-60"
+                      : "bg-ledger-primary"
+                  }`}
+                  disabled={
+                    isMigratingMaintenanceReminders ||
+                    guestMigrationSummary.counts.maintenanceReminders === 0
+                  }
+                  onPress={() => {
+                    void migrateMaintenanceRemindersToCurrentAccount();
+                  }}
+                >
+                  <Text className="text-center text-base font-bold text-white">
+                    {isMigratingMaintenanceReminders
+                      ? "Migrating reminders..."
+                      : "Migrate reminders to account"}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : null}
+
+            {maintenanceReminderMigrationResult ? (
+              <View className="rounded-card border border-ledger-line bg-ledger-background p-3">
+                <Text className="text-sm leading-5 text-ledger-muted">
+                  Reminder-only migration:{" "}
+                  {maintenanceReminderMigrationResult.migratedCount} copied,{" "}
+                  {maintenanceReminderMigrationResult.skippedCount} already
+                  present,{" "}
+                  {
+                    maintenanceReminderMigrationResult.skippedMissingVehicleMappingCount
+                  }{" "}
+                  skipped for missing vehicle mapping,{" "}
+                  {maintenanceReminderMigrationResult.failedCount} failed. No
+                  attachments were migrated, local notification scheduling was
+                  not copied to cloud reminders, and local guest data was not
+                  deleted.
                 </Text>
               </View>
             ) : null}

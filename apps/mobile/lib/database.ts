@@ -225,6 +225,11 @@ const initializeGuestDatabase = async (db: SQLite.SQLiteDatabase) => {
         skipped_repair_records INTEGER NOT NULL DEFAULT 0,
         skipped_repair_records_missing_vehicle_mapping INTEGER NOT NULL DEFAULT 0,
         failed_repair_records INTEGER NOT NULL DEFAULT 0,
+        total_maintenance_reminders INTEGER NOT NULL DEFAULT 0,
+        migrated_maintenance_reminders INTEGER NOT NULL DEFAULT 0,
+        skipped_maintenance_reminders INTEGER NOT NULL DEFAULT 0,
+        skipped_maintenance_reminders_missing_vehicle_mapping INTEGER NOT NULL DEFAULT 0,
+        failed_maintenance_reminders INTEGER NOT NULL DEFAULT 0,
         error_message TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
@@ -423,6 +428,63 @@ const initializeGuestDatabase = async (db: SQLite.SQLiteDatabase) => {
     await db.execAsync(`
         ALTER TABLE migration_runs
         ADD COLUMN failed_repair_records INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (
+    !(await columnExists(db, "migration_runs", "total_maintenance_reminders"))
+  ) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN total_maintenance_reminders INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (
+    !(await columnExists(
+      db,
+      "migration_runs",
+      "migrated_maintenance_reminders",
+    ))
+  ) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN migrated_maintenance_reminders INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (
+    !(await columnExists(
+      db,
+      "migration_runs",
+      "skipped_maintenance_reminders",
+    ))
+  ) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN skipped_maintenance_reminders INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (
+    !(await columnExists(
+      db,
+      "migration_runs",
+      "skipped_maintenance_reminders_missing_vehicle_mapping",
+    ))
+  ) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN skipped_maintenance_reminders_missing_vehicle_mapping INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (
+    !(await columnExists(db, "migration_runs", "failed_maintenance_reminders"))
+  ) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN failed_maintenance_reminders INTEGER NOT NULL DEFAULT 0;
       `);
   }
 

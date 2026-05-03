@@ -317,10 +317,9 @@ export default function HomeScreen() {
           {storageMode === "cloud" && hasLocalGuestRecords ? (
             <View className="rounded-card border border-ledger-line bg-ledger-surface p-3">
               <Text className="text-sm leading-5 text-ledger-muted">
-                Cloud sync for existing local records is coming soon. New cloud
-                vehicles, odometer readings, service records, and repair
-                records, reminders, and service/repair attachments will be saved
-                to your account.
+                Focused migration tools are available in Settings for local
+                vehicles, odometer readings, service records, repair records,
+                and reminders. Attachments still migrate in a later slice.
               </Text>
             </View>
           ) : null}
@@ -614,10 +613,9 @@ function CloudRecordsNotice() {
       <Text className="text-sm leading-5 text-ledger-muted">
         Account mode currently saves vehicle details, cloud odometer entries,
         cloud service records, cloud repair records, cloud reminders, and cloud
-        service/repair attachments. Vehicle, odometer, and service record
-        migration, plus repair record migration, are available in Settings; CSV
-        export, push notifications, and later guest-to-account migration slices
-        are intentionally deferred.
+        service/repair attachments. Vehicle, odometer, service record, repair
+        record, and reminder migration are available in Settings; CSV export,
+        push notifications, and attachment migration are intentionally deferred.
       </Text>
     </View>
   );

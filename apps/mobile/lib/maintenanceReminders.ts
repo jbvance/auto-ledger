@@ -115,6 +115,19 @@ export const listAllActiveMaintenanceReminders = async (): Promise<
   return sortReminders(rows.map(mapMaintenanceReminderRow));
 };
 
+export const listAllMaintenanceReminders = async (): Promise<
+  MaintenanceReminder[]
+> => {
+  const db = await getGuestDatabase();
+  const rows = await db.getAllAsync<MaintenanceReminderRow>(
+    `SELECT *
+     FROM maintenance_reminders
+     ORDER BY is_completed ASC, due_date ASC, due_odometer ASC, created_at DESC`,
+  );
+
+  return sortReminders(rows.map(mapMaintenanceReminderRow));
+};
+
 export const getMaintenanceReminder = async (
   id: string,
 ): Promise<MaintenanceReminder | null> => {

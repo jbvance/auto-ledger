@@ -54,14 +54,18 @@ export type MigrationRun = {
   created_at: string;
   error_message: string | null;
   failed_odometer_entries: number;
+  failed_maintenance_reminders?: number;
   failed_repair_records: number;
   failed_service_records: number;
   failed_vehicles: number;
+  migrated_maintenance_reminders?: number;
   id: string;
   migrated_odometer_entries: number;
   migrated_repair_records: number;
   migrated_service_records: number;
   migrated_vehicles: number;
+  skipped_maintenance_reminders?: number;
+  skipped_maintenance_reminders_missing_vehicle_mapping?: number;
   migration_scope: string;
   skipped_odometer_entries: number;
   skipped_odometer_entries_missing_vehicle_mapping: number;
@@ -72,6 +76,7 @@ export type MigrationRun = {
   started_at: string;
   status: MigrationRunStatus;
   skipped_vehicles: number;
+  total_maintenance_reminders?: number;
   total_odometer_entries: number;
   total_repair_records: number;
   total_service_records: number;
@@ -136,6 +141,14 @@ export type MigrationRunRepairRecordCounts = {
   skippedRepairRecords: number;
   skippedRepairRecordsMissingVehicleMapping: number;
   totalRepairRecords: number;
+};
+
+export type MigrationRunMaintenanceReminderCounts = {
+  failedMaintenanceReminders: number;
+  migratedMaintenanceReminders: number;
+  skippedMaintenanceReminders: number;
+  skippedMaintenanceRemindersMissingVehicleMapping: number;
+  totalMaintenanceReminders: number;
 };
 
 type CountRow = {
@@ -716,6 +729,127 @@ export const createRepairRecordMigrationRun = async ({
   return run;
 };
 
+export const createMaintenanceReminderMigrationRun = async ({
+  accountId,
+  totalMaintenanceReminders,
+}: {
+  accountId: string;
+  totalMaintenanceReminders: number;
+}): Promise<MigrationRun> => {
+  const db = await getGuestDatabase();
+  const now = new Date().toISOString();
+  const run: MigrationRun = {
+    account_id: accountId,
+    completed_at: null,
+    created_at: now,
+    error_message: null,
+    failed_maintenance_reminders: 0,
+    failed_odometer_entries: 0,
+    failed_repair_records: 0,
+    failed_service_records: 0,
+    failed_vehicles: 0,
+    id: createLocalId("migration_run"),
+    migrated_maintenance_reminders: 0,
+    migrated_odometer_entries: 0,
+    migrated_repair_records: 0,
+    migrated_service_records: 0,
+    migrated_vehicles: 0,
+    migration_scope: "maintenance_reminders",
+    skipped_maintenance_reminders: 0,
+    skipped_maintenance_reminders_missing_vehicle_mapping: 0,
+    skipped_odometer_entries: 0,
+    skipped_odometer_entries_missing_vehicle_mapping: 0,
+    skipped_repair_records: 0,
+    skipped_repair_records_missing_vehicle_mapping: 0,
+    skipped_service_records: 0,
+    skipped_service_records_missing_vehicle_mapping: 0,
+    skipped_vehicles: 0,
+    started_at: now,
+    status: "running",
+    total_maintenance_reminders: totalMaintenanceReminders,
+    total_odometer_entries: 0,
+    total_repair_records: 0,
+    total_service_records: 0,
+    total_vehicles: 0,
+    updated_at: now,
+  };
+
+  await db.runAsync(
+    `INSERT INTO migration_runs (
+      id,
+      account_id,
+      migration_scope,
+      started_at,
+      completed_at,
+      status,
+      total_vehicles,
+      migrated_vehicles,
+      skipped_vehicles,
+      failed_vehicles,
+      total_odometer_entries,
+      migrated_odometer_entries,
+      skipped_odometer_entries,
+      skipped_odometer_entries_missing_vehicle_mapping,
+      failed_odometer_entries,
+      total_service_records,
+      migrated_service_records,
+      skipped_service_records,
+      skipped_service_records_missing_vehicle_mapping,
+      failed_service_records,
+      total_repair_records,
+      migrated_repair_records,
+      skipped_repair_records,
+      skipped_repair_records_missing_vehicle_mapping,
+      failed_repair_records,
+      total_maintenance_reminders,
+      migrated_maintenance_reminders,
+      skipped_maintenance_reminders,
+      skipped_maintenance_reminders_missing_vehicle_mapping,
+      failed_maintenance_reminders,
+      error_message,
+      created_at,
+      updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      run.id,
+      run.account_id,
+      run.migration_scope,
+      run.started_at,
+      run.completed_at,
+      run.status,
+      run.total_vehicles,
+      run.migrated_vehicles,
+      run.skipped_vehicles,
+      run.failed_vehicles,
+      run.total_odometer_entries,
+      run.migrated_odometer_entries,
+      run.skipped_odometer_entries,
+      run.skipped_odometer_entries_missing_vehicle_mapping,
+      run.failed_odometer_entries,
+      run.total_service_records,
+      run.migrated_service_records,
+      run.skipped_service_records,
+      run.skipped_service_records_missing_vehicle_mapping,
+      run.failed_service_records,
+      run.total_repair_records,
+      run.migrated_repair_records,
+      run.skipped_repair_records,
+      run.skipped_repair_records_missing_vehicle_mapping,
+      run.failed_repair_records,
+      run.total_maintenance_reminders ?? 0,
+      run.migrated_maintenance_reminders ?? 0,
+      run.skipped_maintenance_reminders ?? 0,
+      run.skipped_maintenance_reminders_missing_vehicle_mapping ?? 0,
+      run.failed_maintenance_reminders ?? 0,
+      run.error_message,
+      run.created_at,
+      run.updated_at,
+    ],
+  );
+
+  return run;
+};
+
 export const updateMigrationRunStatus = async ({
   completedAt = null,
   counts,
@@ -882,6 +1016,48 @@ export const updateRepairRecordMigrationRunStatus = async ({
   );
 };
 
+export const updateMaintenanceReminderMigrationRunStatus = async ({
+  completedAt = null,
+  counts,
+  errorMessage = null,
+  runId,
+  status,
+}: {
+  completedAt?: string | null;
+  counts: MigrationRunMaintenanceReminderCounts;
+  errorMessage?: string | null;
+  runId: string;
+  status: MigrationRunStatus;
+}): Promise<void> => {
+  const db = await getGuestDatabase();
+
+  await db.runAsync(
+    `UPDATE migration_runs
+     SET completed_at = ?,
+         status = ?,
+         total_maintenance_reminders = ?,
+         migrated_maintenance_reminders = ?,
+         skipped_maintenance_reminders = ?,
+         skipped_maintenance_reminders_missing_vehicle_mapping = ?,
+         failed_maintenance_reminders = ?,
+         error_message = ?,
+         updated_at = ?
+     WHERE id = ?`,
+    [
+      completedAt,
+      status,
+      counts.totalMaintenanceReminders,
+      counts.migratedMaintenanceReminders,
+      counts.skippedMaintenanceReminders,
+      counts.skippedMaintenanceRemindersMissingVehicleMapping,
+      counts.failedMaintenanceReminders,
+      errorMessage,
+      new Date().toISOString(),
+      runId,
+    ],
+  );
+};
+
 export const getMigrationEntityMapping = async ({
   accountId,
   entityType,
@@ -964,6 +1140,22 @@ export const getRepairRecordMigrationMappings = async (
      FROM migration_entity_mappings
      WHERE account_id = ?
        AND entity_type = 'repair_record'
+     ORDER BY updated_at DESC, created_at DESC`,
+    accountId,
+  );
+
+  return rows;
+};
+
+export const getMaintenanceReminderMigrationMappings = async (
+  accountId: string,
+): Promise<MigrationEntityMapping[]> => {
+  const db = await getGuestDatabase();
+  const rows = await db.getAllAsync<MigrationEntityMapping>(
+    `SELECT *
+     FROM migration_entity_mappings
+     WHERE account_id = ?
+       AND entity_type = 'maintenance_reminder'
      ORDER BY updated_at DESC, created_at DESC`,
     accountId,
   );
@@ -1067,4 +1259,12 @@ export const upsertRepairRecordMigrationMapping = async (
   upsertMigrationEntityMapping({
     ...input,
     entityType: "repair_record",
+  });
+
+export const upsertMaintenanceReminderMigrationMapping = async (
+  input: VehicleMigrationMappingInput,
+): Promise<MigrationEntityMapping> =>
+  upsertMigrationEntityMapping({
+    ...input,
+    entityType: "maintenance_reminder",
   });

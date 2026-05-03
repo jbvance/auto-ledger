@@ -2,18 +2,19 @@
 
 This document audits the current repo readiness for migrating local guest data
 to an authenticated Supabase account. Slice 1 readiness/status detection,
-Slice 2 vehicle-only migration, Slice 3 odometer-entry-only migration, and
-Slice 4 service-record-only migration, and Slice 5 repair-record-only migration
-are now implemented locally. Full migration is not implemented yet: maintenance
-reminders and attachments are still deferred. Vehicle, odometer, service record,
-and repair record migration do not delete local data.
+Slice 2 vehicle-only migration, Slice 3 odometer-entry-only migration,
+Slice 4 service-record-only migration, Slice 5 repair-record-only migration,
+and Slice 6 maintenance-reminder-only migration are now implemented locally.
+Full migration is not implemented yet: attachments are still deferred. Vehicle,
+odometer, service record, repair record, and maintenance reminder migration do
+not delete local data.
 
 ## 1. Current Readiness Summary
 
-The repo is ready for vehicle-only, odometer-entry-only, and
-service-record-only migration and mostly ready at the data model level for
-later child-record slices. It is not yet ready for full guest-to-account
-migration.
+The repo is ready for vehicle-only, odometer-entry-only,
+service-record-only, repair-record-only, and maintenance-reminder-only
+migration and mostly ready at the data model level for attachment migration. It
+is not yet ready for full guest-to-account migration.
 
 Ready:
 
@@ -35,7 +36,8 @@ Ready:
   exist for future migration status and ID mapping.
 - Signed-in users with local guest data now see non-destructive sign-in/sign-up
   notices and a Settings readiness section with active vehicle-only,
-  odometer-entry-only, and service-record-only migration actions.
+  odometer-entry-only, service-record-only, repair-record-only, and
+  maintenance-reminder-only migration actions.
 - `apps/mobile/lib/guestVehicleMigration.ts` migrates local guest vehicles only,
   preserves local `local_id`, includes archived vehicles, preserves
   `archived_at`, and writes vehicle mapping rows.
@@ -70,6 +72,19 @@ Ready:
   exists.
 - Affected cloud vehicle odometers are recalculated after repair-record-only
   migration, using cloud rows only.
+- `apps/mobile/lib/guestMaintenanceReminderMigration.ts` migrates local guest
+  maintenance reminders only after vehicle mappings exist, preserves local
+  reminder `local_id`, maps local vehicles to cloud vehicle UUIDs through
+  `migration_entity_mappings`, writes
+  `entity_type = 'maintenance_reminder'` mappings, and skips reminders whose
+  vehicle mapping is missing.
+- Maintenance-reminder-only migration uses select-by-`user_id`-and-`local_id`
+  before insert and repairs missing mapping rows if the cloud reminder already
+  exists.
+- Migrated cloud reminders preserve date, mileage, date-or-mileage, repeat
+  interval, completed, completed-at, last-triggered, notes, and timestamp
+  fields. Local `scheduled_notification_id` values are not copied to cloud
+  reminders.
 - Supabase cloud tables exist in `packages/db/sql/002_cloud_data_schema_rls.sql`
   for all target entities, including `local_id`, `sync_status`, owner-scoped
   foreign keys, and `unique (user_id, local_id)` constraints.
@@ -88,18 +103,20 @@ Not ready:
   They do not preserve local `created_at`, `updated_at`, `archived_at`,
   `completed_at`, `last_triggered_at`, or attachment OCR metadata.
 - Existing cloud create helpers for service, repair, reminder, and attachment
-  records generate new cloud-only local IDs and are not migration-safe. Service
-  and repair migration now use dedicated helpers; later reminder and attachment
-  migration slices should also use dedicated helpers that preserve local IDs.
+  records generate new cloud-only local IDs and are not migration-safe. Service,
+  repair, and reminder migration now use dedicated helpers; attachment
+  migration should also use a dedicated helper that preserves local IDs.
 - The durable local status/mapping tables exist. Vehicle-only migration writes
   completed vehicle cloud UUID mappings, odometer-only migration writes
   completed or skipped odometer mappings, service-record-only migration writes
-  completed or skipped service record mappings, and repair-record-only migration
-  writes completed or skipped repair record mappings. Reminder and attachment
-  mappings are not written yet.
-- There is no full migration prompt/progress UI and no reminder or attachment
-  upload/retry workflow yet. The current Settings actions are intentionally
-  scoped to vehicles, odometer entries, service records, and repair records.
+  completed or skipped service record mappings, repair-record-only migration
+  writes completed or skipped repair record mappings, and
+  maintenance-reminder-only migration writes completed or skipped reminder
+  mappings. Attachment mappings are not written yet.
+- There is no full migration prompt/progress UI and no attachment upload/retry
+  workflow yet. The current Settings actions are intentionally scoped to
+  vehicles, odometer entries, service records, repair records, and maintenance
+  reminders.
 - Cloud attachment upload currently uses a generated attachment local ID and
   `upsert: false`, so it is not idempotent for retrying migrated local
   attachments.
@@ -365,7 +382,7 @@ Slice 5: migrate repair records only - complete
 - Recalculate cloud vehicle odometers after repair migration.
 - Do not migrate maintenance reminders or attachments.
 
-Slice 6: migrate reminders
+Slice 6: migrate reminders - complete
 
 - Migrate remaining reminder child rows using the vehicle mapping.
 - Preserve local IDs and user-entered fields.
@@ -399,9 +416,11 @@ Cloud schema:
   as a read-only verification query for the cloud `user_id + local_id` unique
   constraints, including `odometer_entries_user_local_id_unique`,
   `service_records_user_local_id_unique`, and
-  `repair_records_user_local_id_unique`. Review/run it before using vehicle,
-  odometer, service record, or repair record migration. If any row reports
-  `missing`, add the missing unique constraint before testing migration.
+  `repair_records_user_local_id_unique`, and
+  `maintenance_reminders_user_local_id_unique`. Review/run it before using
+  vehicle, odometer, service record, repair record, or maintenance reminder
+  migration. If any row reports `missing`, add the missing unique constraint
+  before testing migration.
 
 Local schema:
 
@@ -413,10 +432,10 @@ Local schema:
   types. Slice 2 writes mappings for `entity_type = 'vehicle'`; Slice 3 writes
   mappings for `entity_type = 'odometer_entry'`; Slice 4 writes mappings for
   `entity_type = 'service_record'`; Slice 5 writes mappings for
-  `entity_type = 'repair_record'`.
+  `entity_type = 'repair_record'`; Slice 6 writes mappings for
+  `entity_type = 'maintenance_reminder'`.
 - A migration run table exists with start/end timestamps, status, optional error
-  message, vehicle-only, odometer-only, and service-record-only scopes, plus
-  vehicle, odometer, and service record run counts.
+  message, focused entity scopes, and per-slice run counts.
 
 Suggested local-only tables:
 
@@ -447,6 +466,11 @@ migration_runs
 - skipped_repair_records
 - skipped_repair_records_missing_vehicle_mapping
 - failed_repair_records
+- total_maintenance_reminders
+- migrated_maintenance_reminders
+- skipped_maintenance_reminders
+- skipped_maintenance_reminders_missing_vehicle_mapping
+- failed_maintenance_reminders
 - error_message
 - created_at
 - updated_at
@@ -488,6 +512,11 @@ Unit tests:
   category, vendor name, cost fields, warranty fields, notes, and timestamps.
 - Repair-record-only migration uses vehicle mappings to attach records to cloud
   vehicle UUIDs.
+- Maintenance-reminder-only migration preserves local `local_id`, reminder
+  type, due date, due odometer, repeat fields, completed state, completed-at,
+  last-triggered, notes, and timestamps.
+- Maintenance-reminder-only migration uses vehicle mappings to attach reminders
+  to cloud vehicle UUIDs.
 - Duplicate prevention treats existing `user_id + local_id` cloud rows as
   already migrated.
 - Partial failure skips dependent records when a vehicle fails.
@@ -497,6 +526,8 @@ Unit tests:
   mapping row.
 - Missing vehicle mapping skips the repair record safely and creates a skipped
   mapping row.
+- Missing vehicle mapping skips the maintenance reminder safely and creates a
+  skipped mapping row.
 - Attachment failures do not mark parent service/repair records as failed.
 - Completed reminders preserve `is_completed` and `completed_at`.
 - Local `scheduled_notification_id` is omitted or nulled in cloud reminder
@@ -518,6 +549,10 @@ Integration-style tests with mocked Supabase/FileSystem:
 - Repair record migration retry does not create duplicates.
 - Repair record migration uses cloud vehicle UUIDs, not local SQLite IDs.
 - Repair record migration does not read or upload service, reminder, or
+  attachment records.
+- Reminder migration retry does not create duplicates.
+- Reminder migration uses cloud vehicle UUIDs, not local SQLite IDs.
+- Reminder migration does not read or upload odometer, service, repair, or
   attachment records.
 - Attachment migration uses cloud parent IDs in Storage paths.
 - Existing Storage object or metadata retry is handled deterministically.
@@ -548,7 +583,11 @@ Manual Expo Go checklist:
   attached to the correct cloud vehicles.
 - Run repair record migration again and verify no duplicate cloud repair rows
   are created.
-- Confirm reminders and attachments were not migrated yet.
+- Run "Migrate reminders to account" and verify cloud reminders are attached to
+  the correct cloud vehicles.
+- Run reminder migration again and verify no duplicate cloud reminder rows are
+  created.
+- Confirm attachments were not migrated yet.
 - Turn off network during child record or attachment migration and verify retry
   resumes without deleting local data.
 - Delete or make one local attachment file inaccessible and verify the
@@ -559,11 +598,12 @@ Manual Expo Go checklist:
 
 - Current cloud CRUD helpers are not migration-safe because they generate new
   local IDs and omit complete local row metadata. Vehicle, odometer, and service
-  record migration use dedicated helpers instead.
+  record migration use dedicated helpers instead. Reminder migration also uses a
+  dedicated helper so local reminder IDs and completed state are preserved.
 - Durable local mapping/status tables exist and are now used for vehicle,
-  odometer, service record, and repair record migration. Later child-record
-  migration must reuse the vehicle mapping table and, for attachments, the
-  migrated service/repair parent mappings.
+  odometer, service record, repair record, and maintenance reminder migration.
+  Attachment migration must reuse the vehicle mapping table and the migrated
+  service/repair parent mappings.
 - Attachment retry needs careful idempotency because file upload and metadata
   insert are two separate operations.
 - Archived local vehicles need special handling because some cloud helper
@@ -573,6 +613,7 @@ Manual Expo Go checklist:
 
 ## Next Safest Slice
 
-The next safest implementation slice is reminder migration using the vehicle
-mapping table, with local notification IDs remaining local-only. Attachment
-migration should follow after service and repair parent mappings are available.
+The next safest implementation slice is attachment migration. It should use the
+existing vehicle mappings and service/repair parent mappings, preserve local
+attachment IDs, use deterministic private Storage paths, and report missing
+local files without deleting local guest data.

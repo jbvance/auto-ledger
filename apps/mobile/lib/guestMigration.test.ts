@@ -1,11 +1,13 @@
 import { getGuestDatabase } from "./database";
 import {
   buildGuestMigrationSummary,
+  getMaintenanceReminderMigrationMappings,
   getRepairRecordMigrationMappings,
   getServiceRecordMigrationMappings,
   getVehicleMigrationMappings,
   getGuestMigrationSummary,
   getOrCreateInitialMigrationRun,
+  upsertMaintenanceReminderMigrationMapping,
   upsertRepairRecordMigrationMapping,
   upsertServiceRecordMigrationMapping,
   upsertVehicleMigrationMapping,
@@ -373,6 +375,57 @@ describe("guest migration status storage", () => {
     expect(mappings).toHaveLength(1);
     expect(db.getAllAsync).toHaveBeenCalledWith(
       expect.stringContaining("entity_type = 'repair_record'"),
+      "user_1",
+    );
+  });
+
+  it("upserts and loads maintenance reminder migration mappings", async () => {
+    const db = createMockDatabase();
+    db.getAllAsync.mockResolvedValue([
+      {
+        account_id: "user_1",
+        cloud_id: "cloud_reminder_1",
+        created_at: "2026-05-02T00:00:00.000Z",
+        entity_type: "maintenance_reminder",
+        error_message: null,
+        id: "mapping_1",
+        local_id: "local_reminder_1",
+        run_id: "run_1",
+        status: "synced",
+        updated_at: "2026-05-02T00:00:00.000Z",
+      },
+    ]);
+    mockedGetGuestDatabase.mockResolvedValue(db as never);
+
+    const mapping = await upsertMaintenanceReminderMigrationMapping({
+      accountId: "user_1",
+      cloudId: "cloud_reminder_1",
+      localId: "local_reminder_1",
+      runId: "run_1",
+      status: "synced",
+    });
+    const mappings = await getMaintenanceReminderMigrationMappings("user_1");
+
+    expect(mapping).toMatchObject({
+      account_id: "user_1",
+      cloud_id: "cloud_reminder_1",
+      entity_type: "maintenance_reminder",
+      local_id: "local_reminder_1",
+      status: "synced",
+    });
+    expect(db.runAsync).toHaveBeenCalledWith(
+      expect.stringContaining("ON CONFLICT(account_id, entity_type, local_id)"),
+      expect.arrayContaining([
+        "user_1",
+        "maintenance_reminder",
+        "local_reminder_1",
+        "cloud_reminder_1",
+        "synced",
+      ]),
+    );
+    expect(mappings).toHaveLength(1);
+    expect(db.getAllAsync).toHaveBeenCalledWith(
+      expect.stringContaining("entity_type = 'maintenance_reminder'"),
       "user_1",
     );
   });
