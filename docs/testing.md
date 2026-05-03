@@ -85,6 +85,10 @@ development build app id when a dev build exists.
   missing vehicle mapping skips, mapping creation/repair on rerun, service field
   mapping, local data retention, and cloud vehicle odometer recalculation with
   mocked Supabase.
+- Repair-record-only migration local ID preservation, vehicle mapping usage,
+  missing vehicle mapping skips, mapping creation/repair on rerun, repair field
+  mapping including warranty fields, local data retention, and cloud vehicle
+  odometer recalculation with mocked Supabase.
 - Shared odometer recalculation logic used by local and cloud record updates.
 - Formatting and unified history ordering helpers.
 - Zod validation for vehicles, odometer entries, service records, repair
@@ -101,7 +105,7 @@ development build app id when a dev build exists.
 - Notification delivery behavior on real iOS/Android devices.
 - Attachment picker/file-copy behavior on real devices.
 - Live guest-to-account upload migration against a real Supabase project.
-- Guest-to-account repair, reminder, and attachment migration.
+- Guest-to-account reminder and attachment migration.
 - Cloud CSV export.
 - Live Supabase Storage upload/open/delete integration for cloud attachments.
 - Supabase cloud maintenance reminder CRUD integration against a live Supabase

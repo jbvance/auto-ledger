@@ -1,10 +1,12 @@
 import { getGuestDatabase } from "./database";
 import {
   buildGuestMigrationSummary,
+  getRepairRecordMigrationMappings,
   getServiceRecordMigrationMappings,
   getVehicleMigrationMappings,
   getGuestMigrationSummary,
   getOrCreateInitialMigrationRun,
+  upsertRepairRecordMigrationMapping,
   upsertServiceRecordMigrationMapping,
   upsertVehicleMigrationMapping,
 } from "./guestMigration";
@@ -320,6 +322,57 @@ describe("guest migration status storage", () => {
     expect(mappings).toHaveLength(1);
     expect(db.getAllAsync).toHaveBeenCalledWith(
       expect.stringContaining("entity_type = 'service_record'"),
+      "user_1",
+    );
+  });
+
+  it("upserts and loads repair record migration mappings", async () => {
+    const db = createMockDatabase();
+    db.getAllAsync.mockResolvedValue([
+      {
+        account_id: "user_1",
+        cloud_id: "cloud_repair_1",
+        created_at: "2026-05-02T00:00:00.000Z",
+        entity_type: "repair_record",
+        error_message: null,
+        id: "mapping_1",
+        local_id: "local_repair_1",
+        run_id: "run_1",
+        status: "synced",
+        updated_at: "2026-05-02T00:00:00.000Z",
+      },
+    ]);
+    mockedGetGuestDatabase.mockResolvedValue(db as never);
+
+    const mapping = await upsertRepairRecordMigrationMapping({
+      accountId: "user_1",
+      cloudId: "cloud_repair_1",
+      localId: "local_repair_1",
+      runId: "run_1",
+      status: "synced",
+    });
+    const mappings = await getRepairRecordMigrationMappings("user_1");
+
+    expect(mapping).toMatchObject({
+      account_id: "user_1",
+      cloud_id: "cloud_repair_1",
+      entity_type: "repair_record",
+      local_id: "local_repair_1",
+      status: "synced",
+    });
+    expect(db.runAsync).toHaveBeenCalledWith(
+      expect.stringContaining("ON CONFLICT(account_id, entity_type, local_id)"),
+      expect.arrayContaining([
+        "user_1",
+        "repair_record",
+        "local_repair_1",
+        "cloud_repair_1",
+        "synced",
+      ]),
+    );
+    expect(mappings).toHaveLength(1);
+    expect(db.getAllAsync).toHaveBeenCalledWith(
+      expect.stringContaining("entity_type = 'repair_record'"),
       "user_1",
     );
   });

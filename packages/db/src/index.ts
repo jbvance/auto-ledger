@@ -20,10 +20,14 @@ export type DbCloudDataStatus = {
   profilesSqlDocumented: true;
   storageImplemented: true;
   storageSqlDocumented: true;
+  guestToAccountOdometerMigrationImplemented: true;
+  guestToAccountServiceRecordMigrationImplemented: true;
+  guestToAccountRepairRecordMigrationImplemented: true;
 };
 
 export const dbCloudDataStatus: DbCloudDataStatus = {
-  developmentTrack: "local_guest_cloud_vehicle_odometer_service_repair_reminder_foundation",
+  developmentTrack:
+    "local_guest_cloud_vehicle_odometer_service_repair_reminder_foundation",
   authFoundationImplemented: true,
   broaderCloudRecordSyncImplemented: false,
   cloudMaintenanceReminderCrudImplemented: true,
@@ -38,6 +42,9 @@ export const dbCloudDataStatus: DbCloudDataStatus = {
   profilesSqlDocumented: true,
   storageImplemented: true,
   storageSqlDocumented: true,
+  guestToAccountOdometerMigrationImplemented: true,
+  guestToAccountServiceRecordMigrationImplemented: true,
+  guestToAccountRepairRecordMigrationImplemented: true,
 };
 
 export const dbSqlFiles = [

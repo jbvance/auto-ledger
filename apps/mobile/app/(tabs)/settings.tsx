@@ -27,6 +27,11 @@ import {
   type GuestOdometerMigrationResult,
 } from "../../lib/guestOdometerMigration";
 import {
+  getRepairRecordMigrationMappings,
+  migrateGuestRepairRecordsToCloud,
+  type GuestRepairRecordMigrationResult,
+} from "../../lib/guestRepairRecordMigration";
+import {
   getServiceRecordMigrationMappings,
   migrateGuestServiceRecordsToCloud,
   type GuestServiceRecordMigrationResult,
@@ -81,6 +86,8 @@ export default function SettingsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isMigratingOdometerEntries, setIsMigratingOdometerEntries] =
     useState(false);
+  const [isMigratingRepairRecords, setIsMigratingRepairRecords] =
+    useState(false);
   const [isMigratingServiceRecords, setIsMigratingServiceRecords] =
     useState(false);
   const [isMigratingVehicles, setIsMigratingVehicles] = useState(false);
@@ -88,6 +95,8 @@ export default function SettingsScreen() {
   const [migrationRun, setMigrationRun] = useState<MigrationRun | null>(null);
   const [odometerMigrationResult, setOdometerMigrationResult] =
     useState<GuestOdometerMigrationResult | null>(null);
+  const [repairRecordMigrationResult, setRepairRecordMigrationResult] =
+    useState<GuestRepairRecordMigrationResult | null>(null);
   const [serviceRecordMigrationResult, setServiceRecordMigrationResult] =
     useState<GuestServiceRecordMigrationResult | null>(null);
   const [vehicleMigrationResult, setVehicleMigrationResult] =
@@ -95,6 +104,10 @@ export default function SettingsScreen() {
   const [
     serviceRecordMigrationMappingCount,
     setServiceRecordMigrationMappingCount,
+  ] = useState(0);
+  const [
+    repairRecordMigrationMappingCount,
+    setRepairRecordMigrationMappingCount,
   ] = useState(0);
   const [vehicleMigrationMappingCount, setVehicleMigrationMappingCount] =
     useState(0);
@@ -128,12 +141,19 @@ export default function SettingsScreen() {
       accountId && nextMigrationSummary.hasGuestData
         ? await getServiceRecordMigrationMappings(accountId)
         : [];
+    const nextRepairRecordMigrationMappings =
+      accountId && nextMigrationSummary.hasGuestData
+        ? await getRepairRecordMigrationMappings(accountId)
+        : [];
 
     setSettings(nextSettings);
     setGuestMigrationSummary(nextMigrationSummary);
     setMigrationRun(nextMigrationRun);
     setServiceRecordMigrationMappingCount(
       nextServiceRecordMigrationMappings.length,
+    );
+    setRepairRecordMigrationMappingCount(
+      nextRepairRecordMigrationMappings.length,
     );
     setVehicleMigrationMappingCount(nextVehicleMigrationMappings.length);
     setPermissionState(nextPermissionState);
@@ -345,6 +365,39 @@ export default function SettingsScreen() {
     }
   };
 
+  const migrateRepairRecordsToCurrentAccount = async () => {
+    if (!user) {
+      return;
+    }
+
+    setAccountFeedback(null);
+    setIsMigratingRepairRecords(true);
+
+    try {
+      const result = await migrateGuestRepairRecordsToCloud(user.id);
+
+      setRepairRecordMigrationResult(result);
+      setMigrationRun(result.run);
+      setRepairRecordMigrationMappingCount(
+        result.results.filter((item) => item.cloudId).length,
+      );
+      setAccountFeedback(
+        result.failedCount > 0 || result.skippedMissingVehicleMappingCount > 0
+          ? `Repair record migration finished with ${result.failedCount + result.skippedMissingVehicleMappingCount} issue${result.failedCount + result.skippedMissingVehicleMappingCount === 1 ? "" : "s"}. Local guest data was not changed.`
+          : "Repair record migration finished. Local guest data remains on this device.",
+      );
+      await loadSettings();
+    } catch (error: unknown) {
+      setAccountFeedback(
+        error instanceof Error
+          ? error.message
+          : "Unable to migrate repair records. Local guest data was not changed.",
+      );
+    } finally {
+      setIsMigratingRepairRecords(false);
+    }
+  };
+
   if (isLoading || !settings) {
     return (
       <SafeAreaView className="flex-1 bg-ledger-background">
@@ -402,8 +455,8 @@ export default function SettingsScreen() {
                 <View className="rounded-card border border-ledger-line bg-ledger-background p-3">
                   <Text className="text-sm leading-5 text-ledger-muted">
                     Local records are still on this device. Vehicle, odometer,
-                    and service record migration are available as separate steps
-                    without deleting local data.
+                    service record, and repair record migration are available as
+                    separate steps without deleting local data.
                   </Text>
                 </View>
               ) : null}
@@ -479,7 +532,7 @@ export default function SettingsScreen() {
 
             <SettingsRow
               label="Status"
-              value="Vehicle, odometer, and service migration available"
+              value="Vehicle, odometer, service, and repair migration available"
             />
             <SettingsRow
               label="Readiness"
@@ -507,6 +560,12 @@ export default function SettingsScreen() {
                 value={`${migrationRun.migrated_service_records} copied, ${migrationRun.skipped_service_records} already present, ${migrationRun.skipped_service_records_missing_vehicle_mapping} missing vehicle mapping, ${migrationRun.failed_service_records} failed`}
               />
             ) : null}
+            {migrationRun?.migration_scope === "repair_records" ? (
+              <SettingsRow
+                label="Repair run"
+                value={`${migrationRun.migrated_repair_records} copied, ${migrationRun.skipped_repair_records} already present, ${migrationRun.skipped_repair_records_missing_vehicle_mapping} missing vehicle mapping, ${migrationRun.failed_repair_records} failed`}
+              />
+            ) : null}
             <SettingsRow
               label="Vehicle mappings"
               value={`${vehicleMigrationMappingCount}`}
@@ -514,6 +573,10 @@ export default function SettingsScreen() {
             <SettingsRow
               label="Service mappings"
               value={`${serviceRecordMigrationMappingCount}`}
+            />
+            <SettingsRow
+              label="Repair mappings"
+              value={`${repairRecordMigrationMappingCount}`}
             />
             <SettingsRow
               label="Vehicles"
@@ -545,8 +608,8 @@ export default function SettingsScreen() {
                 Before running migration, review
                 packages/db/sql/004_verify_local_id_unique_constraints.sql in
                 your live Supabase project. Vehicle, odometer, and service
-                record migration rely on `user_id + local_id` unique constraints
-                to prevent duplicates.
+                record migration, plus repair record migration, rely on `user_id
+                + local_id` unique constraints to prevent duplicates.
               </Text>
             </View>
 
@@ -555,8 +618,9 @@ export default function SettingsScreen() {
                 Run vehicle migration first. The odometer step copies odometer
                 entries only and uses vehicle mappings to attach each reading to
                 the right cloud vehicle. Service record migration can run after
-                vehicle mappings exist. Repair records, reminders, and
-                attachments stay local until later migration slices.
+                vehicle mappings exist. Repair record migration can also run
+                after vehicle mappings exist. Reminders and attachments stay
+                local until later migration slices.
               </Text>
             </View>
 
@@ -700,6 +764,57 @@ export default function SettingsScreen() {
                   {serviceRecordMigrationResult.failedCount} failed. No repair,
                   reminder, or attachment records were migrated, and local guest
                   data was not deleted.
+                </Text>
+              </View>
+            ) : null}
+
+            {vehicleMigrationMappingCount > 0 ? (
+              <View className="gap-3">
+                <View className="rounded-card border border-ledger-line bg-ledger-background p-3">
+                  <Text className="text-sm leading-5 text-ledger-muted">
+                    This step copies repair records only and uses vehicle
+                    mappings to attach them to cloud vehicles. Reminders and
+                    attachments stay local until later migration slices.
+                  </Text>
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  className={`rounded-card px-4 py-3 ${
+                    isMigratingRepairRecords ||
+                    guestMigrationSummary.counts.repairRecords === 0
+                      ? "bg-ledger-primary opacity-60"
+                      : "bg-ledger-primary"
+                  }`}
+                  disabled={
+                    isMigratingRepairRecords ||
+                    guestMigrationSummary.counts.repairRecords === 0
+                  }
+                  onPress={() => {
+                    void migrateRepairRecordsToCurrentAccount();
+                  }}
+                >
+                  <Text className="text-center text-base font-bold text-white">
+                    {isMigratingRepairRecords
+                      ? "Migrating repair records..."
+                      : "Migrate repair records to account"}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : null}
+
+            {repairRecordMigrationResult ? (
+              <View className="rounded-card border border-ledger-line bg-ledger-background p-3">
+                <Text className="text-sm leading-5 text-ledger-muted">
+                  Repair-record-only migration:{" "}
+                  {repairRecordMigrationResult.migratedCount} copied,{" "}
+                  {repairRecordMigrationResult.skippedCount} already present,{" "}
+                  {
+                    repairRecordMigrationResult.skippedMissingVehicleMappingCount
+                  }{" "}
+                  skipped for missing vehicle mapping,{" "}
+                  {repairRecordMigrationResult.failedCount} failed. No reminder
+                  or attachment records were migrated, and local guest data was
+                  not deleted.
                 </Text>
               </View>
             ) : null}

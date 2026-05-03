@@ -533,7 +533,7 @@ function CloudVehicleRecordsNotice() {
         Cloud odometer entries, service records, repair records, and reminders
         are available for this vehicle. Cloud service and repair attachments are
         available from record detail screens. CSV export, push notifications,
-        and guest-to-account migration are still deferred.
+        and later guest-to-account migration slices are still deferred.
       </Text>
     </View>
   );

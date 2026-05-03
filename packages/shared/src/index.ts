@@ -5,7 +5,7 @@ export const currentDevelopmentTrack = {
   label:
     "Local guest MVP plus cloud vehicle, records, reminders, and service/repair attachments",
   description:
-    "Local guest MVP features, optional account auth foundation, cloud schema/RLS foundation, mobile cloud vehicle/record/reminder CRUD, cloud service/repair attachments, and vehicle/odometer guest-to-account migration are complete; broader migration remains pending.",
+    "Local guest MVP features, optional account auth foundation, cloud schema/RLS foundation, mobile cloud vehicle/record/reminder CRUD, cloud service/repair attachments, and vehicle/odometer/service/repair guest-to-account migration are complete; broader migration remains pending.",
 } as const;
 
 export const vehicleTypeValues = [
@@ -441,9 +441,7 @@ export type RecordAttachment = {
 export type RecordAttachmentInput = Pick<
   RecordAttachment,
   "file_name" | "file_type" | "mime_type" | "vehicle_id"
-> &
-  { local_uri: string } &
-  Partial<
+> & { local_uri: string } & Partial<
     Pick<
       RecordAttachment,
       | "file_size_bytes"

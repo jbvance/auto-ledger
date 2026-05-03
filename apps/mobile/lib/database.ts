@@ -220,6 +220,11 @@ const initializeGuestDatabase = async (db: SQLite.SQLiteDatabase) => {
         skipped_service_records INTEGER NOT NULL DEFAULT 0,
         skipped_service_records_missing_vehicle_mapping INTEGER NOT NULL DEFAULT 0,
         failed_service_records INTEGER NOT NULL DEFAULT 0,
+        total_repair_records INTEGER NOT NULL DEFAULT 0,
+        migrated_repair_records INTEGER NOT NULL DEFAULT 0,
+        skipped_repair_records INTEGER NOT NULL DEFAULT 0,
+        skipped_repair_records_missing_vehicle_mapping INTEGER NOT NULL DEFAULT 0,
+        failed_repair_records INTEGER NOT NULL DEFAULT 0,
         error_message TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
@@ -377,6 +382,47 @@ const initializeGuestDatabase = async (db: SQLite.SQLiteDatabase) => {
     await db.execAsync(`
         ALTER TABLE migration_runs
         ADD COLUMN failed_service_records INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (!(await columnExists(db, "migration_runs", "total_repair_records"))) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN total_repair_records INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (!(await columnExists(db, "migration_runs", "migrated_repair_records"))) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN migrated_repair_records INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (!(await columnExists(db, "migration_runs", "skipped_repair_records"))) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN skipped_repair_records INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (
+    !(await columnExists(
+      db,
+      "migration_runs",
+      "skipped_repair_records_missing_vehicle_mapping",
+    ))
+  ) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN skipped_repair_records_missing_vehicle_mapping INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (!(await columnExists(db, "migration_runs", "failed_repair_records"))) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN failed_repair_records INTEGER NOT NULL DEFAULT 0;
       `);
   }
 

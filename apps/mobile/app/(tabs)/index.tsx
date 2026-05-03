@@ -615,8 +615,9 @@ function CloudRecordsNotice() {
         Account mode currently saves vehicle details, cloud odometer entries,
         cloud service records, cloud repair records, cloud reminders, and cloud
         service/repair attachments. Vehicle, odometer, and service record
-        migration are available in Settings; CSV export, push notifications, and
-        later guest-to-account migration slices are intentionally deferred.
+        migration, plus repair record migration, are available in Settings; CSV
+        export, push notifications, and later guest-to-account migration slices
+        are intentionally deferred.
       </Text>
     </View>
   );

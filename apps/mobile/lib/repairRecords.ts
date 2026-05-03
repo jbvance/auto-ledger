@@ -43,6 +43,16 @@ export const listRepairRecords = async (
   return rows.map(mapRepairRecordRow);
 };
 
+export const listAllRepairRecords = async (): Promise<RepairRecord[]> => {
+  const db = await getGuestDatabase();
+  const rows = await db.getAllAsync<RepairRecordRow>(
+    `SELECT * FROM repair_records
+     ORDER BY repair_date DESC, created_at DESC`,
+  );
+
+  return rows.map(mapRepairRecordRow);
+};
+
 export const getRepairRecord = async (
   id: string,
 ): Promise<RepairRecord | null> => {
