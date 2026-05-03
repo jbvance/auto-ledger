@@ -736,8 +736,8 @@ function AttachmentSection({
     <section className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5">
       <h2 className="text-xl font-bold">Service and Repair Attachments</h2>
       <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
-        Display-only metadata for private cloud attachments. Opening signed
-        attachment links is deferred.
+        Private cloud attachment metadata for this vehicle. Open files from the
+        related service or repair record detail page.
       </p>
       {attachments.length === 0 ? (
         <EmptyText>No cloud attachments for this vehicle yet.</EmptyText>

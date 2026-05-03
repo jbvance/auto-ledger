@@ -58,6 +58,13 @@ vehicle `current_odometer`. Web remains cloud-account-only, does not read or
 mutate local mobile guest data, and does not schedule local or cloud
 notifications.
 
+Web Slice 7 is complete. Signed-in web users can view existing cloud
+service/repair attachment metadata on service and repair record detail pages
+and open those private files through short-lived Supabase Storage signed URLs.
+Web attachment upload, delete, edit/rename, OCR, export, guest migration, and
+local guest attachment flows remain deferred. Mobile behavior was not changed by
+this web attachment viewing/download slice.
+
 The mobile app runs successfully through Expo and has been tested in Expo Go.
 
 An initial testing foundation has been added. Root test scripts now cover
@@ -65,7 +72,7 @@ Vitest package tests for shared domain and validation logic plus Jest Expo
 mobile tests for focused user-visible behavior. A lightweight Maestro mobile
 E2E smoke scaffold and `docs/testing.md` are also present.
 
-Current development track: Local guest MVP features, optional Supabase Auth foundation, Supabase cloud data schema/RLS foundation, mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD, mobile cloud service record CRUD, mobile cloud repair record CRUD, mobile cloud maintenance reminder CRUD, cloud service/repair record attachments, guest-to-account vehicle migration, guest-to-account odometer-entry migration, guest-to-account service-record migration, guest-to-account repair-record migration, guest-to-account maintenance-reminder migration, guest-to-account service/repair attachment migration, final guest-to-account migration review/status/retry UX, mobile navigation polish, web authenticated cloud dashboard/vehicle read-only views, web cloud vehicle create/edit/archive/restore, web cloud odometer entry create/edit/delete, web cloud service record create/view/edit/delete, web cloud repair record create/view/edit/delete, and web cloud maintenance reminder create/view/edit/complete/delete are complete; broader app-side cloud sync and broader web attachment/export flows are next.
+Current development track: Local guest MVP features, optional Supabase Auth foundation, Supabase cloud data schema/RLS foundation, mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD, mobile cloud service record CRUD, mobile cloud repair record CRUD, mobile cloud maintenance reminder CRUD, cloud service/repair record attachments, guest-to-account vehicle migration, guest-to-account odometer-entry migration, guest-to-account service-record migration, guest-to-account repair-record migration, guest-to-account maintenance-reminder migration, guest-to-account service/repair attachment migration, final guest-to-account migration review/status/retry UX, mobile navigation polish, web authenticated cloud dashboard/vehicle read-only views, web cloud vehicle create/edit/archive/restore, web cloud odometer entry create/edit/delete, web cloud service record create/view/edit/delete, web cloud repair record create/view/edit/delete, web cloud maintenance reminder create/view/edit/complete/delete, and web cloud service/repair attachment viewing/download are complete; broader app-side cloud sync and broader web attachment write/export flows are next.
 
 The app is still local guest-mode first. Users can manage vehicles, odometer entries, service records, repair records, reminders, local attachments, and local CSV export without creating an account.
 
@@ -209,6 +216,10 @@ The mobile app currently supports local guest-mode:
   `/vehicles/[vehicleId]/reminders/[reminderId]`
 - Web cloud maintenance reminder edit route at
   `/vehicles/[vehicleId]/reminders/[reminderId]/edit`
+- Web cloud service record attachment open route at
+  `/vehicles/[vehicleId]/service-records/[serviceRecordId]/attachments/[attachmentId]/open`
+- Web cloud repair record attachment open route at
+  `/vehicles/[vehicleId]/repair-records/[repairRecordId]/attachments/[attachmentId]/open`
 - Supabase session refresh proxy for Next.js App Router
 - Protected web account pages show a clear sign-in prompt when no session exists
 - Web account views are cloud-account-only and do not read local mobile guest data
@@ -235,11 +246,15 @@ The mobile app currently supports local guest-mode:
   maintenance reminders for active cloud vehicles saved to Supabase
 - Web cloud reminder status is calculated from cloud reminder fields and the
   cloud vehicle `current_odometer` without using local mobile guest data
-- Web attachment, export, and guest-to-account migration write flows are still
-  deferred
+- Signed-in web users can view existing cloud service/repair attachments on
+  service and repair record detail pages and open private files through
+  short-lived Supabase Storage signed URLs
+- Web attachment upload/delete/edit, export, and guest-to-account migration
+  write flows are still deferred
 - Web does not schedule local reminder notifications or cloud push
   notifications
-- Mobile behavior was not changed by the web maintenance reminder slice
+- Mobile behavior was not changed by the web maintenance reminder or web
+  attachment viewing/download slices
 
 ## Supabase Setup Required
 
@@ -257,7 +272,7 @@ The mobile app currently supports local guest-mode:
 
 ## Current Cloud Limitations
 
-- Account creation is optional and currently unlocks cloud vehicle CRUD, cloud odometer entry CRUD, cloud service record CRUD, cloud repair record CRUD, cloud maintenance reminder CRUD, and cloud service/repair attachment support on mobile, plus cloud dashboard/vehicle visibility, cloud vehicle create/edit/archive/restore, cloud odometer entry create/edit/delete, cloud service record create/view/edit/delete, cloud repair record create/view/edit/delete, and cloud maintenance reminder create/view/edit/complete/delete on web.
+- Account creation is optional and currently unlocks cloud vehicle CRUD, cloud odometer entry CRUD, cloud service record CRUD, cloud repair record CRUD, cloud maintenance reminder CRUD, and cloud service/repair attachment support on mobile, plus cloud dashboard/vehicle visibility, cloud vehicle create/edit/archive/restore, cloud odometer entry create/edit/delete, cloud service record create/view/edit/delete, cloud repair record create/view/edit/delete, cloud maintenance reminder create/view/edit/complete/delete, and cloud service/repair attachment viewing/download on web.
 - Local guest records are not uploaded automatically after sign-in or sign-up.
 - Full automatic guest-to-account sync is not implemented. Vehicle-only, odometer-only, service-record-only, repair-record-only, maintenance-reminder-only, and service/repair attachment-only guest-to-account migration exist as focused manual Settings actions, with a Cloud Migration review/status/retry screen for managing those steps.
 - Guest-to-account migration planning is complete in `docs/guest-to-account-migration-plan.md`, Slice 1 readiness/status detection is implemented locally, Slice 2 vehicle-only upload is implemented, Slice 3 odometer-only upload is implemented, Slice 4 service-record-only upload is implemented, Slice 5 repair-record-only upload is implemented, Slice 6 maintenance-reminder-only upload is implemented, Slice 7 attachment-only upload is implemented, and Slice 8 review/status/retry UX is implemented.
@@ -275,10 +290,11 @@ The mobile app currently supports local guest-mode:
 - Cloud attachments are implemented only for cloud service and repair records. Vehicle-level cloud documents are not implemented.
 - Web cloud vehicle create/edit/archive/restore, web cloud odometer entry
   create/edit/delete, web cloud service record create/view/edit/delete, web
-  cloud repair record create/view/edit/delete, and web cloud maintenance
-  reminder create/view/edit/complete/delete are implemented for signed-in
-  users. Web cloud attachment, export, and guest-to-account migration write
-  flows are still deferred.
+  cloud repair record create/view/edit/delete, web cloud maintenance reminder
+  create/view/edit/complete/delete, and web cloud service/repair attachment
+  viewing/download are implemented for signed-in users. Web cloud attachment
+  upload/delete/edit, export, and guest-to-account migration write flows are
+  still deferred.
 
 ## Cloud Vehicle RLS Manual Verification
 
@@ -318,7 +334,12 @@ After running `packages/db/sql/001_profiles_auth_foundation.sql` and `packages/d
 - Cloud attachment Storage paths are user-scoped, such as `{userId}/vehicles/{vehicleId}/service-records/{serviceRecordId}/{attachmentLocalId}-{fileName}` and `{userId}/vehicles/{vehicleId}/repair-records/{repairRecordId}/{attachmentLocalId}-{fileName}`.
 - Selected photos and PDFs are copied into app-controlled local document storage when possible. PDF attachments must copy successfully and verify as non-empty before metadata is saved. If copying fails for a photo in a runtime-specific case, the original local URI is preserved so the metadata still exists.
 - Local photos preview inside AutoLedger. Local PDFs still rely on an installed platform PDF viewer and use the native sharing sheet for a more reliable handoff.
-- Cloud attachments are opened with short-lived signed URLs. Platform behavior depends on the installed browser/viewer and file type.
+- Cloud attachments are opened with short-lived signed URLs on mobile and web.
+  Platform behavior depends on the installed browser/viewer and file type.
+- Web service and repair record detail pages show existing cloud attachments and
+  open private files through short-lived Supabase Storage signed URLs. Web
+  attachment upload, delete, edit/rename, and local guest attachment flows are
+  still deferred.
 - Existing local guest service/repair attachments can be uploaded through the focused attachment-only migration action after their parent service/repair records have been migrated. They are not uploaded automatically after sign-in or sign-up.
 - OCR is not implemented.
 - Vehicle-level documents are not implemented.
@@ -355,7 +376,7 @@ The next recommended feature track is a focused web cloud records slice or a car
 
 Good candidates:
 
-- Add authenticated web cloud service/repair attachment create/open/delete flows.
+- Add authenticated web cloud service/repair attachment upload/delete flows.
 - Generate Supabase database TypeScript types from the live project after running the SQL.
 - Continue focused tests around shared validation, odometer/history logic, attachment validation, reminder status logic, CSV export logic, and migration logic.
 

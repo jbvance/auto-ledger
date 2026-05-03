@@ -12,6 +12,8 @@ import {
   AccountErrorPanel,
   AccountPageShell,
 } from "../../../../../components/AccountPageChrome";
+import { RecordAttachmentSection } from "../../../../../components/RecordAttachmentList";
+import { listWebCloudAttachmentsForServiceRecord } from "../../../../../lib/cloud/recordAttachmentData";
 import { ServiceRecordDeleteForm } from "../../../../../components/ServiceRecordForm";
 import { getWebCloudServiceRecord } from "../../../../../lib/cloud/serviceRecordMutations";
 import {
@@ -50,15 +52,23 @@ export default async function ServiceRecordDetailPage({
     null;
   let serviceRecord: Awaited<ReturnType<typeof getWebCloudServiceRecord>> =
     null;
+  let attachments: Awaited<
+    ReturnType<typeof listWebCloudAttachmentsForServiceRecord>
+  > = [];
   let loadError: null | string = null;
 
   try {
-    [detail, serviceRecord] = await Promise.all([
+    [detail, serviceRecord, attachments] = await Promise.all([
       loadWebCloudVehicleDetail({
         userId: authState.user.id,
         vehicleId,
       }),
       getWebCloudServiceRecord({
+        serviceRecordId,
+        userId: authState.user.id,
+        vehicleId,
+      }),
+      listWebCloudAttachmentsForServiceRecord({
         serviceRecordId,
         userId: authState.user.id,
         vehicleId,
@@ -215,6 +225,14 @@ export default async function ServiceRecordDetailPage({
         <TextPanel label="Description" value={serviceRecord.description} />
         <TextPanel label="Notes" value={serviceRecord.notes} />
       </section>
+
+      <RecordAttachmentSection
+        attachments={attachments}
+        description="Private cloud receipts and documents attached to this service record."
+        getAttachmentHref={(attachment) =>
+          `/vehicles/${detail.vehicle.id}/service-records/${serviceRecord.id}/attachments/${attachment.id}/open`
+        }
+      />
     </AccountPageShell>
   );
 }

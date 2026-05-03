@@ -12,7 +12,9 @@ import {
   AccountErrorPanel,
   AccountPageShell,
 } from "../../../../../components/AccountPageChrome";
+import { RecordAttachmentSection } from "../../../../../components/RecordAttachmentList";
 import { RepairRecordDeleteForm } from "../../../../../components/RepairRecordForm";
+import { listWebCloudAttachmentsForRepairRecord } from "../../../../../lib/cloud/recordAttachmentData";
 import { getWebCloudRepairRecord } from "../../../../../lib/cloud/repairRecordMutations";
 import {
   getWebCloudAuthState,
@@ -49,15 +51,23 @@ export default async function RepairRecordDetailPage({
   let detail: Awaited<ReturnType<typeof loadWebCloudVehicleDetail>> | null =
     null;
   let repairRecord: Awaited<ReturnType<typeof getWebCloudRepairRecord>> = null;
+  let attachments: Awaited<
+    ReturnType<typeof listWebCloudAttachmentsForRepairRecord>
+  > = [];
   let loadError: null | string = null;
 
   try {
-    [detail, repairRecord] = await Promise.all([
+    [detail, repairRecord, attachments] = await Promise.all([
       loadWebCloudVehicleDetail({
         userId: authState.user.id,
         vehicleId,
       }),
       getWebCloudRepairRecord({
+        repairRecordId,
+        userId: authState.user.id,
+        vehicleId,
+      }),
+      listWebCloudAttachmentsForRepairRecord({
         repairRecordId,
         userId: authState.user.id,
         vehicleId,
@@ -224,6 +234,14 @@ export default async function RepairRecordDetailPage({
         <TextPanel label="Description" value={repairRecord.description} />
         <TextPanel label="Notes" value={repairRecord.notes} />
       </section>
+
+      <RecordAttachmentSection
+        attachments={attachments}
+        description="Private cloud receipts and documents attached to this repair record."
+        getAttachmentHref={(attachment) =>
+          `/vehicles/${detail.vehicle.id}/repair-records/${repairRecord.id}/attachments/${attachment.id}/open`
+        }
+      />
     </AccountPageShell>
   );
 }
