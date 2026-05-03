@@ -31,6 +31,12 @@ export function AccountPageShell({
             </Link>
             <Link
               className="rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm font-bold text-[var(--foreground)]"
+              href="/settings"
+            >
+              Account & Data
+            </Link>
+            <Link
+              className="rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm font-bold text-[var(--foreground)]"
               href="/settings/export"
             >
               Export

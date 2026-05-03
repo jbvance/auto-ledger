@@ -78,6 +78,16 @@ with RLS, does not read local mobile guest data, does not export attachment file
 binaries or signed URLs, and does not implement PDF export. Mobile behavior was
 not changed by this web cloud CSV export slice.
 
+Account/data privacy controls foundation is complete. Mobile Settings now links
+to Account & Data Controls, explains local guest records versus cloud account
+records, links to local CSV export, and offers typed-confirmation deletion for
+local guest data on the current device only. Web `/settings` explains signed-in
+cloud account data versus mobile local guest data, links to cloud CSV export,
+and shows account/cloud data deletion as planned but inactive. Full cloud data
+deletion and Supabase Auth account deletion are documented in
+`docs/account-data-deletion-plan.md` and remain deferred to a server-only
+implementation.
+
 The mobile app runs successfully through Expo and has been tested in Expo Go.
 
 An initial testing foundation has been added. Root test scripts now cover
@@ -85,7 +95,7 @@ Vitest package tests for shared domain and validation logic plus Jest Expo
 mobile tests for focused user-visible behavior. A lightweight Maestro mobile
 E2E smoke scaffold and `docs/testing.md` are also present.
 
-Current development track: Local guest MVP features, optional Supabase Auth foundation, Supabase cloud data schema/RLS foundation, mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD, mobile cloud service record CRUD, mobile cloud repair record CRUD, mobile cloud maintenance reminder CRUD, cloud service/repair record attachments, guest-to-account vehicle migration, guest-to-account odometer-entry migration, guest-to-account service-record migration, guest-to-account repair-record migration, guest-to-account maintenance-reminder migration, guest-to-account service/repair attachment migration, final guest-to-account migration review/status/retry UX, mobile navigation polish, web authenticated cloud dashboard/vehicle read-only views, web cloud vehicle create/edit/archive/restore, web cloud odometer entry create/edit/delete, web cloud service record create/view/edit/delete, web cloud repair record create/view/edit/delete, web cloud maintenance reminder create/view/edit/complete/delete, web cloud service/repair attachment viewing/upload/delete, and web cloud CSV export are complete; account/data privacy controls, broader app-side cloud sync, and web attachment edit/rename are next candidate slices.
+Current development track: Local guest MVP features, optional Supabase Auth foundation, Supabase cloud data schema/RLS foundation, mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD, mobile cloud service record CRUD, mobile cloud repair record CRUD, mobile cloud maintenance reminder CRUD, cloud service/repair record attachments, guest-to-account vehicle migration, guest-to-account odometer-entry migration, guest-to-account service-record migration, guest-to-account repair-record migration, guest-to-account maintenance-reminder migration, guest-to-account service/repair attachment migration, final guest-to-account migration review/status/retry UX, mobile navigation polish, web authenticated cloud dashboard/vehicle read-only views, web cloud vehicle create/edit/archive/restore, web cloud odometer entry create/edit/delete, web cloud service record create/view/edit/delete, web cloud repair record create/view/edit/delete, web cloud maintenance reminder create/view/edit/complete/delete, web cloud service/repair attachment viewing/upload/delete, web cloud CSV export, and account/data privacy controls are complete; server-only cloud account/data deletion, broader app-side cloud sync, and web attachment edit/rename are next candidate slices.
 
 The app is still local guest-mode first. Users can manage vehicles, odometer entries, service records, repair records, reminders, local attachments, and local CSV export without creating an account.
 
@@ -198,12 +208,18 @@ The mobile app currently supports local guest-mode:
 - Cloud Migration completion messaging says supported local records were copied to the account and explicitly states that original local records remain on the device
 - Export local guest data to a combined CSV file from Settings
 - CSV export includes vehicles, odometer entries, service records, repair records, maintenance reminders, and attachment metadata
+- Account & Data Controls explain local guest data versus cloud account data
+- Local guest data controls show local counts, link to local CSV export, and
+  can delete local SQLite rows plus app-owned local attachment files only after
+  typed confirmation
+- Local guest data deletion does not delete cloud account data
 
 ## Working Web Account Views
 
 - Web login route at `/login`
 - Web signup route at `/signup`
 - Web account dashboard at `/dashboard` for signed-in users
+- Web account/data settings route at `/settings`
 - Web cloud vehicle list at `/vehicles`
 - Web cloud vehicle create route at `/vehicles/new`
 - Web cloud vehicle detail at `/vehicles/[vehicleId]`
@@ -237,6 +253,10 @@ The mobile app currently supports local guest-mode:
 - Supabase session refresh proxy for Next.js App Router
 - Protected web account pages show a clear sign-in prompt when no session exists
 - Web account views are cloud-account-only and do not read local mobile guest data
+- Web account/data settings explain local guest records, cloud account records,
+  optional migration, and cloud CSV export access
+- Web account/cloud deletion controls are planned and inactive; no one-click
+  destructive cloud deletion is exposed
 - Signed-in web users can create, edit, archive, and restore cloud vehicles
   saved to Supabase
 - Web archived vehicles are visible separately from active vehicles on the
@@ -298,6 +318,8 @@ The mobile app currently supports local guest-mode:
 - Account creation is optional and currently unlocks cloud vehicle CRUD, cloud odometer entry CRUD, cloud service record CRUD, cloud repair record CRUD, cloud maintenance reminder CRUD, and cloud service/repair attachment support on mobile, plus cloud dashboard/vehicle visibility, cloud vehicle create/edit/archive/restore, cloud odometer entry create/edit/delete, cloud service record create/view/edit/delete, cloud repair record create/view/edit/delete, cloud maintenance reminder create/view/edit/complete/delete, and cloud service/repair attachment viewing/upload/delete on web.
 - Local guest records are not uploaded automatically after sign-in or sign-up.
 - Full automatic guest-to-account sync is not implemented. Vehicle-only, odometer-only, service-record-only, repair-record-only, maintenance-reminder-only, and service/repair attachment-only guest-to-account migration exist as focused manual Settings actions, with a Cloud Migration review/status/retry screen for managing those steps.
+- Server-only cloud account deletion and full cloud data deletion are not live.
+  The technical plan is documented in `docs/account-data-deletion-plan.md`.
 - Guest-to-account migration planning is complete in `docs/guest-to-account-migration-plan.md`, Slice 1 readiness/status detection is implemented locally, Slice 2 vehicle-only upload is implemented, Slice 3 odometer-only upload is implemented, Slice 4 service-record-only upload is implemented, Slice 5 repair-record-only upload is implemented, Slice 6 maintenance-reminder-only upload is implemented, Slice 7 attachment-only upload is implemented, and Slice 8 review/status/retry UX is implemented.
 - Vehicle-only migration creates/repairs local `migration_entity_mappings` rows for vehicles. It does not delete local guest data, mutate local vehicle rows, migrate service/repair/reminder/attachment records, or mark child records as migrated.
 - Odometer-only migration requires completed vehicle mappings, creates/repairs `migration_entity_mappings` rows with `entity_type = 'odometer_entry'`, preserves odometer entry `local_id`, and skips entries whose vehicle mapping is missing. It does not delete local guest data or mutate local odometer rows.
@@ -383,6 +405,23 @@ After running `packages/db/sql/001_profiles_auth_foundation.sql` and `packages/d
 - Attachment CSV export includes metadata only. It does not bundle attachment files and does not include private signed URLs.
 - PDF export and server-side scheduled/export job flows are not implemented.
 
+## Current Account/Data Privacy Controls
+
+- Mobile Settings links to Account & Data Controls.
+- Mobile Account & Data Controls explain that local guest records are stored on
+  the current device and cloud account records are stored in the user's
+  AutoLedger account.
+- Mobile local guest data deletion is available only after typed confirmation.
+  It deletes local guest SQLite rows, cancels local reminder notifications, and
+  attempts to remove app-owned local attachment files. It does not delete cloud
+  account data.
+- Web `/settings` explains that the web app shows cloud account data only and
+  does not read mobile local guest records.
+- Web `/settings` links to `/settings/export` for cloud CSV export.
+- Account deletion and full cloud data deletion remain planned and inactive
+  until a safe server-only implementation exists.
+- PDF export remains deferred.
+
 ## Not Implemented Yet
 
 Do not assume these exist yet:
@@ -390,6 +429,7 @@ Do not assume these exist yet:
 - Broader cloud record sync beyond vehicles, odometer entries, service records, repair records, maintenance reminders, and service/repair attachments
 - Automatic full guest-to-account sync beyond the focused migration actions
 - Automatic local guest data cleanup or delete-after-migration
+- Live server-only cloud account deletion and full cloud data deletion
 - Vehicle-level cloud file attachments
 - Cloud push notifications
 - Households
@@ -403,13 +443,16 @@ Do not assume these exist yet:
 
 ## Recommended Next Feature
 
-The next recommended feature track is focused account and data privacy controls, while preserving guest mode as the default mobile experience and keeping web account views cloud-only. This should be designed as an explicit, export-first, confirmation-heavy slice that separates cloud account/data deletion from local guest data cleanup.
+The next recommended privacy feature is a server-only cloud account/data
+deletion dry run and implementation plan, while preserving guest mode as the
+default mobile experience and keeping web account views cloud-only. This should
+remain export-first and confirmation-heavy, and it must keep service-role access
+off mobile and browser clients.
 
 Good candidates:
 
 - Generate Supabase database TypeScript types from the live project after running the SQL.
-- Add server-only cloud account/data deletion planning and implementation that never exposes `SUPABASE_SERVICE_ROLE_KEY` to mobile or browser code.
-- Add explicit local guest data cleanup controls only after export-first UX and strong confirmation copy are in place.
+- Add server-only cloud account/data deletion dry-run counts and implementation that never exposes `SUPABASE_SERVICE_ROLE_KEY` to mobile or browser code.
 - Continue focused tests around shared validation, odometer/history logic, attachment validation, reminder status logic, CSV export logic, migration logic, and deletion/cleanup ordering.
 - Plan a focused web attachment edit/rename slice after privacy controls or as a separate later slice.
 

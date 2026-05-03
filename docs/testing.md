@@ -92,6 +92,13 @@ development build app id when a dev build exists.
 - Web cloud CSV export dataset recognition, empty header-only exports, shared
   CSV escaping behavior for cloud rows, and attachment metadata export without
   signed URLs or file binaries.
+- Web account/data controls for signed-in and signed-out rendering, export
+  access, local/cloud data explanation, and inactive cloud deletion controls.
+- Mobile account/data controls screen copy for local/cloud data explanation,
+  local export access, and typed local deletion confirmation.
+- Mobile local guest data cleanup helper summary behavior, local row deletion
+  ordering, reminder notification cancellation, and app-owned attachment file
+  deletion.
 - Web cloud service/repair record deletion cleanup for related attachment
   Storage objects and metadata.
 - Cloud record attachment Storage path generation.

@@ -325,6 +325,16 @@ export default function SettingsScreen() {
               </Text>
             </View>
           ) : null}
+
+          <Pressable
+            accessibilityRole="button"
+            className="rounded-card border border-ledger-line bg-ledger-background px-4 py-3"
+            onPress={() => router.push("/settings/data" as Href)}
+          >
+            <Text className="text-center text-base font-bold text-ledger-ink">
+              Account & Data Controls
+            </Text>
+          </Pressable>
         </View>
         <View className="gap-4 rounded-card border border-ledger-line bg-ledger-surface p-4">
           <View className="flex-row items-start justify-between gap-4">
