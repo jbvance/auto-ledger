@@ -41,9 +41,10 @@ export default function Home() {
               A quiet, mobile-first home for private vehicle records.
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-7 text-[var(--muted)]">
-              Foundation, mobile guest records, local reminders, attachments,
-              CSV export, and optional account auth foundation are working.
-              Cloud record sync is next.
+              Mobile guest records, optional accounts, cloud vehicles and
+              records, reminders, attachments, CSV export, and focused migration
+              tools are working. Web now provides cloud account visibility for
+              dashboard and vehicle detail views.
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
               <Link
@@ -79,10 +80,9 @@ export default function Home() {
           <div className="mt-6 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5">
             <h2 className="text-lg font-bold">Privacy Posture</h2>
             <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-              Guest mode stays first. Supabase auth foundation is available,
-              but cloud tables for vehicle records, cloud sync,
-              guest-to-account migration, and cloud attachment storage are not
-              implemented yet.
+              Guest mode stays first on mobile. Web views are cloud-account-only
+              for now and rely on Supabase Auth, RLS, and private Storage
+              metadata without reading local mobile guest data.
             </p>
           </div>
         </section>

@@ -6,6 +6,13 @@ The AutoLedger project has been created as a pnpm monorepo.
 
 The web app runs successfully on port 3000.
 
+The web app now has authenticated cloud-account visibility for signed-in users:
+`/dashboard` shows account cloud summaries, vehicle cards, upcoming reminders,
+and recent odometer/service/repair activity; `/vehicles` lists cloud vehicles;
+and `/vehicles/[vehicleId]` shows cloud vehicle detail with display-only
+odometer entries, service records, repair records, reminders, and service/repair
+attachment metadata.
+
 The mobile app runs successfully through Expo and has been tested in Expo Go.
 
 An initial testing foundation has been added. Root test scripts now cover
@@ -13,7 +20,7 @@ Vitest package tests for shared domain and validation logic plus Jest Expo
 mobile tests for focused user-visible behavior. A lightweight Maestro mobile
 E2E smoke scaffold and `docs/testing.md` are also present.
 
-Current development track: Local guest MVP features, optional Supabase Auth foundation, Supabase cloud data schema/RLS foundation, mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD, mobile cloud service record CRUD, mobile cloud repair record CRUD, mobile cloud maintenance reminder CRUD, cloud service/repair record attachments, guest-to-account vehicle migration, guest-to-account odometer-entry migration, guest-to-account service-record migration, guest-to-account repair-record migration, guest-to-account maintenance-reminder migration, guest-to-account service/repair attachment migration, final guest-to-account migration review/status/retry UX, and mobile navigation polish are complete; broader app-side cloud sync is next.
+Current development track: Local guest MVP features, optional Supabase Auth foundation, Supabase cloud data schema/RLS foundation, mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD, mobile cloud service record CRUD, mobile cloud repair record CRUD, mobile cloud maintenance reminder CRUD, cloud service/repair record attachments, guest-to-account vehicle migration, guest-to-account odometer-entry migration, guest-to-account service-record migration, guest-to-account repair-record migration, guest-to-account maintenance-reminder migration, guest-to-account service/repair attachment migration, final guest-to-account migration review/status/retry UX, mobile navigation polish, and web authenticated cloud dashboard/vehicle read-only views are complete; broader app-side cloud sync and web write flows are next.
 
 The app is still local guest-mode first. Users can manage vehicles, odometer entries, service records, repair records, reminders, local attachments, and local CSV export without creating an account.
 
@@ -127,13 +134,21 @@ The mobile app currently supports local guest-mode:
 - Export local guest data to a combined CSV file from Settings
 - CSV export includes vehicles, odometer entries, service records, repair records, maintenance reminders, and attachment metadata
 
-## Working Web Auth Foundation
+## Working Web Account Views
 
 - Web login route at `/login`
 - Web signup route at `/signup`
-- Web account/dashboard placeholder at `/dashboard`
+- Web account dashboard at `/dashboard` for signed-in users
+- Web cloud vehicle list at `/vehicles`
+- Web cloud vehicle detail at `/vehicles/[vehicleId]`
 - Supabase session refresh proxy for Next.js App Router
-- Web account screens explain that cloud record sync is not active yet
+- Protected web account pages show a clear sign-in prompt when no session exists
+- Web account views are cloud-account-only and do not read local mobile guest data
+- Web vehicle detail includes display-only cloud odometer entries, service
+  records, repair records, maintenance reminders, and service/repair attachment
+  metadata
+- Web create/edit/delete flows for vehicles, records, reminders, attachments,
+  exports, and guest-to-account migration are still deferred
 
 ## Supabase Setup Required
 
@@ -151,7 +166,7 @@ The mobile app currently supports local guest-mode:
 
 ## Current Cloud Limitations
 
-- Account creation is optional and currently unlocks cloud vehicle CRUD, cloud odometer entry CRUD, cloud service record CRUD, cloud repair record CRUD, cloud maintenance reminder CRUD, and cloud service/repair attachment support.
+- Account creation is optional and currently unlocks cloud vehicle CRUD, cloud odometer entry CRUD, cloud service record CRUD, cloud repair record CRUD, cloud maintenance reminder CRUD, and cloud service/repair attachment support on mobile, plus read-only cloud dashboard/vehicle visibility on web.
 - Local guest records are not uploaded automatically after sign-in or sign-up.
 - Full automatic guest-to-account sync is not implemented. Vehicle-only, odometer-only, service-record-only, repair-record-only, maintenance-reminder-only, and service/repair attachment-only guest-to-account migration exist as focused manual Settings actions, with a Cloud Migration review/status/retry screen for managing those steps.
 - Guest-to-account migration planning is complete in `docs/guest-to-account-migration-plan.md`, Slice 1 readiness/status detection is implemented locally, Slice 2 vehicle-only upload is implemented, Slice 3 odometer-only upload is implemented, Slice 4 service-record-only upload is implemented, Slice 5 repair-record-only upload is implemented, Slice 6 maintenance-reminder-only upload is implemented, Slice 7 attachment-only upload is implemented, and Slice 8 review/status/retry UX is implemented.
@@ -167,7 +182,9 @@ The mobile app currently supports local guest-mode:
 - Cloud vehicle `current_odometer` is saved on the vehicle row and is recalculated from cloud odometer entries, cloud service records, and cloud repair records after cloud odometer/service/repair edits/deletes, after odometer-only migration, after service-record-only migration, and after repair-record-only migration. Local guest service and repair records are not included in cloud odometer calculations.
 - Cloud maintenance reminder status is calculated in-app from the cloud reminder due fields and the cloud vehicle `current_odometer`.
 - Cloud attachments are implemented only for cloud service and repair records. Vehicle-level cloud documents are not implemented.
-- Web cloud vehicle CRUD is deferred; the web app remains an auth/dashboard placeholder.
+- Web cloud vehicle write flows are deferred. The web app currently provides
+  authenticated read-only cloud dashboard, vehicle list, and vehicle detail
+  views.
 
 ## Cloud Vehicle RLS Manual Verification
 

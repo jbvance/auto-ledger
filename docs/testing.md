@@ -7,6 +7,7 @@ cover high-value product logic without overbuilding Phase 1 infrastructure.
 
 - Vitest for pure TypeScript package tests in `packages/shared` and
   `packages/validation`.
+- Vitest for focused pure TypeScript web helper tests in `apps/web`.
 - Jest with `jest-expo` for Expo React Native tests in `apps/mobile`.
 - React Native Testing Library for user-visible mobile component and screen
   assertions.
@@ -36,6 +37,12 @@ Run mobile Jest tests:
 
 ```sh
 pnpm test:mobile
+```
+
+Run web helper tests:
+
+```sh
+pnpm test:web
 ```
 
 Run unit tests in watch mode:
@@ -72,6 +79,7 @@ development build app id when a dev build exists.
 - Maintenance reminder status logic.
 - Cloud-compatible maintenance reminder row mapping.
 - Cloud-compatible record attachment row mapping.
+- Web cloud row mapping helpers for read-only account views.
 - Cloud record attachment Storage path generation.
 - Guest attachment migration parent mapping resolution, preserved attachment
   local IDs, mapping creation, missing parent mapping skips, unsupported
