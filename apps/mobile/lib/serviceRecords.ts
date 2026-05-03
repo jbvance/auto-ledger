@@ -43,6 +43,16 @@ export const listServiceRecords = async (
   return rows.map(mapServiceRecordRow);
 };
 
+export const listAllServiceRecords = async (): Promise<ServiceRecord[]> => {
+  const db = await getGuestDatabase();
+  const rows = await db.getAllAsync<ServiceRecordRow>(
+    `SELECT * FROM service_records
+     ORDER BY service_date DESC, created_at DESC`,
+  );
+
+  return rows.map(mapServiceRecordRow);
+};
+
 export const getServiceRecord = async (
   id: string,
 ): Promise<ServiceRecord | null> => {

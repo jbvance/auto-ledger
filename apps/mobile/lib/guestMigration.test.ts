@@ -1,9 +1,11 @@
 import { getGuestDatabase } from "./database";
 import {
   buildGuestMigrationSummary,
+  getServiceRecordMigrationMappings,
   getVehicleMigrationMappings,
   getGuestMigrationSummary,
   getOrCreateInitialMigrationRun,
+  upsertServiceRecordMigrationMapping,
   upsertVehicleMigrationMapping,
 } from "./guestMigration";
 
@@ -34,7 +36,10 @@ const emptyCounts: Record<CountKey, number> = {
 };
 
 const queryKeyFor = (query: string): CountKey | null => {
-  if (query.includes("FROM vehicles") && query.includes("archived_at IS NULL")) {
+  if (
+    query.includes("FROM vehicles") &&
+    query.includes("archived_at IS NULL")
+  ) {
     return "activeVehicles";
   }
 
@@ -264,6 +269,57 @@ describe("guest migration status storage", () => {
     expect(mappings).toHaveLength(1);
     expect(db.getAllAsync).toHaveBeenCalledWith(
       expect.stringContaining("entity_type = 'vehicle'"),
+      "user_1",
+    );
+  });
+
+  it("upserts and loads service record migration mappings", async () => {
+    const db = createMockDatabase();
+    db.getAllAsync.mockResolvedValue([
+      {
+        account_id: "user_1",
+        cloud_id: "cloud_service_1",
+        created_at: "2026-05-02T00:00:00.000Z",
+        entity_type: "service_record",
+        error_message: null,
+        id: "mapping_1",
+        local_id: "local_service_1",
+        run_id: "run_1",
+        status: "synced",
+        updated_at: "2026-05-02T00:00:00.000Z",
+      },
+    ]);
+    mockedGetGuestDatabase.mockResolvedValue(db as never);
+
+    const mapping = await upsertServiceRecordMigrationMapping({
+      accountId: "user_1",
+      cloudId: "cloud_service_1",
+      localId: "local_service_1",
+      runId: "run_1",
+      status: "synced",
+    });
+    const mappings = await getServiceRecordMigrationMappings("user_1");
+
+    expect(mapping).toMatchObject({
+      account_id: "user_1",
+      cloud_id: "cloud_service_1",
+      entity_type: "service_record",
+      local_id: "local_service_1",
+      status: "synced",
+    });
+    expect(db.runAsync).toHaveBeenCalledWith(
+      expect.stringContaining("ON CONFLICT(account_id, entity_type, local_id)"),
+      expect.arrayContaining([
+        "user_1",
+        "service_record",
+        "local_service_1",
+        "cloud_service_1",
+        "synced",
+      ]),
+    );
+    expect(mappings).toHaveLength(1);
+    expect(db.getAllAsync).toHaveBeenCalledWith(
+      expect.stringContaining("entity_type = 'service_record'"),
       "user_1",
     );
   });

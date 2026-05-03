@@ -13,7 +13,7 @@ Vitest package tests for shared domain and validation logic plus Jest Expo
 mobile tests for focused user-visible behavior. A lightweight Maestro mobile
 E2E smoke scaffold and `docs/testing.md` are also present.
 
-Current development track: Local guest MVP features, optional Supabase Auth foundation, Supabase cloud data schema/RLS foundation, mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD, mobile cloud service record CRUD, mobile cloud repair record CRUD, mobile cloud maintenance reminder CRUD, cloud service/repair record attachments, guest-to-account vehicle migration, guest-to-account odometer-entry migration, and mobile navigation polish are complete; broader app-side cloud sync is next.
+Current development track: Local guest MVP features, optional Supabase Auth foundation, Supabase cloud data schema/RLS foundation, mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD, mobile cloud service record CRUD, mobile cloud repair record CRUD, mobile cloud maintenance reminder CRUD, cloud service/repair record attachments, guest-to-account vehicle migration, guest-to-account odometer-entry migration, guest-to-account service-record migration, and mobile navigation polish are complete; broader app-side cloud sync is next.
 
 The app is still local guest-mode first. Users can manage vehicles, odometer entries, service records, repair records, reminders, local attachments, and local CSV export without creating an account.
 
@@ -37,7 +37,9 @@ Guest-to-account migration Slice 1 has been added for local readiness. The mobil
 
 Guest-to-account migration Slice 2 has been added for vehicles only. Signed-in users can copy local guest vehicles, including archived vehicles, into their Supabase account from Settings. Vehicle migration preserves each local vehicle `local_id`, records local `local_id -> cloud UUID` mappings, uses `user_id + local_id` duplicate prevention, and keeps all local guest data on the device.
 
-Guest-to-account migration Slice 3 has been added for odometer entries only. Signed-in users can copy local guest odometer entries into Supabase after vehicle mappings exist. Odometer migration preserves each local odometer entry `local_id`, attaches entries through the local vehicle mapping table, creates `odometer_entry` migration mappings, uses `user_id + local_id` duplicate prevention, recalculates affected cloud vehicle odometers, and keeps all local guest data on the device. Service records, repair records, maintenance reminders, and attachments are not migrated yet.
+Guest-to-account migration Slice 3 has been added for odometer entries only. Signed-in users can copy local guest odometer entries into Supabase after vehicle mappings exist. Odometer migration preserves each local odometer entry `local_id`, attaches entries through the local vehicle mapping table, creates `odometer_entry` migration mappings, uses `user_id + local_id` duplicate prevention, recalculates affected cloud vehicle odometers, and keeps all local guest data on the device.
+
+Guest-to-account migration Slice 4 has been added for service records only. Signed-in users can copy local guest service records into Supabase after vehicle mappings exist. Odometer migration is recommended before service migration so cloud odometer history is complete, but service migration's hard prerequisite is vehicle mapping. Service migration preserves each local service record `local_id`, maps local vehicle IDs to cloud vehicle UUIDs, creates `service_record` migration mappings, preserves service dates, categories, vendor names, costs, notes, timestamps, and uses `user_id + local_id` duplicate prevention. It recalculates affected cloud vehicle odometers and keeps all local guest data on the device. Repair records, maintenance reminders, and attachments are not migrated yet.
 
 Local CSV export support has been added for guest-mode data. Export creates one combined CSV file locally and opens the device share sheet when available.
 
@@ -101,6 +103,8 @@ The mobile app currently supports local guest-mode:
 - Vehicle-only guest-to-account migration includes active and archived local vehicles, preserves local vehicle `local_id` values, and creates local vehicle migration mappings without deleting local guest vehicles
 - Signed-in mobile users can run odometer-only guest-to-account migration from Settings after vehicle mappings exist and after reviewing the `004_verify_local_id_unique_constraints.sql` prerequisite
 - Odometer-only guest-to-account migration preserves local odometer entry `local_id` values, maps local vehicle IDs to cloud vehicle UUIDs, creates local odometer migration mappings, skips entries whose vehicle mapping is missing, recalculates affected cloud vehicle odometers, and does not delete local guest odometer entries
+- Signed-in mobile users can run service-record-only guest-to-account migration from Settings after vehicle mappings exist and after reviewing the `004_verify_local_id_unique_constraints.sql` prerequisite
+- Service-record-only guest-to-account migration preserves local service record `local_id` values, maps local vehicle IDs to cloud vehicle UUIDs, creates local service record migration mappings, preserves service date, odometer reading, title, category, description, vendor name, cost, currency, notes, and timestamps, skips records whose vehicle mapping is missing, recalculates affected cloud vehicle odometers, and does not delete local guest service records
 - Export local guest data to a combined CSV file from Settings
 - CSV export includes vehicles, odometer entries, service records, repair records, maintenance reminders, and attachment metadata
 
@@ -121,7 +125,7 @@ The mobile app currently supports local guest-mode:
 - Run `packages/db/sql/001_profiles_auth_foundation.sql` in the Supabase SQL editor to create the `public.profiles` table, profile trigger, authenticated table grants, and RLS policies.
 - Run `packages/db/sql/002_cloud_data_schema_rls.sql` in the Supabase SQL editor after the profiles SQL to create cloud data tables, indexes, triggers, relationships, authenticated table grants, and RLS policies.
 - Run `packages/db/sql/003_record_attachments_storage_rls.sql` in the Supabase SQL editor after the cloud data schema to create the private `record-attachments` Storage bucket and user-scoped Storage RLS policies.
-- Review/run `packages/db/sql/004_verify_local_id_unique_constraints.sql` before using guest-to-account vehicle or odometer migration. It is a read-only prerequisite check for the `user_id + local_id` unique constraints used to prevent duplicate migrated rows, including `public.odometer_entries`.
+- Review/run `packages/db/sql/004_verify_local_id_unique_constraints.sql` before using guest-to-account vehicle, odometer, or service record migration. It is a read-only prerequisite check for the `user_id + local_id` unique constraints used to prevent duplicate migrated rows, including `public.service_records`.
 - If the mobile app shows a Supabase "permission denied" warning for vehicles, rerun `packages/db/sql/002_cloud_data_schema_rls.sql` so the authenticated table grants are applied.
 - If cloud attachment upload/open/delete shows a bucket or permission warning, rerun `packages/db/sql/003_record_attachments_storage_rls.sql` so the private bucket and Storage RLS policies are installed.
 - See `docs/supabase-cloud-schema.md` for setup notes and simple SQL sanity checks.
@@ -130,14 +134,15 @@ The mobile app currently supports local guest-mode:
 
 - Account creation is optional and currently unlocks cloud vehicle CRUD, cloud odometer entry CRUD, cloud service record CRUD, cloud repair record CRUD, cloud maintenance reminder CRUD, and cloud service/repair attachment support.
 - Local guest records are not uploaded automatically after sign-in or sign-up.
-- Full guest-to-account migration is not implemented. Vehicle-only and odometer-only guest-to-account migration exist, but service records, repair records, maintenance reminders, and attachments are still local-only until later migration slices.
-- Guest-to-account migration planning is complete in `docs/guest-to-account-migration-plan.md`, Slice 1 readiness/status detection is implemented locally, Slice 2 vehicle-only upload is implemented, and Slice 3 odometer-only upload is implemented.
+- Full guest-to-account migration is not implemented. Vehicle-only, odometer-only, and service-record-only guest-to-account migration exist, but repair records, maintenance reminders, and attachments are still local-only until later migration slices.
+- Guest-to-account migration planning is complete in `docs/guest-to-account-migration-plan.md`, Slice 1 readiness/status detection is implemented locally, Slice 2 vehicle-only upload is implemented, Slice 3 odometer-only upload is implemented, and Slice 4 service-record-only upload is implemented.
 - Vehicle-only migration creates/repairs local `migration_entity_mappings` rows for vehicles. It does not delete local guest data, mutate local vehicle rows, migrate service/repair/reminder/attachment records, or mark child records as migrated.
 - Odometer-only migration requires completed vehicle mappings, creates/repairs `migration_entity_mappings` rows with `entity_type = 'odometer_entry'`, preserves odometer entry `local_id`, and skips entries whose vehicle mapping is missing. It does not delete local guest data or mutate local odometer rows.
+- Service-record-only migration requires completed vehicle mappings, creates/repairs `migration_entity_mappings` rows with `entity_type = 'service_record'`, preserves service record `local_id`, preserves simple `vendor_name` text while leaving `vendor_id = null`, and skips records whose vehicle mapping is missing. It does not delete local guest data, mutate local service rows, migrate local attachments, migrate repair records, or create cloud vendor rows.
 - Cloud vendor tables exist as SQL setup, but app-side cloud vendor CRUD is not implemented.
 - Cloud service records use simple `vendor_name` text for now; structured `vendor_id` support is still deferred.
 - Cloud repair records use simple `vendor_name` text for now; structured `vendor_id` support is still deferred.
-- Cloud vehicle `current_odometer` is saved on the vehicle row and is recalculated from cloud odometer entries, cloud service records, and cloud repair records after cloud odometer/service/repair edits/deletes and after odometer-only migration. Local guest service and repair records are not included in cloud odometer calculations.
+- Cloud vehicle `current_odometer` is saved on the vehicle row and is recalculated from cloud odometer entries, cloud service records, and cloud repair records after cloud odometer/service/repair edits/deletes, after odometer-only migration, and after service-record-only migration. Local guest service and repair records are not included in cloud odometer calculations.
 - Cloud maintenance reminder status is calculated in-app from the cloud reminder due fields and the cloud vehicle `current_odometer`.
 - Cloud attachments are implemented only for cloud service and repair records. Vehicle-level cloud documents are not implemented.
 - Web cloud vehicle CRUD is deferred; the web app remains an auth/dashboard placeholder.
@@ -197,8 +202,8 @@ After running `packages/db/sql/001_profiles_auth_foundation.sql` and `packages/d
 Do not assume these exist yet:
 
 - Broader cloud record sync beyond vehicles, odometer entries, service records, repair records, maintenance reminders, and service/repair attachments
-- Full guest-to-account migration beyond vehicles and odometer entries
-- Guest-to-account service, repair, reminder, and attachment migration
+- Full guest-to-account migration beyond vehicles, odometer entries, and service records
+- Guest-to-account repair, reminder, and attachment migration
 - Guest-to-account attachment migration
 - Vehicle-level cloud file attachments
 - Cloud push notifications
@@ -219,6 +224,6 @@ Good candidates:
 
 - Expand focused tests around shared validation, odometer/history logic, attachment validation, reminder status logic, CSV export logic, and future migration logic
 - Generate Supabase database TypeScript types from the live project after running the SQL
-- Implement the next guest-to-account migration slice for service records using the vehicle mapping table, followed by repair records, reminders, and attachments
+- Implement the next guest-to-account migration slice for repair records using the vehicle mapping table, followed by reminders and attachments
 
 Do not implement households, fuel tracking, VIN lookup, OCR, payments/subscriptions, PDF export, fleet/business tooling, or an auto shop portal unless specifically requested.

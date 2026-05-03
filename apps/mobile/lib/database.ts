@@ -215,6 +215,11 @@ const initializeGuestDatabase = async (db: SQLite.SQLiteDatabase) => {
         skipped_odometer_entries INTEGER NOT NULL DEFAULT 0,
         skipped_odometer_entries_missing_vehicle_mapping INTEGER NOT NULL DEFAULT 0,
         failed_odometer_entries INTEGER NOT NULL DEFAULT 0,
+        total_service_records INTEGER NOT NULL DEFAULT 0,
+        migrated_service_records INTEGER NOT NULL DEFAULT 0,
+        skipped_service_records INTEGER NOT NULL DEFAULT 0,
+        skipped_service_records_missing_vehicle_mapping INTEGER NOT NULL DEFAULT 0,
+        failed_service_records INTEGER NOT NULL DEFAULT 0,
         error_message TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
@@ -299,11 +304,7 @@ const initializeGuestDatabase = async (db: SQLite.SQLiteDatabase) => {
   }
 
   if (
-    !(await columnExists(
-      db,
-      "migration_runs",
-      "migrated_odometer_entries",
-    ))
+    !(await columnExists(db, "migration_runs", "migrated_odometer_entries"))
   ) {
     await db.execAsync(`
         ALTER TABLE migration_runs
@@ -311,13 +312,7 @@ const initializeGuestDatabase = async (db: SQLite.SQLiteDatabase) => {
       `);
   }
 
-  if (
-    !(await columnExists(
-      db,
-      "migration_runs",
-      "skipped_odometer_entries",
-    ))
-  ) {
+  if (!(await columnExists(db, "migration_runs", "skipped_odometer_entries"))) {
     await db.execAsync(`
         ALTER TABLE migration_runs
         ADD COLUMN skipped_odometer_entries INTEGER NOT NULL DEFAULT 0;
@@ -337,12 +332,51 @@ const initializeGuestDatabase = async (db: SQLite.SQLiteDatabase) => {
       `);
   }
 
-  if (
-    !(await columnExists(db, "migration_runs", "failed_odometer_entries"))
-  ) {
+  if (!(await columnExists(db, "migration_runs", "failed_odometer_entries"))) {
     await db.execAsync(`
         ALTER TABLE migration_runs
         ADD COLUMN failed_odometer_entries INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (!(await columnExists(db, "migration_runs", "total_service_records"))) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN total_service_records INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (!(await columnExists(db, "migration_runs", "migrated_service_records"))) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN migrated_service_records INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (!(await columnExists(db, "migration_runs", "skipped_service_records"))) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN skipped_service_records INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (
+    !(await columnExists(
+      db,
+      "migration_runs",
+      "skipped_service_records_missing_vehicle_mapping",
+    ))
+  ) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN skipped_service_records_missing_vehicle_mapping INTEGER NOT NULL DEFAULT 0;
+      `);
+  }
+
+  if (!(await columnExists(db, "migration_runs", "failed_service_records"))) {
+    await db.execAsync(`
+        ALTER TABLE migration_runs
+        ADD COLUMN failed_service_records INTEGER NOT NULL DEFAULT 0;
       `);
   }
 
@@ -384,12 +418,12 @@ const initializeGuestDatabase = async (db: SQLite.SQLiteDatabase) => {
         created_at,
         updated_at
       ) VALUES (?, ?, ?, ?, ?, ?)`,
-      "local",
-      0,
-      3,
-      500,
-      now,
-      now,
+    "local",
+    0,
+    3,
+    500,
+    now,
+    now,
   );
 
   initialized = true;

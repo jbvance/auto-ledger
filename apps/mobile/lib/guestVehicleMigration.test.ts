@@ -29,9 +29,7 @@ import {
 import { supabase } from "./supabase";
 import { listArchivedVehicles, listVehicles } from "./vehicles";
 
-const mockFrom = jest.mocked(
-  (supabase as unknown as { from: jest.Mock }).from,
-);
+const mockFrom = jest.mocked((supabase as unknown as { from: jest.Mock }).from);
 const mockedCreateVehicleMigrationRun = jest.mocked(createVehicleMigrationRun);
 const mockedListArchivedVehicles = jest.mocked(listArchivedVehicles);
 const mockedListVehicles = jest.mocked(listVehicles);
@@ -85,7 +83,10 @@ const createSelectBuilder = ({
   type SelectBuilder = {
     eq: jest.MockedFunction<() => SelectBuilder>;
     maybeSingle: jest.MockedFunction<
-      () => Promise<{ data: ReturnType<typeof createCloudVehicleRow> | null; error: typeof error }>
+      () => Promise<{
+        data: ReturnType<typeof createCloudVehicleRow> | null;
+        error: typeof error;
+      }>
     >;
     select: jest.MockedFunction<() => SelectBuilder>;
   };
@@ -135,17 +136,22 @@ describe("guest vehicle migration", () => {
       created_at: now,
       error_message: null,
       failed_odometer_entries: 0,
+      failed_service_records: 0,
       failed_vehicles: 0,
       id: "run_1",
       migrated_odometer_entries: 0,
+      migrated_service_records: 0,
       migrated_vehicles: 0,
       migration_scope: "vehicles",
       skipped_odometer_entries: 0,
       skipped_odometer_entries_missing_vehicle_mapping: 0,
+      skipped_service_records: 0,
+      skipped_service_records_missing_vehicle_mapping: 0,
       skipped_vehicles: 0,
       started_at: now,
       status: "running",
       total_odometer_entries: 0,
+      total_service_records: 0,
       total_vehicles: 0,
       updated_at: now,
     });
@@ -174,7 +180,9 @@ describe("guest vehicle migration", () => {
     const insertBuilder = createInsertBuilder({
       row: createCloudVehicleRow(vehicle, "cloud_vehicle_1"),
     });
-    mockFrom.mockReturnValueOnce(selectBuilder).mockReturnValueOnce(insertBuilder);
+    mockFrom
+      .mockReturnValueOnce(selectBuilder)
+      .mockReturnValueOnce(insertBuilder);
 
     const result = await migrateGuestVehicleToCloud(vehicle, "user_1", "run_1");
 

@@ -1,4 +1,4 @@
-import type { OdometerEntry } from "@autoledger/shared";
+import type { ServiceRecord } from "@autoledger/shared";
 
 jest.mock("./supabase", () => ({
   supabase: {
@@ -13,73 +13,84 @@ jest.mock("./supabase", () => ({
 }));
 
 jest.mock("./cloudVehicleOdometer", () => ({
+  getCloudVehicleForOdometer: jest.fn(),
   recalculateCloudVehicleOdometer: jest.fn(),
 }));
 
 jest.mock("./guestMigration", () => ({
-  createOdometerMigrationRun: jest.fn(),
-  getOdometerMigrationMappings: jest.fn(),
+  createServiceRecordMigrationRun: jest.fn(),
+  getServiceRecordMigrationMappings: jest.fn(),
   getVehicleMigrationMappings: jest.fn(),
-  updateOdometerMigrationRunStatus: jest.fn(),
-  upsertOdometerMigrationMapping: jest.fn(),
+  updateServiceRecordMigrationRunStatus: jest.fn(),
+  upsertServiceRecordMigrationMapping: jest.fn(),
 }));
 
-jest.mock("./odometerEntries", () => ({
-  listAllOdometerEntries: jest.fn(),
+jest.mock("./serviceRecords", () => ({
+  listAllServiceRecords: jest.fn(),
 }));
 
 jest.mock("./vehicles", () => ({
   getVehicle: jest.fn(),
 }));
 
-import { recalculateCloudVehicleOdometer } from "./cloudVehicleOdometer";
 import {
-  createOdometerMigrationRun,
+  getCloudVehicleForOdometer,
+  recalculateCloudVehicleOdometer,
+} from "./cloudVehicleOdometer";
+import {
+  createServiceRecordMigrationRun,
   getVehicleMigrationMappings,
-  updateOdometerMigrationRunStatus,
-  upsertOdometerMigrationMapping,
+  updateServiceRecordMigrationRunStatus,
+  upsertServiceRecordMigrationMapping,
 } from "./guestMigration";
 import {
-  migrateGuestOdometerEntriesToCloud,
-  migrateGuestOdometerEntryToCloud,
-} from "./guestOdometerMigration";
-import { listAllOdometerEntries } from "./odometerEntries";
+  migrateGuestServiceRecordsToCloud,
+  migrateGuestServiceRecordToCloud,
+} from "./guestServiceRecordMigration";
+import { listAllServiceRecords } from "./serviceRecords";
 import { supabase } from "./supabase";
 import { getVehicle } from "./vehicles";
 
 const mockFrom = jest.mocked((supabase as unknown as { from: jest.Mock }).from);
-const mockedCreateOdometerMigrationRun = jest.mocked(
-  createOdometerMigrationRun,
+const mockedCreateServiceRecordMigrationRun = jest.mocked(
+  createServiceRecordMigrationRun,
+);
+const mockedGetCloudVehicleForOdometer = jest.mocked(
+  getCloudVehicleForOdometer,
 );
 const mockedGetVehicle = jest.mocked(getVehicle);
 const mockedGetVehicleMigrationMappings = jest.mocked(
   getVehicleMigrationMappings,
 );
-const mockedListAllOdometerEntries = jest.mocked(listAllOdometerEntries);
+const mockedListAllServiceRecords = jest.mocked(listAllServiceRecords);
 const mockedRecalculateCloudVehicleOdometer = jest.mocked(
   recalculateCloudVehicleOdometer,
 );
-const mockedUpdateOdometerMigrationRunStatus = jest.mocked(
-  updateOdometerMigrationRunStatus,
+const mockedUpdateServiceRecordMigrationRunStatus = jest.mocked(
+  updateServiceRecordMigrationRunStatus,
 );
-const mockedUpsertOdometerMigrationMapping = jest.mocked(
-  upsertOdometerMigrationMapping,
+const mockedUpsertServiceRecordMigrationMapping = jest.mocked(
+  upsertServiceRecordMigrationMapping,
 );
 
 const now = "2026-05-02T12:00:00.000Z";
 
-const entry: OdometerEntry = {
+const serviceRecord: ServiceRecord = {
+  category: "oil_change",
+  cost_amount: 89.95,
+  cost_currency: "USD",
   created_at: now,
-  id: "local_odo_pk_1",
-  local_id: "guest_odo_1",
-  notes: "Trip reading",
-  odometer_unit: "mi",
-  reading: 42000,
-  reading_date: "2026-05-01",
-  source_type: "manual",
+  description: "Synthetic oil and filter",
+  id: "local_service_pk_1",
+  local_id: "guest_service_1",
+  notes: "Used coupon",
+  odometer_reading: 43000,
+  service_date: "2026-05-01",
   sync_status: "local_only",
+  title: "Oil change",
   updated_at: now,
   vehicle_id: "local_vehicle_1",
+  vendor_name: "Neighborhood Auto",
 };
 
 const vehicleMapping = {
@@ -95,7 +106,7 @@ const vehicleMapping = {
   updated_at: now,
 };
 
-const odometerRun = {
+const serviceRun = {
   account_id: "user_1",
   completed_at: null,
   created_at: now,
@@ -103,11 +114,11 @@ const odometerRun = {
   failed_odometer_entries: 0,
   failed_service_records: 0,
   failed_vehicles: 0,
-  id: "run_odo_1",
+  id: "run_service_1",
   migrated_odometer_entries: 0,
   migrated_service_records: 0,
   migrated_vehicles: 0,
-  migration_scope: "odometer_entries",
+  migration_scope: "service_records",
   skipped_odometer_entries: 0,
   skipped_odometer_entries_missing_vehicle_mapping: 0,
   skipped_service_records: 0,
@@ -115,15 +126,15 @@ const odometerRun = {
   skipped_vehicles: 0,
   started_at: now,
   status: "running" as const,
-  total_odometer_entries: 1,
-  total_service_records: 0,
+  total_odometer_entries: 0,
+  total_service_records: 1,
   total_vehicles: 0,
   updated_at: now,
 };
 
-const cloudEntryRow = {
-  ...entry,
-  id: "cloud_odo_1",
+const cloudServiceRecordRow = {
+  ...serviceRecord,
+  id: "cloud_service_1",
   sync_status: "synced",
   user_id: "user_1",
   vehicle_id: "cloud_vehicle_1",
@@ -157,7 +168,7 @@ const createSelectBuilder = ({
 
 const createInsertBuilder = ({
   error = null,
-  row = cloudEntryRow,
+  row = cloudServiceRecordRow,
 }: {
   error?: { code?: string; message: string } | null;
   row?: Record<string, unknown>;
@@ -181,15 +192,22 @@ const createInsertBuilder = ({
   return builder;
 };
 
-describe("guest odometer migration", () => {
+describe("guest service record migration", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockedCreateOdometerMigrationRun.mockResolvedValue(odometerRun);
+    mockedCreateServiceRecordMigrationRun.mockResolvedValue(serviceRun);
+    mockedGetCloudVehicleForOdometer.mockResolvedValue({
+      current_odometer: 42000,
+      id: "cloud_vehicle_1",
+      initial_odometer: 10000,
+      odometer_unit: "mi",
+      purchase_odometer: null,
+    });
     mockedGetVehicle.mockResolvedValue({
       archived_at: null,
       color: null,
       created_at: now,
-      current_odometer: 42000,
+      current_odometer: 43000,
       id: "local_vehicle_1",
       initial_odometer: 10000,
       license_plate: null,
@@ -210,74 +228,76 @@ describe("guest odometer migration", () => {
       year: 2021,
     });
     mockedGetVehicleMigrationMappings.mockResolvedValue([vehicleMapping]);
-    mockedListAllOdometerEntries.mockResolvedValue([entry]);
+    mockedListAllServiceRecords.mockResolvedValue([serviceRecord]);
     mockedRecalculateCloudVehicleOdometer.mockResolvedValue(undefined);
-    mockedUpdateOdometerMigrationRunStatus.mockResolvedValue(undefined);
-    mockedUpsertOdometerMigrationMapping.mockResolvedValue({
+    mockedUpdateServiceRecordMigrationRunStatus.mockResolvedValue(undefined);
+    mockedUpsertServiceRecordMigrationMapping.mockResolvedValue({
       account_id: "user_1",
-      cloud_id: "cloud_odo_1",
+      cloud_id: "cloud_service_1",
       created_at: now,
-      entity_type: "odometer_entry",
+      entity_type: "service_record",
       error_message: null,
-      id: "odo_mapping_1",
-      local_id: entry.local_id,
-      run_id: "run_odo_1",
+      id: "service_mapping_1",
+      local_id: serviceRecord.local_id,
+      run_id: "run_service_1",
       status: "synced",
       updated_at: now,
     });
   });
 
-  it("preserves local_id and uses the mapped cloud vehicle when inserting", async () => {
-    const vehicleBuilder = createSelectBuilder({
-      row: { id: "cloud_vehicle_1", odometer_unit: "mi" },
-    });
-    const existingEntryBuilder = createSelectBuilder({ row: null });
+  it("preserves local_id and maps key service fields to the mapped cloud vehicle", async () => {
+    const existingRecordBuilder = createSelectBuilder({ row: null });
     const insertBuilder = createInsertBuilder({});
     mockFrom
-      .mockReturnValueOnce(vehicleBuilder)
-      .mockReturnValueOnce(existingEntryBuilder)
+      .mockReturnValueOnce(existingRecordBuilder)
       .mockReturnValueOnce(insertBuilder);
 
-    const result = await migrateGuestOdometerEntryToCloud(
-      entry,
+    const result = await migrateGuestServiceRecordToCloud(
+      serviceRecord,
       "user_1",
       vehicleMapping,
-      "run_odo_1",
+      "run_service_1",
     );
 
     expect(result).toMatchObject({
-      cloudId: "cloud_odo_1",
+      cloudId: "cloud_service_1",
       cloudVehicleId: "cloud_vehicle_1",
-      localId: "guest_odo_1",
+      localId: "guest_service_1",
       status: "migrated",
     });
     expect(insertBuilder.insert).toHaveBeenCalledWith(
       expect.objectContaining({
-        created_at: entry.created_at,
-        local_id: entry.local_id,
-        reading: entry.reading,
-        updated_at: entry.updated_at,
+        category: "oil_change",
+        cost_amount: 89.95,
+        cost_currency: "USD",
+        created_at: serviceRecord.created_at,
+        local_id: serviceRecord.local_id,
+        odometer_reading: 43000,
+        service_date: "2026-05-01",
+        updated_at: serviceRecord.updated_at,
         user_id: "user_1",
         vehicle_id: "cloud_vehicle_1",
+        vendor_id: null,
+        vendor_name: "Neighborhood Auto",
       }),
     );
-    expect(mockedUpsertOdometerMigrationMapping).toHaveBeenCalledWith(
+    expect(mockedUpsertServiceRecordMigrationMapping).toHaveBeenCalledWith(
       expect.objectContaining({
         accountId: "user_1",
-        cloudId: "cloud_odo_1",
-        localId: "guest_odo_1",
-        runId: "run_odo_1",
+        cloudId: "cloud_service_1",
+        localId: "guest_service_1",
+        runId: "run_service_1",
         status: "synced",
       }),
     );
   });
 
-  it("skips entries safely when the vehicle mapping is missing", async () => {
-    const result = await migrateGuestOdometerEntryToCloud(
-      entry,
+  it("skips records safely when the vehicle mapping is missing", async () => {
+    const result = await migrateGuestServiceRecordToCloud(
+      serviceRecord,
       "user_1",
       null,
-      "run_odo_1",
+      "run_service_1",
     );
 
     expect(result).toMatchObject({
@@ -285,58 +305,49 @@ describe("guest odometer migration", () => {
       status: "skipped_missing_vehicle_mapping",
     });
     expect(mockFrom).not.toHaveBeenCalled();
-    expect(mockedUpsertOdometerMigrationMapping).toHaveBeenCalledWith(
+    expect(mockedUpsertServiceRecordMigrationMapping).toHaveBeenCalledWith(
       expect.objectContaining({
         cloudId: null,
-        localId: "guest_odo_1",
+        localId: "guest_service_1",
         status: "skipped",
       }),
     );
   });
 
   it("reuses an existing cloud row and repairs the mapping on rerun", async () => {
-    mockFrom
-      .mockReturnValueOnce(
-        createSelectBuilder({
-          row: { id: "cloud_vehicle_1", odometer_unit: "mi" },
-        }),
-      )
-      .mockReturnValueOnce(createSelectBuilder({ row: cloudEntryRow }));
+    mockFrom.mockReturnValueOnce(
+      createSelectBuilder({ row: cloudServiceRecordRow }),
+    );
 
-    const result = await migrateGuestOdometerEntryToCloud(
-      entry,
+    const result = await migrateGuestServiceRecordToCloud(
+      serviceRecord,
       "user_1",
       vehicleMapping,
-      "run_odo_1",
+      "run_service_1",
     );
 
     expect(result).toMatchObject({
-      cloudId: "cloud_odo_1",
+      cloudId: "cloud_service_1",
       status: "already_migrated",
     });
-    expect(mockFrom).toHaveBeenCalledTimes(2);
-    expect(mockedUpsertOdometerMigrationMapping).toHaveBeenCalledWith(
+    expect(mockFrom).toHaveBeenCalledTimes(1);
+    expect(mockedUpsertServiceRecordMigrationMapping).toHaveBeenCalledWith(
       expect.objectContaining({
-        cloudId: "cloud_odo_1",
-        localId: "guest_odo_1",
+        cloudId: "cloud_service_1",
+        localId: "guest_service_1",
         status: "synced",
       }),
     );
   });
 
-  it("migrates only odometer entries, keeps local data untouched, and recalculates affected cloud vehicles", async () => {
+  it("migrates only service records, keeps local data untouched, and recalculates affected cloud vehicles", async () => {
     mockFrom
-      .mockReturnValueOnce(
-        createSelectBuilder({
-          row: { id: "cloud_vehicle_1", odometer_unit: "mi" },
-        }),
-      )
       .mockReturnValueOnce(createSelectBuilder({ row: null }))
       .mockReturnValueOnce(createInsertBuilder({}));
 
-    const result = await migrateGuestOdometerEntriesToCloud("user_1");
+    const result = await migrateGuestServiceRecordsToCloud("user_1");
 
-    expect(mockedListAllOdometerEntries).toHaveBeenCalledTimes(1);
+    expect(mockedListAllServiceRecords).toHaveBeenCalledTimes(1);
     expect(mockedGetVehicleMigrationMappings).toHaveBeenCalledWith("user_1");
     expect(mockedGetVehicle).toHaveBeenCalledWith("local_vehicle_1", {
       includeArchived: true,
@@ -346,16 +357,39 @@ describe("guest odometer migration", () => {
       migratedCount: 1,
       skippedCount: 0,
       skippedMissingVehicleMappingCount: 0,
-      totalOdometerEntries: 1,
+      totalServiceRecords: 1,
     });
     expect(mockedRecalculateCloudVehicleOdometer).toHaveBeenCalledWith(
       "cloud_vehicle_1",
       "user_1",
       { includeArchived: true, preserveCurrent: true },
     );
-    expect(mockedUpdateOdometerMigrationRunStatus).toHaveBeenLastCalledWith(
+    expect(
+      mockedUpdateServiceRecordMigrationRunStatus,
+    ).toHaveBeenLastCalledWith(
       expect.objectContaining({
         status: "completed",
+      }),
+    );
+  });
+
+  it("marks the run failed when every service record is skipped for missing vehicle mappings", async () => {
+    mockedGetVehicleMigrationMappings.mockResolvedValue([]);
+
+    const result = await migrateGuestServiceRecordsToCloud("user_1");
+
+    expect(result).toMatchObject({
+      failedCount: 0,
+      migratedCount: 0,
+      skippedMissingVehicleMappingCount: 1,
+      totalServiceRecords: 1,
+    });
+    expect(mockFrom).not.toHaveBeenCalled();
+    expect(
+      mockedUpdateServiceRecordMigrationRunStatus,
+    ).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        status: "failed",
       }),
     );
   });
