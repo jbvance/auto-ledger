@@ -232,8 +232,7 @@ const listActiveReminderRows = async ({
     )
     .order("due_date", { ascending: true })
     .order("due_odometer", { ascending: true })
-    .order("created_at", { ascending: false })
-    .limit(6);
+    .order("created_at", { ascending: false });
 
   throwIfError("Unable to load upcoming cloud reminders", error);
 
@@ -245,7 +244,8 @@ const listActiveReminderRows = async ({
     .map(mapCloudMaintenanceReminderRow)
     .sort((first, second) =>
       compareMaintenanceRemindersByUrgency(first, second, vehicleOdometers),
-    );
+    )
+    .slice(0, 6);
 };
 
 const listRecentActivity = async ({

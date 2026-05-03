@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { CloudVehicleRow } from "./mappers";
+import type { CloudMaintenanceReminderRow, CloudVehicleRow } from "./mappers";
 import {
   listWebCloudVehicles,
   loadWebCloudDashboardData,
@@ -208,6 +208,31 @@ const createVehicleRow = (
   ...overrides,
 });
 
+const createMaintenanceReminderRow = (
+  overrides: Partial<CloudMaintenanceReminderRow> = {},
+): CloudMaintenanceReminderRow => ({
+  category: "oil_change",
+  completed_at: null,
+  created_at: "2026-01-01T00:00:00.000Z",
+  due_date: "2026-12-01",
+  due_odometer: null,
+  id: "reminder-1",
+  is_completed: false,
+  last_triggered_at: null,
+  local_id: "cloud_reminder_1",
+  notes: null,
+  reminder_type: "date",
+  repeat_interval_miles: null,
+  repeat_interval_months: null,
+  scheduled_notification_id: null,
+  sync_status: "synced",
+  title: "Oil change",
+  updated_at: "2026-01-02T00:00:00.000Z",
+  user_id: "user-1",
+  vehicle_id: "vehicle-1",
+  ...overrides,
+});
+
 describe("web cloud server data", () => {
   beforeEach(() => {
     mocks.createClient.mockResolvedValue(createMockSupabaseClient());
@@ -263,6 +288,37 @@ describe("web cloud server data", () => {
       "Old Truck",
     ]);
     expect(vehicles[1]?.archived_at).toBe("2026-01-03T00:00:00.000Z");
+  });
+
+  it("sorts dashboard reminders by calculated urgency before trimming", async () => {
+    mocks.rows.vehicles = [createVehicleRow({ current_odometer: 42000 })];
+    mocks.rows.maintenance_reminders = [
+      ...Array.from({ length: 6 }, (_, index) =>
+        createMaintenanceReminderRow({
+          due_date: `2026-12-${String(index + 1).padStart(2, "0")}`,
+          id: `future-reminder-${index + 1}`,
+          local_id: `future_reminder_${index + 1}`,
+          title: `Future reminder ${index + 1}`,
+        }),
+      ),
+      createMaintenanceReminderRow({
+        due_date: null,
+        due_odometer: 41000,
+        id: "overdue-mileage-reminder",
+        local_id: "overdue_mileage_reminder",
+        reminder_type: "mileage",
+        title: "Mileage overdue",
+      }),
+    ];
+
+    const dashboard = await loadWebCloudDashboardData("user-1");
+
+    expect(dashboard.counts.upcomingReminders).toBe(7);
+    expect(dashboard.activeReminders).toHaveLength(6);
+    expect(dashboard.activeReminders[0]?.id).toBe("overdue-mileage-reminder");
+    expect(dashboard.activeReminders.map((reminder) => reminder.id)).not.toContain(
+      "future-reminder-6",
+    );
   });
 
   it("returns null for a missing or not-owned vehicle detail", async () => {
