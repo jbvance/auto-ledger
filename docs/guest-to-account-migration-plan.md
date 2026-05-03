@@ -5,16 +5,18 @@ to an authenticated Supabase account. Slice 1 readiness/status detection,
 Slice 2 vehicle-only migration, Slice 3 odometer-entry-only migration,
 Slice 4 service-record-only migration, Slice 5 repair-record-only migration,
 Slice 6 maintenance-reminder-only migration, and Slice 7 service/repair
-attachment-only migration are now implemented locally. Full automatic sync is
-not implemented yet. Vehicle, odometer, service record, repair record,
-maintenance reminder, and attachment migration do not delete local data.
+attachment-only migration are now implemented locally. Slice 8 final
+review/status/retry UX is also implemented. Full automatic sync is not
+implemented yet. Vehicle, odometer, service record, repair record, maintenance
+reminder, and attachment migration do not delete local data.
 
 ## 1. Current Readiness Summary
 
 The repo is ready for vehicle-only, odometer-entry-only,
 service-record-only, repair-record-only, maintenance-reminder-only, and
-service/repair attachment-only migration. It is not yet ready for automatic
-full guest-to-account sync.
+service/repair attachment-only migration, with a Settings Cloud Migration
+review/status/retry screen for managing those focused steps. It is not yet
+ready for automatic full guest-to-account sync.
 
 Ready:
 
@@ -100,6 +102,15 @@ Ready:
   parent mappings, unsupported relationships, missing local files, upload
   failures, metadata failures, and cleanup failures without deleting local data
   or files.
+- `apps/mobile/lib/guestMigrationReview.ts` summarizes local counts, mapped
+  cloud counts, skipped and failed mapping counts, per-step readiness,
+  prerequisite blocking, and overall migration status for the Cloud Migration
+  review screen.
+- `apps/mobile/app/settings/migration.tsx` provides the final Cloud Migration
+  review/status/retry UX. It shows migration steps in dependency order, exposes
+  safe retry actions that call the existing focused migration helpers, and
+  includes a "Migrate Remaining Data" action that runs currently ready steps in
+  order without deleting local guest data.
 - Shared TypeScript types and Zod validation schemas exist for all records in
   `packages/shared/src/index.ts` and `packages/validation/src/index.ts`.
 
@@ -123,8 +134,9 @@ Not ready:
   maintenance-reminder-only migration writes completed or skipped reminder
   mappings. Attachment-only migration writes completed, skipped, or failed
   `record_attachment` mappings.
-- There is no full migration prompt/progress UI. The current Settings actions
-  are intentionally focused by entity type.
+- There is no automatic full migration prompt that starts migration on sign-in.
+  The current Settings Cloud Migration screen keeps migration user-controlled
+  and focused by entity type.
 - Regular cloud attachment creation generates a cloud-only local ID. Attachment
   migration uses a dedicated helper that preserves local IDs and checks existing
   metadata before upload so reruns do not duplicate cloud metadata.
@@ -411,11 +423,14 @@ Slice 7: migrate attachments - complete
 - Attempt Storage cleanup if metadata insert fails after upload; report cleanup
   failures with the affected Storage path.
 
-Slice 8: cleanup/retry UX
+Slice 8: cleanup/retry UX - complete
 
 - Add Settings entry for migration status and retry.
 - Add failure details and a retry failed items action.
-- Add an explicit cleanup option only after verified successful migration.
+- Add a "Migrate Remaining Data" action that runs currently ready focused
+  migration steps in dependency order.
+- Keep cleanup informational only. Automatic local cleanup/delete after
+  migration is still not implemented.
 
 ## 11. Required Schema Changes, If Any
 
@@ -631,8 +646,8 @@ Manual Expo Go checklist:
 
 ## Next Safest Slice
 
-The next safest implementation slice is cleanup/retry UX and broader cloud
-sync/export work. Attachment migration now uses existing vehicle mappings and
-service/repair parent mappings, preserves local attachment IDs, uses
-deterministic private Storage paths, and reports missing local files without
-deleting local guest data.
+The next safest implementation slice is live Supabase migration verification,
+broader cloud sync/export work, or a carefully designed future local cleanup
+flow. Attachment migration and final review/retry UX now exist, but automatic
+continuous sync and local guest data cleanup/delete-after-migration are still
+not implemented.

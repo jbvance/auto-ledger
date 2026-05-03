@@ -77,6 +77,10 @@ development build app id when a dev build exists.
   local IDs, mapping creation, missing parent mapping skips, unsupported
   relationship skips, missing local file upload failure handling, and rerun
   duplicate prevention with mocked Supabase/Storage helpers.
+- Guest migration review/status summary counts by entity type, step status
+  calculation, attachment prerequisite blocking, safe retry dispatch to focused
+  migration helpers, and completion messaging that keeps local data retention
+  explicit.
 - Guest migration readiness summary counts and local not-started migration run
   storage helpers.
 - Vehicle-only migration duplicate prevention, local ID preservation, archived
