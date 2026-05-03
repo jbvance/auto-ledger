@@ -204,7 +204,7 @@ function ReminderSummarySection({
                   <div>
                     <p className="font-bold">{reminder.title}</p>
                     <p className="mt-1 text-sm text-[var(--muted)]">
-                      {vehicle?.nickname ?? "Cloud vehicle"} ·{" "}
+                      {vehicle?.nickname ?? "Cloud vehicle"} -{" "}
                       {formatMaintenanceReminderCategory(reminder.category)}
                     </p>
                   </div>
@@ -219,7 +219,7 @@ function ReminderSummarySection({
                   {vehicle &&
                   reminder.due_odometer !== null &&
                   reminder.due_odometer !== undefined
-                    ? ` · Due ${formatOdometer(reminder.due_odometer, vehicle.odometer_unit)}`
+                    ? ` - Due ${formatOdometer(reminder.due_odometer, vehicle.odometer_unit)}`
                     : ""}
                 </p>
               </div>
@@ -255,7 +255,7 @@ function RecentActivitySection({ items }: { items: WebRecentActivityItem[] }) {
                   </p>
                   <h3 className="mt-1 font-bold">{item.title}</h3>
                   <p className="mt-1 text-sm text-[var(--muted)]">
-                    {item.vehicle.nickname} · {formatDisplayDate(item.date)}
+                    {item.vehicle.nickname} - {formatDisplayDate(item.date)}
                   </p>
                 </div>
                 {item.categoryLabel ? (

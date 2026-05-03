@@ -51,8 +51,9 @@ export default function LoginPage() {
           </p>
           <h1 className="mt-2 text-4xl font-bold leading-tight">Sign in</h1>
           <p className="mt-3 text-base leading-7 text-[var(--muted)]">
-            Cloud sync is not active yet. Mobile guest records remain local
-            until migration and sync are implemented.
+            View the cloud vehicles and records saved to your AutoLedger
+            account. Mobile guest records remain local unless you choose to
+            migrate them from the mobile app.
           </p>
         </div>
 

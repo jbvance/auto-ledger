@@ -34,7 +34,7 @@ export default function SignupPage() {
 
       if (!data.session) {
         setFeedback(
-          "Check your email to confirm your account. Cloud sync is not active yet.",
+          "Check your email to confirm your account, then sign in to view your cloud records.",
         );
         return;
       }
@@ -60,8 +60,8 @@ export default function SignupPage() {
             Create account
           </h1>
           <p className="mt-3 text-base leading-7 text-[var(--muted)]">
-            Create an account for the upcoming cloud sync foundation. This does
-            not upload mobile guest records yet.
+            Create an account for cloud backup and web access. Mobile guest
+            records are not uploaded from the web.
           </p>
         </div>
 
@@ -88,8 +88,8 @@ export default function SignupPage() {
               value={password}
             />
             <p className="text-sm leading-6 text-[var(--muted)]">
-              Use at least 6 characters. AutoLedger will not sync vehicle
-              records in this slice.
+              Use at least 6 characters. You can migrate existing mobile guest
+              records later from the mobile app.
             </p>
 
             {feedback ? <InfoBox text={feedback} /> : null}

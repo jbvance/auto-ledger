@@ -80,6 +80,8 @@ development build app id when a dev build exists.
 - Cloud-compatible maintenance reminder row mapping.
 - Cloud-compatible record attachment row mapping.
 - Web cloud row mapping helpers for read-only account views.
+- Web cloud dashboard, vehicle list, and missing/not-owned vehicle detail data
+  helpers with mocked Supabase responses.
 - Cloud record attachment Storage path generation.
 - Guest attachment migration parent mapping resolution, preserved attachment
   local IDs, mapping creation, missing parent mapping skips, unsupported

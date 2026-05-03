@@ -287,7 +287,7 @@ function OdometerSection({
                 {formatOdometer(entry.reading, vehicle.odometer_unit)}
               </p>
               <p className="mt-1 text-sm text-[var(--muted)]">
-                {formatDisplayDate(entry.reading_date)} ·{" "}
+                {formatDisplayDate(entry.reading_date)} -{" "}
                 {odometerSourceTypeLabels[entry.source_type]}
               </p>
               {entry.notes ? (
@@ -332,7 +332,7 @@ function ReminderSection({
                   <div>
                     <p className="font-bold">{reminder.title}</p>
                     <p className="mt-1 text-sm text-[var(--muted)]">
-                      {formatMaintenanceReminderCategory(reminder.category)} ·{" "}
+                      {formatMaintenanceReminderCategory(reminder.category)} -{" "}
                       {maintenanceReminderTypeLabels[reminder.reminder_type]}
                     </p>
                   </div>
@@ -347,7 +347,7 @@ function ReminderSection({
                   {reminder.due_odometer === null ||
                   reminder.due_odometer === undefined
                     ? ""
-                    : ` · Due ${formatOdometer(reminder.due_odometer, vehicle.odometer_unit)}`}
+                    : ` - Due ${formatOdometer(reminder.due_odometer, vehicle.odometer_unit)}`}
                 </p>
               </div>
             );
@@ -409,7 +409,7 @@ function RecordSection({
               >
                 <p className="font-bold">{record.title}</p>
                 <p className="mt-1 text-sm text-[var(--muted)]">
-                  {formatDisplayDate(recordDate)} · {categoryLabel}
+                  {formatDisplayDate(recordDate)} - {categoryLabel}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {record.odometer_reading === null ||
@@ -468,7 +468,7 @@ function AttachmentSection({
                 {getAttachmentDisplayName(attachment)}
               </p>
               <p className="mt-1 text-sm text-[var(--muted)]">
-                {formatAttachmentTypeLabel(attachment.file_type)} ·{" "}
+                {formatAttachmentTypeLabel(attachment.file_type)} -{" "}
                 {formatAttachmentFileSize(attachment.file_size_bytes)}
               </p>
             </div>

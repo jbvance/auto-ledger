@@ -6,7 +6,8 @@ The AutoLedger project has been created as a pnpm monorepo.
 
 The web app runs successfully on port 3000.
 
-The web app now has authenticated cloud-account visibility for signed-in users:
+Web Slice 1 is complete. The web app now has authenticated cloud-account
+visibility for signed-in users:
 `/dashboard` shows account cloud summaries, vehicle cards, upcoming reminders,
 and recent odometer/service/repair activity; `/vehicles` lists cloud vehicles;
 and `/vehicles/[vehicleId]` shows cloud vehicle detail with display-only
