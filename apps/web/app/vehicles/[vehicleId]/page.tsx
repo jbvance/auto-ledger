@@ -151,12 +151,15 @@ export default async function VehicleDetailPage({
 
       <section className="grid gap-4 lg:grid-cols-2">
         <RecordSection
+          addHref={`/vehicles/${detail.vehicle.id}/service-records/new`}
+          canMutate={!detail.vehicle.archived_at}
           emptyMessage="No cloud service records yet."
           records={detail.serviceRecords}
           type="service"
           vehicle={detail.vehicle}
         />
         <RecordSection
+          canMutate={false}
           emptyMessage="No cloud repair records yet."
           records={detail.repairRecords}
           type="repair"
@@ -441,18 +444,24 @@ function ReminderSection({
 }
 
 function RecordSection({
+  addHref,
+  canMutate,
   emptyMessage,
   records,
   type,
   vehicle,
 }: {
+  addHref?: string;
+  canMutate: boolean;
   emptyMessage: string;
   records: Array<
     {
       category: string;
       cost_amount?: null | number;
       cost_currency: string;
+      description?: null | string;
       id: string;
+      notes?: null | string;
       odometer_reading?: null | number;
       title: string;
       vendor_name?: null | string;
@@ -462,12 +471,44 @@ function RecordSection({
   vehicle: Vehicle;
 }) {
   return (
-    <section className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5">
-      <h2 className="text-xl font-bold">
-        {type === "service" ? "Service Records" : "Repair Records"}
-      </h2>
+    <section
+      className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5"
+      id={type === "service" ? "service-records" : "repair-records"}
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="text-xl font-bold">
+            {type === "service" ? "Service Records" : "Repair Records"}
+          </h2>
+          <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
+            {type === "service"
+              ? "Routine cloud maintenance records for this vehicle."
+              : "Display-only cloud repair records for this vehicle."}
+          </p>
+        </div>
+        {type === "service" && canMutate && addHref ? (
+          <Link
+            className="rounded-lg bg-[var(--primary)] px-4 py-3 text-center text-sm font-bold text-white"
+            href={addHref}
+          >
+            Add Service Record
+          </Link>
+        ) : null}
+      </div>
       {records.length === 0 ? (
-        <EmptyText>{emptyMessage}</EmptyText>
+        <div className="mt-4 rounded-lg bg-[var(--background)] p-3">
+          <p className="text-sm leading-6 text-[var(--muted)]">
+            {emptyMessage}
+          </p>
+          {type === "service" && canMutate && addHref ? (
+            <Link
+              className="mt-3 inline-flex rounded-lg border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm font-bold text-[var(--foreground)]"
+              href={addHref}
+            >
+              Add Service Record
+            </Link>
+          ) : null}
+        </div>
       ) : (
         <div className="mt-4 flex flex-col gap-3">
           {records.slice(0, 8).map((record) => {
@@ -475,6 +516,10 @@ function RecordSection({
               "service_date" in record
                 ? record.service_date
                 : record.repair_date;
+            const detailHref =
+              type === "service"
+                ? `/vehicles/${vehicle.id}/service-records/${record.id}`
+                : undefined;
             const categoryLabel =
               type === "service"
                 ? serviceRecordCategoryLabels[
@@ -489,10 +534,31 @@ function RecordSection({
                 className="rounded-lg border border-[var(--line)] bg-[var(--background)] p-3"
                 key={record.id}
               >
-                <p className="font-bold">{record.title}</p>
-                <p className="mt-1 text-sm text-[var(--muted)]">
-                  {formatDisplayDate(recordDate)} - {categoryLabel}
-                </p>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    {detailHref ? (
+                      <Link
+                        className="font-bold text-[var(--foreground)] transition hover:text-[var(--primary)]"
+                        href={detailHref}
+                      >
+                        {record.title}
+                      </Link>
+                    ) : (
+                      <p className="font-bold">{record.title}</p>
+                    )}
+                    <p className="mt-1 text-sm text-[var(--muted)]">
+                      {formatDisplayDate(recordDate)} - {categoryLabel}
+                    </p>
+                  </div>
+                  {detailHref ? (
+                    <Link
+                      className="rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-center text-sm font-bold text-[var(--foreground)]"
+                      href={detailHref}
+                    >
+                      View Details
+                    </Link>
+                  ) : null}
+                </div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {record.odometer_reading === null ||
                   record.odometer_reading === undefined ? null : (
@@ -516,6 +582,11 @@ function RecordSection({
                     <SmallBadge>{record.vendor_name}</SmallBadge>
                   ) : null}
                 </div>
+                {record.description || record.notes ? (
+                  <p className="mt-3 line-clamp-2 text-sm leading-6 text-[var(--muted)]">
+                    {record.description ?? record.notes}
+                  </p>
+                ) : null}
               </div>
             );
           })}
