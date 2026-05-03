@@ -101,6 +101,14 @@ behavior changes, database schema changes, data deletion, or security fixes have
 been implemented yet. Next launch-hardening work should be selected from the
 risk register and recommended fix roadmap in that audit.
 
+Supabase live security verification package is now present. The manual checklist
+at `docs/supabase-live-verification.md` and read-only SQL script at
+`packages/db/sql/005_verify_live_supabase_security.sql` can verify expected
+tables, RLS, policies, constraints, foreign keys, indexes, private Storage
+bucket settings, Storage policies, public/anon policy risks, and client env
+secret posture. The package has not yet been run against a live Supabase
+project in this repo.
+
 Current development track: Local guest MVP features, optional Supabase Auth foundation, Supabase cloud data schema/RLS foundation, mobile cloud vehicle CRUD, mobile cloud odometer entry CRUD, mobile cloud service record CRUD, mobile cloud repair record CRUD, mobile cloud maintenance reminder CRUD, cloud service/repair record attachments, guest-to-account vehicle migration, guest-to-account odometer-entry migration, guest-to-account service-record migration, guest-to-account repair-record migration, guest-to-account maintenance-reminder migration, guest-to-account service/repair attachment migration, final guest-to-account migration review/status/retry UX, mobile navigation polish, web authenticated cloud dashboard/vehicle read-only views, web cloud vehicle create/edit/archive/restore, web cloud odometer entry create/edit/delete, web cloud service record create/view/edit/delete, web cloud repair record create/view/edit/delete, web cloud maintenance reminder create/view/edit/complete/delete, web cloud service/repair attachment viewing/upload/delete, web cloud CSV export, and account/data privacy controls are complete; server-only cloud account/data deletion, broader app-side cloud sync, and web attachment edit/rename are next candidate slices.
 
 The app is still local guest-mode first. Users can manage vehicles, odometer entries, service records, repair records, reminders, local attachments, and local CSV export without creating an account.
@@ -315,6 +323,7 @@ The mobile app currently supports local guest-mode:
 - Run `packages/db/sql/002_cloud_data_schema_rls.sql` in the Supabase SQL editor after the profiles SQL to create cloud data tables, indexes, triggers, relationships, authenticated table grants, and RLS policies.
 - Run `packages/db/sql/003_record_attachments_storage_rls.sql` in the Supabase SQL editor after the cloud data schema to create the private `record-attachments` Storage bucket and user-scoped Storage RLS policies.
 - Review/run `packages/db/sql/004_verify_local_id_unique_constraints.sql` before using guest-to-account vehicle, odometer, service record, repair record, or maintenance reminder migration. It is a read-only prerequisite check for the `user_id + local_id` unique constraints used to prevent duplicate migrated rows, including `public.service_records`, `public.repair_records`, and `public.maintenance_reminders`.
+- Run `packages/db/sql/005_verify_live_supabase_security.sql` and complete `docs/supabase-live-verification.md` before beta or production launch to verify the live Supabase project has the expected RLS, policies, constraints, indexes, private Storage bucket, and Storage policies. Record the result manually because this repo cannot confirm live Supabase state by itself.
 - If the mobile app shows a Supabase "permission denied" warning for vehicles, rerun `packages/db/sql/002_cloud_data_schema_rls.sql` so the authenticated table grants are applied.
 - If cloud attachment upload/open/delete shows a bucket or permission warning, rerun `packages/db/sql/003_record_attachments_storage_rls.sql` so the private bucket and Storage RLS policies are installed.
 - See `docs/supabase-cloud-schema.md` for setup notes and simple SQL sanity checks.

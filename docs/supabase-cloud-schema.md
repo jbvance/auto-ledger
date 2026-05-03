@@ -28,6 +28,16 @@ It confirms the cloud tables have the `user_id + local_id` unique constraints
 that future migration relies on to avoid duplicate rows. It does not change
 schema, does not weaken RLS, and does not migrate data.
 
+Before beta or production launch, run the broader live verification package:
+
+5. `packages/db/sql/005_verify_live_supabase_security.sql`
+
+Use it with `docs/supabase-live-verification.md` to confirm the live Supabase
+project has the expected tables, RLS, policies, constraints, foreign keys,
+indexes, private Storage bucket settings, Storage policies, and no suspicious
+public/anon policies. It is read-only and still requires manual two-user
+cross-access checks.
+
 The second file creates:
 
 - `public.vehicles`

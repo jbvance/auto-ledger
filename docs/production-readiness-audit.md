@@ -10,11 +10,11 @@ Overall readiness level: pre-production beta candidate, not launch-ready.
 
 AutoLedger has a strong v1 foundation: guest mode is functional, optional Supabase Auth exists, cloud CRUD is implemented on mobile and web, private Storage is used for service/repair attachments, manual guest-to-account migration is implemented, and account/data controls avoid unsafe cloud deletion. The architecture generally follows `AGENTS.md` and the privacy-first product direction.
 
-The main gap is not feature volume; it is production hardening. The highest-risk areas are live verification of Supabase RLS and Storage policies, safe server-only cloud/account deletion, production auth configuration, attachment cleanup/idempotency under real failures, and launch/deployment documentation.
+The main gap is not feature volume; it is production hardening. The highest-risk areas are running the live Supabase RLS and Storage verification package against a production-like project, safe server-only cloud/account deletion, production auth configuration, attachment cleanup/idempotency under real failures, and launch/deployment documentation.
 
 Biggest launch blockers:
 
-1. Supabase RLS and Storage policies have not been verified against a live production-like project.
+1. Supabase RLS and Storage verification docs/scripts now exist, but they have not yet been run and recorded against a live production-like project.
 2. Full cloud data deletion and Supabase Auth account deletion are planned but not implemented.
 3. Production Auth redirect/email confirmation settings are not documented or tested.
 4. Attachment deletion/upload failure paths can leave orphaned Storage objects that require operational recovery.
@@ -22,7 +22,7 @@ Biggest launch blockers:
 
 Recommended next 5 fixes in order:
 
-1. Add and run a Supabase production verification checklist for RLS, table grants, Storage bucket privacy, signed URLs, and cross-user access denial.
+1. Run and record the Supabase live verification checklist for RLS, table grants, Storage bucket privacy, signed URLs, and cross-user access denial.
 2. Implement server-only cloud data deletion dry run/counts, keeping `SUPABASE_SERVICE_ROLE_KEY` out of mobile and browser code.
 3. Document production environment setup, including Supabase redirect URLs, email confirmation behavior, web/mobile env files, and dev/prod project separation.
 4. Harden and test attachment cleanup/idempotency, especially metadata failure after upload and parent record deletion with multiple attachments.
@@ -104,8 +104,10 @@ Relevant SQL:
 - `packages/db/sql/001_profiles_auth_foundation.sql`
 - `packages/db/sql/002_cloud_data_schema_rls.sql`
 - `packages/db/sql/004_verify_local_id_unique_constraints.sql`
+- `packages/db/sql/005_verify_live_supabase_security.sql`
 - `docs/database-model.md`
 - `docs/supabase-cloud-schema.md`
+- `docs/supabase-live-verification.md`
 
 User-owned cloud tables:
 
@@ -126,6 +128,7 @@ Findings:
 - Child tables use owner-scoped foreign keys such as `(vehicle_id, user_id)` references to prevent cross-user parent linking.
 - `user_id + local_id` unique constraints exist in the current SQL for migrated entities.
 - `004_verify_local_id_unique_constraints.sql` provides a read-only verification query for the critical migration duplicate-prevention constraints.
+- `005_verify_live_supabase_security.sql` and `docs/supabase-live-verification.md` now provide a live-project verification package for expected tables, RLS, policies, constraints, foreign keys, indexes, private Storage bucket settings, and Storage policies. This package is read-only and still must be run manually in each Supabase environment.
 - Most product table foreign keys use `on delete restrict`, which is safer for avoiding accidental cascades but requires carefully ordered account deletion.
 - Indexes exist for common user/vehicle/date access patterns.
 
@@ -139,7 +142,7 @@ Risks:
 
 Recommendations:
 
-- Add a production Supabase verification checklist and run it before beta.
+- Run and record `docs/supabase-live-verification.md` and `packages/db/sql/005_verify_live_supabase_security.sql` before beta.
 - Add live RLS tests or manual SQL checks with two users to prove cross-user select/update/delete failures.
 - Run `004_verify_local_id_unique_constraints.sql` in every Supabase environment.
 - For account deletion, keep service-role code server-only and explicitly scope every delete by the verified user ID.
@@ -149,10 +152,12 @@ Recommendations:
 Relevant code/SQL:
 
 - Storage SQL: `packages/db/sql/003_record_attachments_storage_rls.sql`
+- Live verification SQL: `packages/db/sql/005_verify_live_supabase_security.sql`
 - Shared path builder: `packages/shared/src/index.ts`
 - Mobile cloud attachments: `apps/mobile/lib/cloudRecordAttachments.ts`
 - Web cloud attachments: `apps/web/lib/cloud/recordAttachmentData.ts`
 - Web open routes: `apps/web/app/vehicles/[vehicleId]/**/attachments/[attachmentId]/open/route.ts`
+- Manual checklist: `docs/supabase-live-verification.md`
 
 Findings:
 
@@ -165,6 +170,7 @@ Findings:
 - Mobile and web create signed URLs for private file opening with a 10-minute lifetime.
 - Upload flows create Storage objects first, then insert metadata, and attempt Storage cleanup if metadata insert fails.
 - Service/repair record deletion attempts to delete related attachment Storage objects and metadata before deleting parent records.
+- A read-only verification script and manual checklist now exist for bucket privacy, Storage policy presence, suspicious public/anon Storage policies, signed URL usage, and cross-user denial checks. Live execution still needs to be performed and recorded.
 
 Risks:
 
@@ -485,8 +491,8 @@ Recommendation:
 
 | risk | severity | affected area | recommended fix | suggested Codex task name |
 | --- | --- | --- | --- | --- |
-| RLS policies not live-verified against two users | high | Supabase database | Add/run live RLS verification checklist and tests | `verify-supabase-rls-prod-readiness` |
-| Private Storage policies not live-verified | high | Supabase Storage | Add/run upload/open/delete and cross-user denial checks | `verify-storage-privacy-prod-readiness` |
+| RLS policies not live-verified against two users | high | Supabase database | Run/record existing live RLS verification checklist and SQL script | `verify-supabase-rls-prod-readiness` |
+| Private Storage policies not live-verified | high | Supabase Storage | Run/record existing upload/open/delete and cross-user denial checks | `verify-storage-privacy-prod-readiness` |
 | Cloud/account deletion not implemented | high | Privacy/account controls | Implement server-only dry run, then deletion flow | `cloud-account-deletion-dry-run` |
 | Service role key needed for deletion but no server-only implementation exists | high | Secrets/backend | Add server-only route/action with strict session-derived user scoping | `server-only-service-role-deletion-foundation` |
 | Attachment upload/metadata/delete failures can leave orphaned objects or stale metadata | high | Attachments/Storage | Harden cleanup, reconciliation, and failure reporting | `harden-attachment-cleanup-idempotency` |
@@ -507,12 +513,12 @@ Recommendation:
 Security and data-loss first:
 
 1. `verify-supabase-rls-prod-readiness`
-   - Create a manual/live verification doc or script for two-user table access checks.
-   - Include select/insert/update/delete denial across users.
+   - Run `docs/supabase-live-verification.md` and `packages/db/sql/005_verify_live_supabase_security.sql` against the live dev project.
+   - Record two-user select/insert/update/delete denial checks.
    - Run `004_verify_local_id_unique_constraints.sql`.
 
 2. `verify-storage-privacy-prod-readiness`
-   - Verify private bucket config, object RLS, signed URLs, cross-user denial, and upload/delete behavior.
+   - Use `docs/supabase-live-verification.md` to verify private bucket config, object RLS, signed URLs, cross-user denial, and upload/delete behavior.
    - Confirm no public URLs are used.
 
 3. `cloud-account-deletion-dry-run`
