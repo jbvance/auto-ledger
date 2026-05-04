@@ -20,6 +20,7 @@ import {
 type SupabaseErrorLike = {
   code?: string;
   message: string;
+  statusCode?: number | string;
 };
 
 type AttachmentParentType = "repair" | "service";
@@ -70,6 +71,11 @@ type ValidatedWebAttachmentFile = {
   mimeType: string;
 };
 
+export type WebCloudAttachmentDeleteStatus =
+  | "deleted"
+  | "not_found"
+  | "storage_already_missing";
+
 export const webCloudAttachmentAllowedMimeTypes = [
   "application/pdf",
   "image/gif",
@@ -112,6 +118,46 @@ const throwIfError = (
   if (error) {
     throw new Error(formatCloudRecordAttachmentError(action, error));
   }
+};
+
+const isStorageObjectMissingError = (error: SupabaseErrorLike) => {
+  const statusCode = String(error.statusCode ?? "");
+  const message = error.message.toLowerCase();
+
+  return (
+    statusCode === "404" ||
+    message.includes("not found") ||
+    message.includes("does not exist") ||
+    message.includes("no such object")
+  );
+};
+
+const removeWebCloudAttachmentStorageObject = async ({
+  storageBucket,
+  storagePath,
+}: {
+  storageBucket: string;
+  storagePath: string;
+}): Promise<"already_missing" | "removed"> => {
+  const supabase = await createClient();
+  const { error } = await supabase.storage
+    .from(storageBucket)
+    .remove([storagePath]);
+
+  if (error) {
+    if (isStorageObjectMissingError(error)) {
+      return "already_missing";
+    }
+
+    throw new Error(
+      formatCloudRecordAttachmentError(
+        "Unable to delete the attachment file",
+        error,
+      ),
+    );
+  }
+
+  return "removed";
 };
 
 const getAttachmentParent = async ({
@@ -299,18 +345,19 @@ export const insertWebCloudAttachmentMetadataWithUploadCleanup = async ({
     error,
   );
 
-  const cleanupResult = await supabase.storage
-    .from(payload.storage_bucket)
-    .remove([payload.storage_path]);
-
-  if (cleanupResult.error) {
+  try {
+    await removeWebCloudAttachmentStorageObject({
+      storageBucket: payload.storage_bucket,
+      storagePath: payload.storage_path,
+    });
+  } catch (cleanupError: unknown) {
     console.warn(
       "Unable to clean up uploaded web attachment after metadata failure.",
-      cleanupResult.error,
+      cleanupError,
     );
 
     throw new Error(
-      `${errorMessage} The uploaded file could not be cleaned up automatically. Please try again or remove it from Supabase Storage.`,
+      `${errorMessage} Cleanup was attempted, but the uploaded file could not be removed automatically. Please try again or contact support.`,
     );
   }
 
@@ -525,21 +572,21 @@ const getWebCloudAttachmentForSignedUrl = async ({
 
 export const deleteWebCloudAttachment = async (
   input: AttachmentLookupInput,
-) => {
+): Promise<WebCloudAttachmentDeleteStatus> => {
   const attachment = await getWebCloudAttachmentForSignedUrl(input);
 
   if (!attachment) {
-    return false;
+    return "not_found";
   }
 
   const supabase = await createClient();
+  let storageStatus: "already_missing" | "removed" = "removed";
 
   if (attachment.storage_path) {
-    const storageResult = await supabase.storage
-      .from(attachment.storage_bucket ?? recordAttachmentStorageBucket)
-      .remove([attachment.storage_path]);
-
-    throwIfError("Unable to delete the attachment file", storageResult.error);
+    storageStatus = await removeWebCloudAttachmentStorageObject({
+      storageBucket: attachment.storage_bucket ?? recordAttachmentStorageBucket,
+      storagePath: attachment.storage_path,
+    });
   }
 
   let query = supabase
@@ -555,12 +602,23 @@ export const deleteWebCloudAttachment = async (
 
   const { error } = await query;
 
-  throwIfError(
-    "The file was removed, but attachment metadata could not be deleted",
-    error,
-  );
+  if (error) {
+    console.warn("Web attachment file removed but metadata delete failed.", {
+      attachmentId: input.attachmentId,
+      operation: "delete_web_cloud_attachment",
+    });
 
-  return true;
+    throw new Error(
+      formatCloudRecordAttachmentError(
+        "The attachment file was removed, but its record could not be cleared. Please try again",
+        error,
+      ),
+    );
+  }
+
+  return storageStatus === "already_missing"
+    ? "storage_already_missing"
+    : "deleted";
 };
 
 export const deleteWebCloudAttachmentsForServiceRecord = async ({

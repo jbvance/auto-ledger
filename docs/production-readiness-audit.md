@@ -4,6 +4,13 @@ Date: 2026-05-03
 
 Scope: documentation and code review only. No fixes, behavior changes, data deletion, or schema changes were implemented as part of this audit.
 
+Update: the focused attachment upload/delete failure recovery hardening slice
+has now been implemented after this audit. It added safer partial-failure
+handling in mobile and web cloud attachment helpers, a read-only orphan report
+SQL script at `packages/db/sql/006_report_attachment_storage_orphans.sql`, and
+operator documentation at `docs/attachment-storage-recovery.md`. Live Supabase
+Storage/RLS verification is still required before launch.
+
 ## 1. Executive Summary
 
 Overall readiness level: pre-production beta candidate, not launch-ready.
@@ -17,7 +24,9 @@ Biggest launch blockers:
 1. Supabase RLS and Storage verification docs/scripts now exist, but they have not yet been run and recorded against a live production-like project.
 2. Full cloud data deletion and Supabase Auth account deletion are planned but not implemented.
 3. Production Auth redirect/email confirmation settings are not documented or tested.
-4. Attachment deletion/upload failure paths can leave orphaned Storage objects that require operational recovery.
+4. Attachment deletion/upload failure paths have focused app-level hardening and
+   orphan recovery documentation, but the behavior still needs live
+   Supabase verification under real Storage/RLS failure conditions.
 5. App launch documentation is incomplete for production env vars, Supabase project separation, Expo/EAS, privacy/terms, and support/contact flows.
 
 Recommended next 5 fixes in order:
@@ -25,7 +34,9 @@ Recommended next 5 fixes in order:
 1. Run and record the Supabase live verification checklist for RLS, table grants, Storage bucket privacy, signed URLs, and cross-user access denial.
 2. Implement server-only cloud data deletion dry run/counts, keeping `SUPABASE_SERVICE_ROLE_KEY` out of mobile and browser code.
 3. Document production environment setup, including Supabase redirect URLs, email confirmation behavior, web/mobile env files, and dev/prod project separation.
-4. Harden and test attachment cleanup/idempotency, especially metadata failure after upload and parent record deletion with multiple attachments.
+4. Run live attachment cleanup/idempotency verification, especially metadata
+   failure after upload, already-missing Storage objects, Storage delete
+   failure, and parent record deletion with multiple attachments.
 5. Add launch docs/pages for privacy policy, terms, support/contact, Expo/EAS build setup, and production release checklist.
 
 ## 2. Environment and Secrets Audit
@@ -171,19 +182,29 @@ Findings:
 - Upload flows create Storage objects first, then insert metadata, and attempt Storage cleanup if metadata insert fails.
 - Service/repair record deletion attempts to delete related attachment Storage objects and metadata before deleting parent records.
 - A read-only verification script and manual checklist now exist for bucket privacy, Storage policy presence, suspicious public/anon Storage policies, signed URL usage, and cross-user denial checks. Live execution still needs to be performed and recorded.
+- Focused attachment failure recovery hardening now keeps metadata when Storage
+  delete fails, treats already-missing Storage objects as recoverable so stale
+  metadata can be cleared, logs safe non-sensitive warnings when metadata delete
+  fails after Storage cleanup, and avoids showing private Storage paths in
+  normal cleanup failure messages.
+- A read-only orphan report SQL script can compare
+  `public.record_attachments.storage_path` with `storage.objects` for the
+  private `record-attachments` bucket.
 
 Risks:
 
-- If Storage upload succeeds but metadata insert cleanup fails, an orphaned object may remain.
-- If file deletion succeeds but metadata deletion fails, metadata can point to a missing file.
-- If metadata deletion succeeds but Storage deletion fails in future flows, private orphaned files may remain.
+- If Storage upload succeeds but metadata insert cleanup fails, an orphaned object may remain; this is now documented with a read-only report and manual recovery path.
+- If file deletion succeeds but metadata deletion fails, metadata can point to a missing file; retry now treats the already-missing Storage object as recoverable and can clear the metadata.
+- If Storage deletion fails, current hardened flows preserve metadata for retry instead of silently removing the row.
 - CSV export includes attachment `storage_path`. This is not a public URL, but it reveals private object path structure and file names. Consider whether this is acceptable for user-owned export.
 - Current Storage policies only validate first path segment ownership, not that the nested vehicle/record IDs match database rows. The app does that before upload, and RLS prevents metadata cross-linking, but direct client Storage access could still create arbitrary objects under the user's own folder. That is usually acceptable, but cleanup tooling should account for it.
 
 Recommendations:
 
-- Add an admin/support recovery checklist for orphaned private Storage objects.
-- Add tests around cleanup failure status and parent deletion with multiple attachments.
+- Run `packages/db/sql/006_report_attachment_storage_orphans.sql` during
+  recovery investigations and before launch verification.
+- Continue live/manual tests around cleanup failure status and parent deletion
+  with multiple attachments.
 - Consider an operational reconciliation script/report that compares `record_attachments.storage_path` to objects under each user folder.
 - Decide whether cloud CSV export should include full `storage_path` or a less revealing attachment locator.
 
@@ -495,7 +516,7 @@ Recommendation:
 | Private Storage policies not live-verified | high | Supabase Storage | Run/record existing upload/open/delete and cross-user denial checks | `verify-storage-privacy-prod-readiness` |
 | Cloud/account deletion not implemented | high | Privacy/account controls | Implement server-only dry run, then deletion flow | `cloud-account-deletion-dry-run` |
 | Service role key needed for deletion but no server-only implementation exists | high | Secrets/backend | Add server-only route/action with strict session-derived user scoping | `server-only-service-role-deletion-foundation` |
-| Attachment upload/metadata/delete failures can leave orphaned objects or stale metadata | high | Attachments/Storage | Harden cleanup, reconciliation, and failure reporting | `harden-attachment-cleanup-idempotency` |
+| Attachment upload/metadata/delete failures can leave orphaned objects or stale metadata | medium | Attachments/Storage | Focused app hardening and orphan reporting are implemented; run live Storage/RLS verification and document any production recovery runbooks | `verify-attachment-cleanup-idempotency-live` |
 | Production Auth redirect/email confirmation settings undocumented | high | Auth/deployment | Document and manually test production Auth configuration | `document-production-auth-configuration` |
 | Vehicle migration lacks explicit signed-in-user assertion | medium | Migration | Add authenticated-user assertion matching other migration helpers | `harden-vehicle-migration-account-assertion` |
 | Live Supabase projects may miss `user_id + local_id` constraints | medium | Migration/database | Run verification SQL in every environment and add patch guidance | `verify-local-id-unique-constraints` |
@@ -526,8 +547,12 @@ Security and data-loss first:
    - Do not delete data in this slice.
    - Keep service role key server-only.
 
-4. `harden-attachment-cleanup-idempotency`
-   - Add focused tests and, if needed, implementation hardening for upload cleanup failure, delete failure, retry behavior, and parent deletion.
+4. `verify-attachment-cleanup-idempotency-live`
+   - Use `docs/attachment-storage-recovery.md` and
+     `packages/db/sql/006_report_attachment_storage_orphans.sql`.
+   - Manually verify upload cleanup failure, delete failure, already-missing
+     Storage object retry, and parent deletion behavior against a live Supabase
+     project.
 
 5. `harden-vehicle-migration-account-assertion`
    - Add explicit authenticated-user verification to vehicle migration.

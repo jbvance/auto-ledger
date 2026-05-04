@@ -180,7 +180,7 @@ export const deleteServiceRecordAttachmentAction = async (
       vehicleId,
     });
 
-    if (!deleted) {
+    if (deleted === "not_found") {
       return {
         error:
           "This cloud attachment was not found for this service record. It may already be deleted.",
@@ -214,7 +214,7 @@ export const deleteRepairRecordAttachmentAction = async (
       vehicleId,
     });
 
-    if (!deleted) {
+    if (deleted === "not_found") {
       return {
         error:
           "This cloud attachment was not found for this repair record. It may already be deleted.",

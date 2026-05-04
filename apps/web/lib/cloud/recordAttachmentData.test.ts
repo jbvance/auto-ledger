@@ -30,7 +30,7 @@ const mocks = vi.hoisted(() => ({
   lastInsertPayload: null as null | Record<string, unknown>,
   lastUploadedPath: null as null | string,
   remove: vi.fn(),
-  removeError: null as null | { message: string },
+  removeError: null as null | { message: string; statusCode?: number | string },
   rows: {
     record_attachments: [],
     repair_records: [],
@@ -440,6 +440,33 @@ describe("web cloud record attachment data", () => {
     });
   });
 
+  it("does not insert metadata when storage upload fails", async () => {
+    mocks.rows.service_records = [
+      {
+        id: "service-1",
+        user_id: "user-1",
+        vehicle_id: "vehicle-1",
+      },
+    ];
+    mocks.uploadError = { message: "upload failed" };
+
+    await expect(
+      uploadWebCloudAttachmentForServiceRecord({
+        file: {
+          arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+          name: "receipt.pdf",
+          size: 2048,
+          type: "application/pdf",
+        } as File,
+        serviceRecordId: "service-1",
+        userId: "user-1",
+        vehicleId: "vehicle-1",
+      }),
+    ).rejects.toThrow("Unable to upload attachment. upload failed");
+
+    expect(mocks.lastInsertPayload).toBeNull();
+  });
+
   it("cleans up uploaded storage when metadata insert fails", async () => {
     mocks.rows.record_attachments = [createAttachmentRow()];
     mocks.insertError = { message: "metadata insert failed" };
@@ -491,7 +518,7 @@ describe("web cloud record attachment data", () => {
 
     await expect(
       insertWebCloudAttachmentMetadataWithUploadCleanup({ payload }),
-    ).rejects.toThrow("could not be cleaned up automatically");
+    ).rejects.toThrow("could not be removed automatically");
     expect(warnSpy).toHaveBeenCalled();
     warnSpy.mockRestore();
   });
@@ -513,7 +540,7 @@ describe("web cloud record attachment data", () => {
         userId: "user-1",
         vehicleId: "vehicle-1",
       }),
-    ).resolves.toBe(true);
+    ).resolves.toBe("deleted");
 
     expect(mocks.remove).toHaveBeenCalledWith([
       "user-1/vehicles/vehicle-1/service-records/service-1/cloud_attachment_1-receipt.pdf",
@@ -547,5 +574,64 @@ describe("web cloud record attachment data", () => {
     ).rejects.toThrow("Unable to delete the attachment file");
 
     expect(mocks.lastDeleteFilters).toEqual([]);
+  });
+
+  it("deletes orphaned metadata when the storage object is already missing", async () => {
+    mocks.rows.service_records = [
+      {
+        id: "service-1",
+        user_id: "user-1",
+        vehicle_id: "vehicle-1",
+      },
+    ];
+    mocks.rows.record_attachments = [createAttachmentRow()];
+    mocks.removeError = { message: "Object not found", statusCode: 404 };
+
+    await expect(
+      deleteWebCloudAttachment({
+        attachmentId: "attachment-1",
+        serviceRecordId: "service-1",
+        userId: "user-1",
+        vehicleId: "vehicle-1",
+      }),
+    ).resolves.toBe("storage_already_missing");
+
+    expect(mocks.lastDeleteFilters).toContainEqual({
+      column: "id",
+      value: "attachment-1",
+    });
+  });
+
+  it("reports metadata delete failure after storage delete without claiming success", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    mocks.rows.service_records = [
+      {
+        id: "service-1",
+        user_id: "user-1",
+        vehicle_id: "vehicle-1",
+      },
+    ];
+    mocks.rows.record_attachments = [createAttachmentRow()];
+    mocks.deleteError = { message: "metadata delete failed" };
+
+    await expect(
+      deleteWebCloudAttachment({
+        attachmentId: "attachment-1",
+        serviceRecordId: "service-1",
+        userId: "user-1",
+        vehicleId: "vehicle-1",
+      }),
+    ).rejects.toThrow(
+      "The attachment file was removed, but its record could not be cleared. Please try again.",
+    );
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      "Web attachment file removed but metadata delete failed.",
+      {
+        attachmentId: "attachment-1",
+        operation: "delete_web_cloud_attachment",
+      },
+    );
+    warnSpy.mockRestore();
   });
 });

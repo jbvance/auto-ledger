@@ -15,6 +15,7 @@ import { supabase } from "./supabase";
 type CloudRecordAttachmentError = {
   code?: string;
   message: string;
+  statusCode?: number | string;
 };
 
 export type CloudRecordAttachmentRow = Omit<
@@ -107,6 +108,15 @@ export type CloudRecordAttachmentMetadataWriteResult =
       storageBucket: string;
       storagePath: string;
     };
+
+export type CloudRecordAttachmentDeleteStatus =
+  | "deleted"
+  | "not_found"
+  | "storage_already_missing";
+
+export type CloudRecordAttachmentStorageRemoveResult = {
+  status: "already_missing" | "removed";
+};
 
 export type LocalAttachmentFileAvailability =
   | {
@@ -335,6 +345,18 @@ const formatCloudRecordAttachmentError = (
   }
 
   return `${action}. ${error.message}`;
+};
+
+const isStorageObjectMissingError = (error: CloudRecordAttachmentError) => {
+  const statusCode = String(error.statusCode ?? "");
+  const message = error.message.toLowerCase();
+
+  return (
+    statusCode === "404" ||
+    message.includes("not found") ||
+    message.includes("does not exist") ||
+    message.includes("no such object")
+  );
 };
 
 const getFileSizeLimitMessage = (
@@ -645,13 +667,17 @@ export const uploadLocalFileToStorage = async ({
 const removeStorageObject = async (
   storagePath: string,
   storageBucket = recordAttachmentStorageBucket,
-) => {
+): Promise<CloudRecordAttachmentStorageRemoveResult> => {
   const client = requireSupabase();
   const { error } = await client.storage
     .from(storageBucket)
     .remove([storagePath]);
 
   if (error) {
+    if (isStorageObjectMissingError(error)) {
+      return { status: "already_missing" };
+    }
+
     throw new Error(
       formatCloudRecordAttachmentError(
         "Unable to delete the attachment file",
@@ -659,6 +685,8 @@ const removeStorageObject = async (
       ),
     );
   }
+
+  return { status: "removed" };
 };
 
 const getErrorMessage = (error: unknown) =>
@@ -736,7 +764,7 @@ export const getCloudRecordAttachmentMetadataWriteErrorMessage = (
   }
 
   if (result.status === "metadata_insert_failed_cleanup_failed") {
-    return `${result.errorMessage} The uploaded file could not be cleaned up automatically, so retry may need to reuse or remove ${result.storagePath}.`;
+    return `${result.errorMessage} Cleanup was attempted, but the uploaded file could not be removed automatically. Please try again or contact support.`;
   }
 
   return result.errorMessage;
@@ -939,20 +967,26 @@ export const getCloudAttachmentSignedUrl = async (id: string) => {
   return data.signedUrl;
 };
 
-export const deleteCloudAttachment = async (id: string): Promise<void> => {
+export const deleteCloudAttachmentWithRecovery = async (
+  id: string,
+): Promise<CloudRecordAttachmentDeleteStatus> => {
   const client = requireSupabase();
   const userId = await getAuthenticatedUserId();
   const existing = await getCloudAttachment(id);
 
   if (!existing) {
-    return;
+    return "not_found";
   }
 
+  let storageStatus: CloudRecordAttachmentStorageRemoveResult["status"] =
+    "removed";
+
   if (existing.storage_path) {
-    await removeStorageObject(
+    const storageResult = await removeStorageObject(
       existing.storage_path,
       existing.storage_bucket ?? recordAttachmentStorageBucket,
     );
+    storageStatus = storageResult.status;
   }
 
   const { error } = await client
@@ -962,13 +996,26 @@ export const deleteCloudAttachment = async (id: string): Promise<void> => {
     .eq("user_id", userId);
 
   if (error) {
+    console.warn("Cloud attachment file removed but metadata delete failed.", {
+      attachmentId: id,
+      operation: "delete_cloud_attachment",
+    });
+
     throw new Error(
       formatCloudRecordAttachmentError(
-        "The file was removed, but attachment metadata could not be deleted",
+        "The attachment file was removed, but its record could not be cleared. Please try again",
         error,
       ),
     );
   }
+
+  return storageStatus === "already_missing"
+    ? "storage_already_missing"
+    : "deleted";
+};
+
+export const deleteCloudAttachment = async (id: string): Promise<void> => {
+  await deleteCloudAttachmentWithRecovery(id);
 };
 
 export const deleteCloudAttachmentsForServiceRecord = async (

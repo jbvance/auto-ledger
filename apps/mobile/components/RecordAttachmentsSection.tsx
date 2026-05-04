@@ -261,7 +261,11 @@ export function RecordAttachmentsSection({
       setFeedback("Attachment deleted.");
     } catch (error: unknown) {
       console.warn("Unable to delete attachment.", error);
-      setFeedback("Unable to delete this attachment. Please try again.");
+      setFeedback(
+        mode === "cloud" && error instanceof Error
+          ? error.message
+          : "The attachment could not be deleted. Please try again.",
+      );
     } finally {
       setIsDeletingId(null);
     }

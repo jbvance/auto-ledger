@@ -1,5 +1,8 @@
 jest.mock("./supabase", () => ({
   supabase: {
+    auth: {
+      getUser: jest.fn(),
+    },
     from: jest.fn(),
     storage: {
       from: jest.fn(),
@@ -12,10 +15,12 @@ import * as FileSystem from "expo-file-system/legacy";
 import {
   buildCloudRecordAttachmentPayload,
   decodeBase64ToArrayBuffer,
+  deleteCloudAttachmentWithRecovery,
   getCloudRecordAttachmentMetadataWriteErrorMessage,
   getCloudRecordAttachmentDuplicateState,
   insertCloudAttachmentMetadataWithUploadCleanup,
   mapCloudRecordAttachmentRow,
+  uploadLocalFileToStorage,
   verifyLocalAttachmentFileForUpload,
 } from "./cloudRecordAttachments";
 import type { CloudRecordAttachmentRow } from "./cloudRecordAttachments";
@@ -23,6 +28,10 @@ import { supabase } from "./supabase";
 
 const now = "2026-05-02T00:00:00.000Z";
 const mockGetInfoAsync = jest.mocked(FileSystem.getInfoAsync);
+const mockReadAsStringAsync = jest.mocked(FileSystem.readAsStringAsync);
+const mockGetUser = jest.mocked(
+  (supabase as unknown as { auth: { getUser: jest.Mock } }).auth.getUser,
+);
 const mockFrom = jest.mocked((supabase as unknown as { from: jest.Mock }).from);
 const mockStorageFrom = jest.mocked(
   (supabase as unknown as { storage: { from: jest.Mock } }).storage.from,
@@ -60,10 +69,65 @@ const createInsertMetadataBuilder = ({
 const createStorageRemoveBuilder = ({
   error = null,
 }: {
-  error?: { message: string } | null;
+  error?: { message: string; statusCode?: number | string } | null;
 }) => ({
   remove: jest.fn(async () => ({ error })),
 });
+
+const createStorageUploadBuilder = ({
+  error = null,
+}: {
+  error?: { message: string } | null;
+}) => ({
+  upload: jest.fn(async () => ({ error })),
+});
+
+const createSelectAttachmentBuilder = ({
+  row,
+}: {
+  row: Record<string, unknown> | null;
+}) => {
+  type SelectBuilder = {
+    eq: jest.MockedFunction<() => SelectBuilder>;
+    maybeSingle: jest.MockedFunction<
+      () => Promise<{
+        data: Record<string, unknown> | null;
+        error: null;
+      }>
+    >;
+    select: jest.MockedFunction<() => SelectBuilder>;
+  };
+  const builder = {} as SelectBuilder;
+
+  builder.eq = jest.fn(() => builder);
+  builder.maybeSingle = jest.fn(async () => ({
+    data: row,
+    error: null,
+  }));
+  builder.select = jest.fn(() => builder);
+
+  return builder;
+};
+
+const createDeleteMetadataBuilder = ({
+  error = null,
+}: {
+  error?: { message: string } | null;
+}) => {
+  type DeleteBuilder = {
+    delete: jest.MockedFunction<() => DeleteBuilder>;
+    eq: jest.MockedFunction<() => DeleteBuilder>;
+    then: Promise<{ error: typeof error }>["then"];
+  };
+  const builder = {} as DeleteBuilder;
+
+  builder.delete = jest.fn(() => builder);
+  builder.eq = jest.fn(() => builder);
+  builder.then = (onfulfilled, onrejected) =>
+    Promise.resolve({ error }).then(onfulfilled, onrejected);
+
+  return builder;
+};
 
 const buildExpectedPayload = () =>
   buildCloudRecordAttachmentPayload({
@@ -103,9 +167,16 @@ const missingFileInfo = (uri: string) => ({
 describe("cloud record attachment mapping", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockFrom.mockReset();
+    mockStorageFrom.mockReset();
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: "user_1" } },
+      error: null,
+    });
     mockGetInfoAsync.mockResolvedValue(
       existingFileInfo("file:///local/receipt.pdf", 2048),
     );
+    mockReadAsStringAsync.mockResolvedValue("AQID");
   });
 
   it("builds migrated attachment payloads with the preserved local_id", () => {
@@ -280,6 +351,24 @@ describe("cloud record attachment mapping", () => {
     });
   });
 
+  it("does not insert metadata when storage upload fails", async () => {
+    const uploadBuilder = createStorageUploadBuilder({
+      error: { message: "upload failed" },
+    });
+    mockStorageFrom.mockReturnValueOnce(uploadBuilder);
+
+    await expect(
+      uploadLocalFileToStorage({
+        contentType: "application/pdf",
+        fileType: "pdf",
+        localUri: "file:///local/receipt.pdf",
+        path: "user_1/vehicles/vehicle_1/service-records/service_1/att_1-receipt.pdf",
+      }),
+    ).rejects.toThrow("Unable to upload attachment. upload failed");
+
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
   it("saves metadata without cleanup when the metadata insert succeeds", async () => {
     const payload = buildExpectedPayload();
     const row = {
@@ -365,8 +454,123 @@ describe("cloud record attachment mapping", () => {
     expect(result.cleanupErrorMessage).toContain("storage cleanup failed");
     expect(
       getCloudRecordAttachmentMetadataWriteErrorMessage(result),
-    ).toContain("could not be cleaned up automatically");
+    ).toContain("could not be removed automatically");
     warnSpy.mockRestore();
+  });
+
+  it("deletes cloud attachment metadata after Storage object removal", async () => {
+    const payload = buildExpectedPayload();
+    const row = {
+      ...payload,
+      created_at: now,
+      id: "cloud_attachment_1",
+      ocr_processed_at: null,
+      ocr_text: null,
+      ocr_vendor: null,
+      updated_at: now,
+    };
+    const selectBuilder = createSelectAttachmentBuilder({ row });
+    const removeBuilder = createStorageRemoveBuilder({});
+    const deleteBuilder = createDeleteMetadataBuilder({});
+    mockFrom.mockReturnValueOnce(selectBuilder).mockReturnValueOnce(deleteBuilder);
+    mockStorageFrom.mockReturnValueOnce(removeBuilder);
+
+    await expect(
+      deleteCloudAttachmentWithRecovery("cloud_attachment_1"),
+    ).resolves.toBe("deleted");
+
+    expect(removeBuilder.remove).toHaveBeenCalledWith([payload.storage_path]);
+    expect(deleteBuilder.delete).toHaveBeenCalled();
+  });
+
+  it("does not delete cloud attachment metadata when Storage removal fails", async () => {
+    const payload = buildExpectedPayload();
+    const row = {
+      ...payload,
+      created_at: now,
+      id: "cloud_attachment_1",
+      ocr_processed_at: null,
+      ocr_text: null,
+      ocr_vendor: null,
+      updated_at: now,
+    };
+    const selectBuilder = createSelectAttachmentBuilder({ row });
+    const removeBuilder = createStorageRemoveBuilder({
+      error: { message: "permission denied" },
+    });
+    const deleteBuilder = createDeleteMetadataBuilder({});
+    mockFrom.mockReturnValueOnce(selectBuilder).mockReturnValueOnce(deleteBuilder);
+    mockStorageFrom.mockReturnValueOnce(removeBuilder);
+
+    await expect(
+      deleteCloudAttachmentWithRecovery("cloud_attachment_1"),
+    ).rejects.toThrow("Unable to delete the attachment file");
+
+    expect(deleteBuilder.delete).not.toHaveBeenCalled();
+  });
+
+  it("reports metadata delete failure after cloud Storage removal", async () => {
+    const warnSpy = jest
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    const payload = buildExpectedPayload();
+    const row = {
+      ...payload,
+      created_at: now,
+      id: "cloud_attachment_1",
+      ocr_processed_at: null,
+      ocr_text: null,
+      ocr_vendor: null,
+      updated_at: now,
+    };
+    const selectBuilder = createSelectAttachmentBuilder({ row });
+    const removeBuilder = createStorageRemoveBuilder({});
+    const deleteBuilder = createDeleteMetadataBuilder({
+      error: { message: "metadata delete failed" },
+    });
+    mockFrom.mockReturnValueOnce(selectBuilder).mockReturnValueOnce(deleteBuilder);
+    mockStorageFrom.mockReturnValueOnce(removeBuilder);
+
+    await expect(
+      deleteCloudAttachmentWithRecovery("cloud_attachment_1"),
+    ).rejects.toThrow(
+      "The attachment file was removed, but its record could not be cleared. Please try again.",
+    );
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      "Cloud attachment file removed but metadata delete failed.",
+      {
+        attachmentId: "cloud_attachment_1",
+        operation: "delete_cloud_attachment",
+      },
+    );
+    warnSpy.mockRestore();
+  });
+
+  it("clears cloud metadata when the Storage object is already missing", async () => {
+    const payload = buildExpectedPayload();
+    const row = {
+      ...payload,
+      created_at: now,
+      id: "cloud_attachment_1",
+      ocr_processed_at: null,
+      ocr_text: null,
+      ocr_vendor: null,
+      updated_at: now,
+    };
+    const selectBuilder = createSelectAttachmentBuilder({ row });
+    const removeBuilder = createStorageRemoveBuilder({
+      error: { message: "Object not found", statusCode: 404 },
+    });
+    const deleteBuilder = createDeleteMetadataBuilder({});
+    mockFrom.mockReturnValueOnce(selectBuilder).mockReturnValueOnce(deleteBuilder);
+    mockStorageFrom.mockReturnValueOnce(removeBuilder);
+
+    await expect(
+      deleteCloudAttachmentWithRecovery("cloud_attachment_1"),
+    ).resolves.toBe("storage_already_missing");
+
+    expect(deleteBuilder.delete).toHaveBeenCalled();
   });
 
   it("maps Supabase attachment rows into app attachment types", () => {

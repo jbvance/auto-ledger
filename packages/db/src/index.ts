@@ -57,4 +57,5 @@ export const dbSqlFiles = [
   "packages/db/sql/003_record_attachments_storage_rls.sql",
   "packages/db/sql/004_verify_local_id_unique_constraints.sql",
   "packages/db/sql/005_verify_live_supabase_security.sql",
+  "packages/db/sql/006_report_attachment_storage_orphans.sql",
 ] as const;

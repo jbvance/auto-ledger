@@ -101,7 +101,10 @@ development build app id when a dev build exists.
   deletion.
 - Web cloud service/repair record deletion cleanup for related attachment
   Storage objects and metadata.
-- Cloud record attachment Storage path generation.
+- Cloud record attachment Storage path generation, upload failure before
+  metadata insert, metadata-insert cleanup after upload, cleanup failure
+  reporting, Storage delete failure preservation, metadata delete failure after
+  Storage cleanup, and already-missing Storage object retry cleanup.
 - Guest attachment migration parent mapping resolution, preserved attachment
   local IDs, mapping creation, missing parent mapping skips, unsupported
   relationship skips, missing local file upload failure handling, and rerun

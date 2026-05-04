@@ -739,7 +739,7 @@ export const migrateGuestAttachmentsToCloud = async (
       if (
         result.errorMessage
           ?.toLowerCase()
-          .includes("could not be cleaned up automatically")
+          .includes("could not be removed automatically")
       ) {
         counts.failedRecordAttachmentCleanup += 1;
       }
